@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+
+import os
+
+import app_icons_builders
+
+# App's own icons
+icon_sources = Glob("*.svg")
+
+# Module icons
+for path in env.module_icons_paths:
+    if not os.path.isabs(path):
+        icon_sources += Glob(f"#{path}/*.svg")  # Built-in.
+    else:
+        icon_sources += Glob(f"{path}/*.svg")  # Custom.
+
+env.CommandNoCache(
+    "#app/themes/app_icons.gen.h",
+    icon_sources,
+    env.Run(app_icons_builders.make_app_icons_action),
+)

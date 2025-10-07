@@ -1,0 +1,28 @@
+#pragma once
+
+#include "app/core/io/file_system_access.h"
+
+class FileSystemAccessWindows : public FileSystemAccess {
+private:
+	uint64_t drives_mask = 0;
+	String current_path = "";
+
+	void _update_drives_icon();
+
+protected:
+	virtual Ref<Texture2D> _get_this_pc_icon() const;
+
+	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false) const override;
+	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const override;
+	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
+
+	virtual bool _file_exists(const String &p_file) const override;
+	virtual bool _dir_exists(const String &p_dir) const override;
+
+public:
+	virtual Error change_path(const String &p_dir) override; ///< can be relative or absolute, return false on success
+	virtual String get_current_path() const override; ///< return current dir location
+
+	FileSystemAccessWindows();
+	~FileSystemAccessWindows();
+};
