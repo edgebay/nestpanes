@@ -3,6 +3,7 @@
 #include "app/app_string_names.h"
 #include "app/settings/app_settings.h"
 #include "app/themes/app_icons.gen.h"
+#include "scene/resources/dpi_texture.h"
 #include "scene/resources/image_texture.h"
 
 #include "modules/svg/image_loader_svg.h"
@@ -44,16 +45,23 @@ void AppIcons::AppColorMap::create() {
 	add_conversion_color_pair("#f9f9f9", "#606060"); // Scrollbar grabber highlight color
 
 	add_conversion_color_pair("#c38ef1", "#a85de9"); // Animation
-	add_conversion_color_pair("#8da5f3", "#3d64dd"); // 2D
-	add_conversion_color_pair("#7582a8", "#6d83c8"); // 2D Abstract
-	add_conversion_color_pair("#fc7f7f", "#cd3838"); // 3D
-	add_conversion_color_pair("#b56d6d", "#be6a6a"); // 3D Abstract
+	add_conversion_color_pair("#8da5f3", "#3d64dd"); // 2D Node
+	add_conversion_color_pair("#7582a8", "#6d83c8"); // 2D Node Abstract
+	add_conversion_color_pair("#fc7f7f", "#cd3838"); // 3D Node
+	add_conversion_color_pair("#b56d6d", "#be6a6a"); // 3D Node Abstract
+	add_conversion_color_pair("#99c4ff", "#4589e6"); // 2D Non-Node
+	add_conversion_color_pair("#869ebf", "#7097cd"); // 2D Non-Node Abstract
+	add_conversion_color_pair("#ffa6bd", "#e65c7f"); // 3D Non-Node
+	add_conversion_color_pair("#bf909c", "#cd8b9c"); // 3D Non-Node Abstract
 	add_conversion_color_pair("#8eef97", "#2fa139"); // GUI Control
 	add_conversion_color_pair("#76ad7b", "#64a66a"); // GUI Control Abstract
 
 	add_conversion_color_pair("#5fb2ff", "#0079f0"); // Selection (blue)
 	add_conversion_color_pair("#003e7a", "#2b74bb"); // Selection (darker blue)
 	add_conversion_color_pair("#f7f5cf", "#615f3a"); // Gizmo (yellow)
+
+	// Other objects
+	add_conversion_color_pair("#69c4d4", "#29a3cc"); // Input event highlight (light blue)
 
 	// Control layouts
 	add_conversion_color_pair("#d6d6d6", "#474747"); // Highlighted part
@@ -84,23 +92,11 @@ void AppIcons::app_configure_icons(bool p_dark_theme) {
 }
 
 // See also `generate_icon()` in `scene/theme/default_theme.cpp`.
-static Ref<ImageTexture> app_generate_icon(int p_index, float p_scale, float p_saturation, const HashMap<Color, Color> &p_convert_colors = HashMap<Color, Color>()) {
-	Ref<Image> img = memnew(Image);
-
-	// Upsample icon generation only if the scale isn't an integer multiplier.
-	// Generating upsampled icons is slower, and the benefit is hardly visible
-	// with integer scales.
-	const bool upsample = !Math::is_equal_approx(Math::round(p_scale), p_scale);
-	Error err = ImageLoaderSVG::create_image_from_string(img, app_icons_sources[p_index], p_scale, upsample, p_convert_colors);
-	ERR_FAIL_COND_V_MSG(err != OK, Ref<ImageTexture>(), "Failed generating icon, unsupported or invalid SVG data in theme.");
-	if (p_saturation != 1.0) {
-		img->adjust_bcs(1.0, 1.0, p_saturation);
-	}
-
-	return ImageTexture::create_from_image(img);
+Ref<DPITexture> app_generate_icon(int p_index, float p_scale, float p_saturation, const Dictionary &p_convert_colors = Dictionary()) {
+	return DPITexture::create_from_string(app_icons_sources[p_index], p_scale, p_saturation, p_convert_colors);
 }
 
-static float get_gizmo_handle_scale(const String &p_gizmo_handle_name, float p_gizmo_handle_scale) {
+float get_gizmo_handle_scale(const String &p_gizmo_handle_name, float p_gizmo_handle_scale) {
 	if (p_gizmo_handle_scale > 1.0f) {
 		// The names of the icons that require additional scaling.
 		static HashSet<StringName> gizmo_to_scale;
@@ -111,6 +107,7 @@ static float get_gizmo_handle_scale(const String &p_gizmo_handle_name, float p_g
 			// gizmo_to_scale.insert("EditorCurveHandle");
 			// gizmo_to_scale.insert("EditorPathSharpHandle");
 			// gizmo_to_scale.insert("EditorPathSmoothHandle");
+			// gizmo_to_scale.insert("EditorControlAnchor");
 		}
 
 		if (gizmo_to_scale.has(p_gizmo_handle_name)) {
@@ -131,21 +128,37 @@ void AppIcons::app_register_icons(const Ref<Theme> &p_theme, bool p_dark_theme, 
 	// And then some icons are completely excluded from the conversion.
 
 	// Standard color conversion map.
-	HashMap<Color, Color> color_conversion_map;
+	Dictionary color_conversion_map_light;
+	Dictionary color_conversion_map_dark;
 	// Icons by default are set up for the dark theme, so if the theme is light,
 	// we apply the dark-to-light color conversion map.
-	if (!p_dark_theme) {
-		for (KeyValue<Color, Color> &E : AppColorMap::get_color_conversion_map()) {
-			color_conversion_map[E.key] = E.value;
-		}
+	for (KeyValue<Color, Color> &E : AppColorMap::get_color_conversion_map()) {
+		color_conversion_map_light[E.key] = E.value;
 	}
 	// These colors should be converted even if we are using a dark theme.
 	const Color error_color = p_theme->get_color(SNAME("error_color"), AppStringName(App));
 	const Color success_color = p_theme->get_color(SNAME("success_color"), AppStringName(App));
 	const Color warning_color = p_theme->get_color(SNAME("warning_color"), AppStringName(App));
-	color_conversion_map[Color::html("#ff5f5f")] = error_color;
-	color_conversion_map[Color::html("#5fff97")] = success_color;
-	color_conversion_map[Color::html("#ffdd65")] = warning_color;
+	color_conversion_map_dark[Color::html("#ff5f5f")] = error_color;
+	color_conversion_map_dark[Color::html("#5fff97")] = success_color;
+	color_conversion_map_dark[Color::html("#ffdd65")] = warning_color;
+	color_conversion_map_light[Color::html("#ff5f5f")] = error_color;
+	color_conversion_map_light[Color::html("#5fff97")] = success_color;
+	color_conversion_map_light[Color::html("#ffdd65")] = warning_color;
+
+	Dictionary color_conversion_map = p_dark_theme ? color_conversion_map_dark : color_conversion_map_light;
+
+	// The names of the icons used in native menus.
+	HashSet<StringName> native_menu_icons;
+	native_menu_icons.insert("HelpSearch");
+	native_menu_icons.insert("ActionCopy");
+	native_menu_icons.insert("Heart");
+	native_menu_icons.insert("PackedScene");
+	native_menu_icons.insert("FileAccess");
+	native_menu_icons.insert("Folder");
+	native_menu_icons.insert("AnimationTrackList");
+	native_menu_icons.insert("Object");
+	native_menu_icons.insert("History");
 
 	// The names of the icons to exclude from the standard color conversion.
 	HashSet<StringName> conversion_exceptions = AppColorMap::get_color_conversion_exceptions();
@@ -159,7 +172,7 @@ void AppIcons::app_register_icons(const Ref<Theme> &p_theme, bool p_dark_theme, 
 	// Accent color conversion map.
 	// It is used on some icons (checkbox, radio, toggle, etc.), regardless of the dark
 	// or light mode.
-	HashMap<Color, Color> accent_color_map;
+	Dictionary accent_color_map;
 	HashSet<StringName> accent_color_icons;
 
 	const Color accent_color = p_theme->get_color(SNAME("accent_color"), AppStringName(App));
@@ -178,25 +191,39 @@ void AppIcons::app_register_icons(const Ref<Theme> &p_theme, bool p_dark_theme, 
 	// Generate icons.
 	{
 		for (int i = 0; i < app_icons_count; i++) {
-			Ref<ImageTexture> icon;
-
 			const String &app_icon_name = app_icons_names[i];
-			if (accent_color_icons.has(app_icon_name)) {
-				icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), 1.0, accent_color_map);
-			} else {
+			if (native_menu_icons.has(app_icon_name)) {
 				float saturation = p_icon_saturation;
 				if (saturation_exceptions.has(app_icon_name)) {
 					saturation = 1.0;
 				}
 
-				if (conversion_exceptions.has(app_icon_name)) {
-					icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation);
-				} else {
-					icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation, color_conversion_map);
-				}
-			}
+				Ref<DPITexture> icon_dark = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation, color_conversion_map_dark);
+				Ref<DPITexture> icon_light = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation, color_conversion_map_light);
 
-			p_theme->set_icon(app_icon_name, AppStringName(AppIcons), icon);
+				p_theme->set_icon(app_icon_name + "Dark", AppStringName(AppIcons), icon_dark);
+				p_theme->set_icon(app_icon_name + "Light", AppStringName(AppIcons), icon_light);
+				p_theme->set_icon(app_icon_name, AppStringName(AppIcons), p_dark_theme ? icon_dark : icon_light);
+			} else {
+				Ref<DPITexture> icon;
+
+				if (accent_color_icons.has(app_icon_name)) {
+					icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), 1.0, accent_color_map);
+				} else {
+					float saturation = p_icon_saturation;
+					if (saturation_exceptions.has(app_icon_name)) {
+						saturation = 1.0;
+					}
+
+					if (conversion_exceptions.has(app_icon_name)) {
+						icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation);
+					} else {
+						icon = app_generate_icon(i, get_gizmo_handle_scale(app_icon_name, p_gizmo_handle_scale), saturation, color_conversion_map);
+					}
+				}
+
+				p_theme->set_icon(app_icon_name, AppStringName(AppIcons), icon);
+			}
 		}
 	}
 
@@ -206,7 +233,7 @@ void AppIcons::app_register_icons(const Ref<Theme> &p_theme, bool p_dark_theme, 
 		const float scale = (float)p_thumb_size / 64.0 * APP_SCALE;
 		for (int i = 0; i < app_bg_thumbs_count; i++) {
 			const int index = app_bg_thumbs_indices[i];
-			Ref<ImageTexture> icon;
+			Ref<DPITexture> icon;
 
 			if (accent_color_icons.has(app_icons_names[index])) {
 				icon = app_generate_icon(index, scale, 1.0, accent_color_map);
@@ -229,7 +256,7 @@ void AppIcons::app_register_icons(const Ref<Theme> &p_theme, bool p_dark_theme, 
 		const float scale = (float)p_thumb_size / 32.0 * APP_SCALE;
 		for (int i = 0; i < app_md_thumbs_count; i++) {
 			const int index = app_md_thumbs_indices[i];
-			Ref<ImageTexture> icon;
+			Ref<DPITexture> icon;
 
 			if (accent_color_icons.has(app_icons_names[index])) {
 				icon = app_generate_icon(index, scale, 1.0, accent_color_map);

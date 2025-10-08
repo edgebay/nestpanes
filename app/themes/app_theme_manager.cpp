@@ -42,7 +42,7 @@ uint32_t AppThemeManager::ThemeConfiguration::hash() {
 	hash = hash_murmur3_one_float(relationship_line_opacity, hash);
 	hash = hash_murmur3_one_32(thumb_size, hash);
 	hash = hash_murmur3_one_32(class_icon_size, hash);
-	hash = hash_murmur3_one_32((int)increase_scrollbar_touch_area, hash);
+	hash = hash_murmur3_one_32((int)enable_touch_optimizations, hash);
 	hash = hash_murmur3_one_float(gizmo_handle_scale, hash);
 	hash = hash_murmur3_one_32(color_picker_button_height, hash);
 	hash = hash_murmur3_one_float(subresource_hue_tint, hash);
@@ -191,6 +191,21 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 
 	// Extra properties.
 
+	config.base_spacing = APP_GET("interface/theme/base_spacing");
+	config.extra_spacing = APP_GET("interface/theme/additional_spacing");
+	// Ensure borders are visible when using an editor scale below 100%.
+	config.border_width = CLAMP((int)APP_GET("interface/theme/border_size"), 0, 2) * MAX(1, APP_SCALE);
+	config.corner_radius = CLAMP((int)APP_GET("interface/theme/corner_radius"), 0, 6);
+
+	config.draw_extra_borders = APP_GET("interface/theme/draw_extra_borders");
+	config.relationship_line_opacity = APP_GET("interface/theme/relationship_line_opacity");
+	config.thumb_size = APP_GET("filesystem/file_dialog/thumbnail_size");
+	config.class_icon_size = 16 * APP_SCALE;
+	config.enable_touch_optimizations = APP_GET("interface/touchscreen/enable_touch_optimizations");
+	config.gizmo_handle_scale = APP_GET("interface/touchscreen/scale_gizmo_handles");
+	config.color_picker_button_height = 28 * APP_SCALE;
+	config.subresource_hue_tint = APP_GET("docks/property_editor/subresource_hue_tint");
+
 	config.default_contrast = 0.3; // Make sure to keep this in sync with the editor settings definition.
 
 	// Handle main theme preset.
@@ -245,8 +260,8 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 				preset_contrast = -0.06;
 			} else if (config.preset == "Solarized (Dark)") {
 				preset_accent_color = Color(0.15, 0.55, 0.82);
-				preset_base_color = Color(0.04, 0.23, 0.27);
-				preset_contrast = config.default_contrast;
+				preset_base_color = Color(0.03, 0.21, 0.26);
+				preset_contrast = 0.23;
 			} else if (config.preset == "Solarized (Light)") {
 				preset_accent_color = Color(0.15, 0.55, 0.82);
 				preset_base_color = Color(0.89, 0.86, 0.79);
@@ -413,7 +428,7 @@ void AppThemeManager::_create_shared_styles(const Ref<AppTheme> &p_theme, ThemeC
 		p_config.font_hover_pressed_color = p_config.font_hover_color.lerp(p_config.accent_color, 0.74);
 		p_config.font_disabled_color = Color(p_config.mono_color.r, p_config.mono_color.g, p_config.mono_color.b, 0.35);
 		p_config.font_readonly_color = Color(p_config.mono_color.r, p_config.mono_color.g, p_config.mono_color.b, 0.65);
-		p_config.font_placeholder_color = Color(p_config.mono_color.r, p_config.mono_color.g, p_config.mono_color.b, 0.6);
+		p_config.font_placeholder_color = Color(p_config.mono_color.r, p_config.mono_color.g, p_config.mono_color.b, 0.5);
 		p_config.font_outline_color = Color(0, 0, 0, 0);
 
 		p_theme->set_color(SceneStringName(font_color), AppStringName(App), p_config.font_color);
@@ -899,6 +914,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 			p_theme->set_color(SceneStringName(font_color), "Tree", p_config.font_color);
 			p_theme->set_color("font_hovered_color", "Tree", p_config.mono_color);
 			p_theme->set_color("font_hovered_dimmed_color", "Tree", p_config.font_color);
+			p_theme->set_color("font_hovered_selected_color", "Tree", p_config.mono_color);
 			p_theme->set_color("font_selected_color", "Tree", p_config.mono_color);
 			p_theme->set_color("font_disabled_color", "Tree", p_config.font_disabled_color);
 			p_theme->set_color("font_outline_color", "Tree", p_config.font_outline_color);
@@ -959,6 +975,13 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 			style_tree_hover_dimmed->set_border_width_all(0);
 			p_theme->set_stylebox("hovered_dimmed", "Tree", style_tree_hover_dimmed);
 
+			Ref<StyleBoxFlat> style_tree_hover_selected = style_tree_selected->duplicate();
+			style_tree_hover_selected->set_bg_color(p_config.highlight_color * Color(1, 1, 1, 1.2));
+			style_tree_hover_selected->set_border_width_all(0);
+
+			p_theme->set_stylebox("hovered_selected", "Tree", style_tree_hover_selected);
+			p_theme->set_stylebox("hovered_selected_focus", "Tree", style_tree_hover_selected);
+
 			p_theme->set_stylebox("selected_focus", "Tree", style_tree_focus);
 			p_theme->set_stylebox("selected", "Tree", style_tree_selected);
 
@@ -993,7 +1016,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 
 			Ref<StyleBoxFlat> style_itemlist_cursor = p_config.base_style->duplicate();
 			style_itemlist_cursor->set_draw_center(false);
-			style_itemlist_cursor->set_border_width_all(p_config.border_width);
+			style_itemlist_cursor->set_border_width_all(MAX(1 * APP_SCALE, p_config.border_width));
 			style_itemlist_cursor->set_border_color(p_config.highlight_color);
 
 			Ref<StyleBoxFlat> style_itemlist_hover = style_tree_selected->duplicate();
@@ -1322,9 +1345,6 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 			p_theme->set_icon("radio_unchecked_disabled", "PopupMenu", p_theme->get_icon(SNAME("GuiRadioUncheckedDisabled"), AppStringName(AppIcons)));
 			p_theme->set_icon("submenu", "PopupMenu", p_theme->get_icon(SNAME("ArrowRight"), AppStringName(AppIcons)));
 			p_theme->set_icon("submenu_mirrored", "PopupMenu", p_theme->get_icon(SNAME("ArrowLeft"), AppStringName(AppIcons)));
-			p_theme->set_icon("visibility_hidden", "PopupMenu", p_theme->get_icon(SNAME("GuiVisibilityHidden"), AppStringName(AppIcons)));
-			p_theme->set_icon("visibility_visible", "PopupMenu", p_theme->get_icon(SNAME("GuiVisibilityVisible"), AppStringName(AppIcons)));
-			p_theme->set_icon("visibility_xray", "PopupMenu", p_theme->get_icon(SNAME("GuiVisibilityXray"), AppStringName(AppIcons)));
 
 			p_theme->set_constant("v_separation", "PopupMenu", p_config.forced_even_separation * APP_SCALE);
 			p_theme->set_constant("outline_size", "PopupMenu", 0);
@@ -1339,7 +1359,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 
 		// HScrollBar.
 
-		if (p_config.increase_scrollbar_touch_area) {
+		if (p_config.enable_touch_optimizations) {
 			p_theme->set_stylebox("scroll", "HScrollBar", make_line_stylebox(p_config.separator_color, 50));
 		} else {
 			p_theme->set_stylebox("scroll", "HScrollBar", make_stylebox(p_theme->get_icon(SNAME("GuiScrollBg"), AppStringName(AppIcons)), 5, 5, 5, 5, -5, 1, -5, 1));
@@ -1358,7 +1378,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 
 		// VScrollBar.
 
-		if (p_config.increase_scrollbar_touch_area) {
+		if (p_config.enable_touch_optimizations) {
 			p_theme->set_stylebox("scroll", "VScrollBar", make_line_stylebox(p_config.separator_color, 50, 1, 1, true));
 		} else {
 			p_theme->set_stylebox("scroll", "VScrollBar", make_stylebox(p_theme->get_icon(SNAME("GuiScrollBg"), AppStringName(AppIcons)), 5, 5, 5, 5, 1, -5, 1, -5));
@@ -1417,6 +1437,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		// Label.
 
 		p_theme->set_stylebox(CoreStringName(normal), "Label", p_config.base_empty_style);
+		p_theme->set_stylebox("focus", "Label", p_config.button_style_focus);
 
 		p_theme->set_color(SceneStringName(font_color), "Label", p_config.font_color);
 		p_theme->set_color("font_shadow_color", "Label", Color(0, 0, 0, 0));
@@ -1485,10 +1506,11 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		// GraphEdit.
 
 		p_theme->set_stylebox(SceneStringName(panel), "GraphEdit", p_config.tree_panel_style);
+		p_theme->set_stylebox("panel_focus", "GraphEdit", p_config.button_style_focus);
 		p_theme->set_stylebox("menu_panel", "GraphEdit", make_flat_stylebox(p_config.dark_color_1 * Color(1, 1, 1, 0.6), 4, 2, 4, 2, 3));
 
 		float grid_base_brightness = p_config.dark_theme ? 1.0 : 0.0;
-		GraphEdit::GridPattern grid_pattern = (GraphEdit::GridPattern) int(EDITOR_GET("editors/visual_editors/grid_pattern"));
+		GraphEdit::GridPattern grid_pattern = (GraphEdit::GridPattern) int(APP_GET("editors/visual_editors/grid_pattern"));
 		switch (grid_pattern) {
 			case GraphEdit::GRID_PATTERN_LINES:
 				p_theme->set_color("grid_major", "GraphEdit", Color(grid_base_brightness, grid_base_brightness, grid_base_brightness, 0.10));
@@ -1616,16 +1638,18 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 
 			p_theme->set_stylebox(SceneStringName(panel), "GraphNode", gn_panel_style);
 			p_theme->set_stylebox("panel_selected", "GraphNode", gn_panel_selected_style);
+			p_theme->set_stylebox("panel_focus", "GraphNode", p_config.button_style_focus);
 			p_theme->set_stylebox("titlebar", "GraphNode", gn_titlebar_style);
 			p_theme->set_stylebox("titlebar_selected", "GraphNode", gn_titlebar_selected_style);
 			p_theme->set_stylebox("slot", "GraphNode", gn_slot_style);
+			p_theme->set_stylebox("slot_selected", "GraphNode", p_config.button_style_focus);
 
 			p_theme->set_color("resizer_color", "GraphNode", gn_decoration_color);
 
 			p_theme->set_constant("port_h_offset", "GraphNode", 1);
 			p_theme->set_constant("separation", "GraphNode", 1 * APP_SCALE);
 
-			Ref<ImageTexture> port_icon = p_theme->get_icon(SNAME("GuiGraphNodePort"), AppStringName(AppIcons));
+			Ref<DPITexture> port_icon = p_theme->get_icon(SNAME("GuiGraphNodePort"), AppStringName(AppIcons));
 			// The true size is 24x24 This is necessary for sharp port icons at high zoom levels in GraphEdit (up to ~200%).
 			port_icon->set_size_override(Size2(12, 12));
 			p_theme->set_icon("port", "GraphNode", port_icon);
@@ -1695,6 +1719,9 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 	// ColorPicker and related nodes.
 	{
 		// ColorPicker.
+		p_config.circle_style_focus = p_config.button_style_focus->duplicate();
+		p_config.circle_style_focus->set_corner_radius_all(256 * APP_SCALE);
+		p_config.circle_style_focus->set_corner_detail(32 * APP_SCALE);
 
 		p_theme->set_constant("margin", "ColorPicker", p_config.base_margin);
 		p_theme->set_constant("sv_width", "ColorPicker", 256 * APP_SCALE);
@@ -1702,6 +1729,11 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_constant("h_width", "ColorPicker", 30 * APP_SCALE);
 		p_theme->set_constant("label_width", "ColorPicker", 10 * APP_SCALE);
 		p_theme->set_constant("center_slider_grabbers", "ColorPicker", 1);
+
+		p_theme->set_stylebox("sample_focus", "ColorPicker", p_config.button_style_focus);
+		p_theme->set_stylebox("picker_focus_rectangle", "ColorPicker", p_config.button_style_focus);
+		p_theme->set_stylebox("picker_focus_circle", "ColorPicker", p_config.circle_style_focus);
+		p_theme->set_color("focused_not_editing_cursor_color", "ColorPicker", p_config.highlight_color);
 
 		p_theme->set_icon("screen_picker", "ColorPicker", p_theme->get_icon(SNAME("ColorPick"), AppStringName(AppIcons)));
 		p_theme->set_icon("shape_circle", "ColorPicker", p_theme->get_icon(SNAME("PickerShapeCircle"), AppStringName(AppIcons)));
@@ -1714,6 +1746,7 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_icon("bar_arrow", "ColorPicker", p_theme->get_icon(SNAME("ColorPickerBarArrow"), AppStringName(AppIcons)));
 		p_theme->set_icon("picker_cursor", "ColorPicker", p_theme->get_icon(SNAME("PickerCursor"), AppStringName(AppIcons)));
 		p_theme->set_icon("picker_cursor_bg", "ColorPicker", p_theme->get_icon(SNAME("PickerCursorBg"), AppStringName(AppIcons)));
+		p_theme->set_icon("color_script", "ColorPicker", p_theme->get_icon(SNAME("Script"), AppStringName(AppIcons)));
 
 		// ColorPickerButton.
 		p_theme->set_icon("bg", "ColorPickerButton", p_theme->get_icon(SNAME("GuiMiniCheckerboard"), AppStringName(AppIcons)));

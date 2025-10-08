@@ -1,5 +1,9 @@
 #pragma once
 
+#include "core/math/color.h"
+#include "core/string/string_name.h"
+#include "core/templates/hash_map.h"
+#include "core/templates/hash_set.h"
 #include "scene/resources/theme.h"
 
 class AppIcons {

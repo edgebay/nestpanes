@@ -265,8 +265,12 @@ void AppSettings::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 void AppSettings::_add_property_info_bind(const Dictionary &p_info) {
-	ERR_FAIL_COND(!p_info.has("name"));
-	ERR_FAIL_COND(!p_info.has("type"));
+	ERR_FAIL_COND_MSG(!p_info.has("name"), "Property info is missing \"name\" field.");
+	ERR_FAIL_COND_MSG(!p_info.has("type"), "Property info is missing \"type\" field.");
+
+	if (p_info.has("usage")) {
+		WARN_PRINT("\"usage\" is not supported in add_property_info().");
+	}
 
 	PropertyInfo pinfo;
 	pinfo.name = p_info["name"];
@@ -361,16 +365,16 @@ AppSettings *AppSettings::get_singleton() {
 
 // String AppSettings::get_existing_settings_path() {
 // 	const String config_dir = EditorPaths::get_singleton()->get_config_dir();
-// 	int minor = VERSION_MINOR;
+// 	int minor = APP_VERSION_MINOR;
 // 	String filename;
 
 // 	do {
-// 		if (VERSION_MAJOR == 4 && minor < 3) {
+// 		if (APP_VERSION_MAJOR == 4 && minor < 3) {
 // 			// Minor version is used since 4.3, so special case to load older settings.
-// 			filename = vformat("app_settings-%d.tres", VERSION_MAJOR);
+// 			filename = vformat("app_settings-%d.tres", APP_VERSION_MAJOR);
 // 			minor = -1;
 // 		} else {
-// 			filename = vformat("app_settings-%d.%d.tres", VERSION_MAJOR, minor);
+// 			filename = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, minor);
 // 			minor--;
 // 		}
 // 	} while (minor >= 0 && !FileAccess::exists(config_dir.path_join(filename)));
@@ -378,7 +382,7 @@ AppSettings *AppSettings::get_singleton() {
 // }
 
 // String AppSettings::get_newest_settings_path() {
-// 	const String config_file_name = vformat("app_settings-%d.%d.tres", VERSION_MAJOR, VERSION_MINOR);
+// 	const String config_file_name = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, APP_VERSION_MINOR);
 // 	return EditorPaths::get_singleton()->get_config_dir().path_join(config_file_name);
 // }
 
@@ -520,6 +524,9 @@ void AppSettings::set_setting(const String &p_setting, const Variant &p_value) {
 
 Variant AppSettings::get_setting(const String &p_setting) const {
 	_THREAD_SAFE_METHOD_
+	// if (ProjectSettings::get_singleton()->has_editor_setting_override(p_setting)) {
+	// 	return ProjectSettings::get_singleton()->get_editor_setting_override(p_setting);
+	// }
 	return get(p_setting);
 }
 
