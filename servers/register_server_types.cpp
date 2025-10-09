@@ -33,6 +33,7 @@
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 
+#ifndef APP_ENABLED
 #include "audio/audio_effect.h"
 #include "audio/audio_stream.h"
 #include "audio/effects/audio_effect_amplify.h"
@@ -55,6 +56,7 @@
 #include "audio_server.h"
 #include "camera/camera_feed.h"
 #include "camera_server.h"
+#endif // APP_ENABLED
 #include "debugger/servers_debugger.h"
 #include "display/native_menu.h"
 #include "display_server.h"
@@ -76,9 +78,11 @@
 #include "text/text_server_dummy.h"
 #include "text/text_server_extension.h"
 #include "text_server.h"
+#ifndef APP_ENABLED
 #ifndef DISABLE_DEPRECATED
 #include "audio/effects/audio_effect_limiter.h"
 #endif
+#endif // APP_ENABLED
 
 // 2D physics and navigation.
 #ifndef NAVIGATION_2D_DISABLED
@@ -155,14 +159,19 @@ void register_server_types() {
 
 	GDREGISTER_ABSTRACT_CLASS(DisplayServer);
 	GDREGISTER_ABSTRACT_CLASS(RenderingServer);
+#ifndef APP_ENABLED
 	GDREGISTER_CLASS(AudioServer);
+#endif // APP_ENABLED
 
 	GDREGISTER_CLASS(NativeMenu);
 
+#ifndef APP_ENABLED
 	GDREGISTER_CLASS(CameraServer);
+#endif // APP_ENABLED
 
 	GDREGISTER_ABSTRACT_CLASS(RenderingDevice);
 
+#ifndef APP_ENABLED
 	GDREGISTER_CLASS(AudioStream);
 	GDREGISTER_CLASS(AudioStreamPlayback);
 	GDREGISTER_VIRTUAL_CLASS(AudioStreamPlaybackResampled);
@@ -218,6 +227,7 @@ void register_server_types() {
 		GDREGISTER_CLASS(AudioEffectLimiter);
 #endif
 	}
+#endif // APP_ENABLED
 
 	GDREGISTER_ABSTRACT_CLASS(RenderingDevice);
 	GDREGISTER_CLASS(ShaderIncludeDB);
@@ -254,7 +264,9 @@ void register_server_types() {
 	GDREGISTER_CLASS(FramebufferCacheRD);
 	GDREGISTER_CLASS(UniformSetCacheRD);
 
+#ifndef APP_ENABLED
 	GDREGISTER_CLASS(CameraFeed);
+#endif // APP_ENABLED
 
 	GDREGISTER_VIRTUAL_CLASS(MovieWriter);
 
@@ -367,8 +379,10 @@ void unregister_server_types() {
 void register_server_singletons() {
 	OS::get_singleton()->benchmark_begin_measure("Servers", "Register Singletons");
 
+#ifndef APP_ENABLED
 	Engine::get_singleton()->add_singleton(Engine::Singleton("AudioServer", AudioServer::get_singleton(), "AudioServer"));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("CameraServer", CameraServer::get_singleton(), "CameraServer"));
+#endif // APP_ENABLED
 	Engine::get_singleton()->add_singleton(Engine::Singleton("DisplayServer", DisplayServer::get_singleton(), "DisplayServer"));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("NativeMenu", NativeMenu::get_singleton(), "NativeMenu"));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("RenderingServer", RenderingServer::get_singleton(), "RenderingServer"));

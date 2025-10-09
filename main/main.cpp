@@ -47,7 +47,9 @@
 #include "core/io/ip.h"
 #include "core/io/resource_loader.h"
 #include "core/object/message_queue.h"
+#ifndef APP_ENABLED
 #include "core/object/script_language.h"
+#endif // APP_ENABLED
 #include "core/os/os.h"
 #include "core/os/time.h"
 #include "core/register_core_types.h"
@@ -66,9 +68,11 @@
 #include "scene/register_scene_types.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/theme/theme_db.h"
+#ifndef APP_ENABLED
 #include "servers/audio/audio_driver_dummy.h"
 #include "servers/audio_server.h"
 #include "servers/camera_server.h"
+#endif // APP_ENABLED
 #include "servers/display_server.h"
 #include "servers/movie_writer/movie_writer.h"
 #include "servers/register_server_types.h"
@@ -174,8 +178,10 @@ static SteamTracker *steam_tracker = nullptr;
 #endif
 
 // Initialized in setup2()
+#ifndef APP_ENABLED
 static AudioServer *audio_server = nullptr;
 static CameraServer *camera_server = nullptr;
+#endif // APP_ENABLED
 static DisplayServer *display_server = nullptr;
 static RenderingServer *rendering_server = nullptr;
 static TextServerManager *tsman = nullptr;
@@ -202,7 +208,9 @@ String text_driver = "";
 String rendering_driver = "";
 String rendering_method = "";
 static int text_driver_idx = -1;
+#ifndef APP_ENABLED
 static int audio_driver_idx = -1;
+#endif // APP_ENABLED
 
 // Engine config/tools
 
@@ -270,11 +278,15 @@ static bool debug_paths = false;
 static bool debug_navigation = false;
 static bool debug_avoidance = false;
 static bool debug_canvas_item_redraw = false;
+#ifndef APP_ENABLED
 static bool debug_mute_audio = false;
+#endif // APP_ENABLED
 #endif
 static int max_fps = -1;
 static int frame_delay = 0;
+#ifndef APP_ENABLED
 static int audio_output_latency = 0;
+#endif // APP_ENABLED
 static bool disable_render_loop = false;
 static int fixed_fps = -1;
 static MovieWriter *movie_writer = nullptr;
@@ -294,7 +306,9 @@ bool profile_gpu = false;
 
 static const String NULL_DISPLAY_DRIVER("headless");
 static const String EMBEDDED_DISPLAY_DRIVER("embedded");
+#ifndef APP_ENABLED
 static const String NULL_AUDIO_DRIVER("Dummy");
+#endif // APP_ENABLED
 
 // The length of the longest column in the command-line help we should align to
 // (excluding the 2-space left and right margins).
@@ -572,6 +586,7 @@ void Main::print_help(const char *p_binary) {
 	print_help_option("--remote-fs <address>", "Remote filesystem (<host/IP>[:<port>] address).\n");
 	print_help_option("--remote-fs-password <password>", "Password for remote filesystem.\n");
 
+#ifndef APP_ENABLED
 	print_help_option("--audio-driver <driver>", "Audio driver [");
 	for (int i = 0; i < AudioDriverManager::get_driver_count(); i++) {
 		if (i > 0) {
@@ -580,6 +595,7 @@ void Main::print_help(const char *p_binary) {
 		OS::get_singleton()->print("\"%s\"", AudioDriverManager::get_driver(i)->get_name());
 	}
 	OS::get_singleton()->print("].\n");
+#endif // APP_ENABLED
 
 	print_help_option("--display-driver <driver>", "Display driver (and rendering driver) [");
 	for (int i = 0; i < DisplayServer::get_create_function_count(); i++) {
@@ -597,8 +613,10 @@ void Main::print_help(const char *p_binary) {
 		OS::get_singleton()->print(")");
 	}
 	OS::get_singleton()->print("].\n");
+#ifndef APP_ENABLED
 	print_help_option("--audio-output-latency <ms>", "Override audio output latency in milliseconds (default is 15 ms).\n");
 	print_help_option("", "Lower values make sound playback more reactive but increase CPU usage, and may result in audio cracking if the CPU can't keep up.\n");
+#endif // APP_ENABLED
 
 	print_help_option("--rendering-method <renderer>", "Renderer name. Requires driver support.\n");
 	print_help_option("--rendering-driver <driver>", "Rendering driver (depends on display driver).\n");
@@ -668,7 +686,9 @@ void Main::print_help(const char *p_binary) {
 #endif
 
 	print_help_title("Standalone tools");
+#ifndef APP_ENABLED
 	print_help_option("-s, --script <script>", "Run a script.\n");
+#endif // APP_ENABLED
 	print_help_option("--main-loop <main_loop_name>", "Run a MainLoop specified by its global class name.\n");
 	print_help_option("--check-only", "Only parse for errors and quit (use with --script).\n");
 #ifdef TOOLS_ENABLED
@@ -1101,6 +1121,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		if (arg == "--single-window") {
 			forwardable_cli_arguments[CLI_SCOPE_TOOL].push_back(arg);
 		}
+#ifndef APP_ENABLED
 		if (arg == "--audio-driver" ||
 				arg == "--display-driver" ||
 				arg == "--rendering-method" ||
@@ -1111,7 +1132,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				forwardable_cli_arguments[CLI_SCOPE_TOOL].push_back(N->get());
 			}
 		}
-		// If gpu is specified, both editor and debug instances started from editor will inherit.
+#endif // APP_ENABLED
+	   // If gpu is specified, both editor and debug instances started from editor will inherit.
 		if (arg == "--gpu-index") {
 			if (N) {
 				const String &next_arg = N->get();
@@ -1146,6 +1168,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (arg == "--no-header") {
 			Engine::get_singleton()->_print_header = false;
 
+#ifndef APP_ENABLED
 		} else if (arg == "--audio-driver") { // audio driver
 
 			if (N) {
@@ -1190,6 +1213,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				OS::get_singleton()->print("Missing audio output latency argument, aborting.\n");
 				goto error;
 			}
+#endif // APP_ENABLED
 		} else if (arg == "--text-driver") {
 			if (N) {
 				text_driver = N->get();
@@ -1409,7 +1433,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		} else if (arg == "--headless") { // enable headless mode (no audio, no rendering).
 
+#ifndef APP_ENABLED
 			audio_driver = NULL_AUDIO_DRIVER;
+#endif // APP_ENABLED
 			display_driver = NULL_DISPLAY_DRIVER;
 
 		} else if (arg == "--embedded") { // Enable embedded mode.
@@ -1627,7 +1653,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 			// `--doctool` implies `--headless` to avoid spawning an unnecessary window
 			// and speed up class reference generation.
+#ifndef APP_ENABLED
 			audio_driver = NULL_AUDIO_DRIVER;
+#endif // APP_ENABLED
 			display_driver = NULL_DISPLAY_DRIVER;
 			main_args.push_back(arg);
 #ifdef MODULE_GDSCRIPT_ENABLED
@@ -1758,8 +1786,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			debug_canvas_item_redraw = true;
 		} else if (arg == "--debug-stringnames") {
 			StringName::set_debug_stringnames(true);
+#ifndef APP_ENABLED
 		} else if (arg == "--debug-mute-audio") {
 			debug_mute_audio = true;
+#endif // APP_ENABLED
 #endif
 #if defined(TOOLS_ENABLED) && (defined(WINDOWS_ENABLED) || defined(LINUXBSD_ENABLED))
 		} else if (arg == "--test-rd-support") {
@@ -1946,17 +1976,17 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		found_project = true;
 #endif
 	} else {
+#ifndef APP_ENABLED
 #ifdef TOOLS_ENABLED
 		editor = false;
 #else
-#ifndef APP_ENABLED
 		const String error_msg = "Error: Couldn't load project data at path \"" + project_path + "\". Is the .pck file missing?\nIf you've renamed the executable, the associated .pck file should also be renamed to match the executable's name (without the extension).\n";
 		OS::get_singleton()->print("%s", error_msg.utf8().get_data());
 		OS::get_singleton()->alert(error_msg);
 
 		goto error;
 #endif
-#endif
+#endif // APP_ENABLED
 	}
 
 	// Initialize WorkerThreadPool.
@@ -2132,7 +2162,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	ResourceUID::get_singleton()->load_from_cache(true); // load UUIDs from cache.
 
 	if (ProjectSettings::get_singleton()->has_custom_feature("dedicated_server")) {
+#ifndef APP_ENABLED
 		audio_driver = NULL_AUDIO_DRIVER;
+#endif // APP_ENABLED
 		display_driver = NULL_DISPLAY_DRIVER;
 	}
 
@@ -2196,7 +2228,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		}
 #endif
 	}
-#endif
+#endif // APP_ENABLED
 
 	if (editor || project_manager) {
 		Engine::get_singleton()->set_editor_hint(true);
@@ -2721,6 +2753,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		OS::get_singleton()->_allow_hidpi = true;
 		load_shell_env = true;
 	}
+#elif defined(APP_ENABLED)
+	// The app always detect and use hiDPI if needed.
+	OS::get_singleton()->_allow_hidpi = true;
+	load_shell_env = true;
 #endif
 	if (load_shell_env) {
 		OS::get_singleton()->load_shell_environment();
@@ -2753,6 +2789,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	GLOBAL_DEF_NOVAL(PropertyInfo(Variant::STRING, "display/display_server/driver.visionos", PROPERTY_HINT_ENUM_SUGGESTION, "default,visionOS,headless"), "default");
 	GLOBAL_DEF_NOVAL(PropertyInfo(Variant::STRING, "display/display_server/driver.macos", PROPERTY_HINT_ENUM_SUGGESTION, "default,macos,headless"), "default");
 
+#ifndef APP_ENABLED
 	GLOBAL_DEF_RST_NOVAL("audio/driver/driver", AudioDriverManager::get_driver(0)->get_name());
 	if (audio_driver.is_empty()) { // Specified in project.godot.
 		if (project_manager) {
@@ -2785,6 +2822,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		audio_driver_idx = AudioDriverManager::get_driver_count() - 1;
 		AudioDriverDummy::get_dummy_singleton()->set_use_threads(false);
 	}
+#endif // APP_ENABLED
 
 	{
 		window_orientation = DisplayServer::ScreenOrientation(int(GLOBAL_DEF_BASIC("display/window/handheld/orientation", DisplayServer::ScreenOrientation::SCREEN_LANDSCAPE)));
@@ -2796,11 +2834,13 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		}
 	}
 
+#ifndef APP_ENABLED
 	GLOBAL_DEF_RST(PropertyInfo(Variant::INT, "audio/driver/output_latency", PROPERTY_HINT_RANGE, "1,100,1"), 15);
 	// Use a safer default output_latency for web to avoid audio cracking on low-end devices, especially mobile.
 	GLOBAL_DEF_RST("audio/driver/output_latency.web", 50);
 
 	Engine::get_singleton()->set_audio_output_latency(GLOBAL_GET("audio/driver/output_latency"));
+#endif // APP_ENABLED
 
 #if defined(MACOS_ENABLED) || defined(IOS_ENABLED)
 	OS::get_singleton()->set_environment("MVK_CONFIG_LOG_LEVEL", OS::get_singleton()->_verbose_stdout ? "3" : "1"); // 1 = Errors only, 3 = Info
@@ -2813,6 +2853,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		}
 	}
 
+#ifndef APP_ENABLED
 	if (audio_output_latency >= 1) {
 		Engine::get_singleton()->set_audio_output_latency(audio_output_latency);
 	}
@@ -2821,6 +2862,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	GLOBAL_DEF("display/window/ios/hide_home_indicator", true);
 	GLOBAL_DEF("display/window/ios/hide_status_bar", true);
 	GLOBAL_DEF("display/window/ios/suppress_ui_gesture", true);
+#endif // APP_ENABLED
 
 #ifndef _3D_DISABLED
 	// XR project settings.
@@ -3462,6 +3504,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 	}
 #endif
 
+#ifndef APP_ENABLED
 	/* Initialize Audio Driver */
 
 	{
@@ -3475,6 +3518,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 		OS::get_singleton()->benchmark_end_measure("Servers", "Audio");
 	}
+#endif // APP_ENABLED
 
 #ifndef XR_DISABLED
 	/* Initialize XR Server */
@@ -3709,9 +3753,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 	}
 
 	ClassDB::set_current_api(ClassDB::API_CORE);
-
-#endif
-#ifdef APP_ENABLED
+#elif defined(APP_ENABLED)
 	register_app_types();
 #endif
 
@@ -3738,7 +3780,9 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 	OS::get_singleton()->benchmark_begin_measure("Startup", "Finalize Setup");
 
+#ifndef APP_ENABLED
 	camera_server = CameraServer::create();
+#endif // APP_ENABLED
 
 	MAIN_PRINT("Main: Load Physics");
 
@@ -3746,8 +3790,10 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 	register_server_singletons();
 
+#ifndef APP_ENABLED
 	// This loads global classes, so it must happen before custom loaders and savers are registered
 	ScriptServer::init_languages();
+#endif // APP_ENABLED
 
 #if TOOLS_ENABLED
 
@@ -3761,7 +3807,9 @@ Error Main::setup2(bool p_show_boot_logo) {
 #endif
 
 	theme_db->initialize_theme();
+#ifndef APP_ENABLED
 	audio_server->load_default_bus_layout();
+#endif // APP_ENABLED
 
 #if defined(MODULE_MONO_ENABLED) && defined(TOOLS_ENABLED)
 	// Hacky to have it here, but we don't have good facility yet to let modules
@@ -3778,6 +3826,9 @@ Error Main::setup2(bool p_show_boot_logo) {
 		EngineDebugger::get_singleton()->profiler_enable("scripts", true);
 	}
 
+#ifdef APP_ENABLED
+	rendering_server->global_shader_parameters_load_settings(false);
+#else
 	if (!project_manager) {
 		// If not running the project manager, and now that the engine is
 		// able to load resources, load the global shader variables.
@@ -3785,6 +3836,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 		// may want to import them first. Editor will reload those later.
 		rendering_server->global_shader_parameters_load_settings(!editor);
 	}
+#endif // APP_ENABLED
 
 	OS::get_singleton()->benchmark_end_measure("Startup", "Finalize Setup");
 
@@ -3981,9 +4033,13 @@ int Main::start() {
 		// Then parameters that have an argument to the right.
 		else if (E->next()) {
 			bool parsed_pair = true;
+#ifndef APP_ENABLED
 			if (E->get() == "-s" || E->get() == "--script") {
 				script = E->next()->get();
 			} else if (E->get() == "--main-loop") {
+#else
+			if (E->get() == "--main-loop") {
+#endif // APP_ENABLED
 				main_loop_type = E->next()->get();
 #ifdef TOOLS_ENABLED
 			} else if (E->get() == "--doctool") {
@@ -4181,9 +4237,11 @@ int Main::start() {
 
 #endif // TOOLS_ENABLED
 
+#ifndef APP_ENABLED
 	if (script.is_empty() && game_path.is_empty()) {
 		game_path = ResourceUID::ensure_path(GLOBAL_GET("application/run/main_scene"));
 	}
+#endif // APP_ENABLED
 
 #ifdef TOOLS_ENABLED
 	if (!editor && !project_manager && !cmdline_tool && script.is_empty() && game_path.is_empty()) {
@@ -4204,6 +4262,7 @@ int Main::start() {
 		main_loop_type = GLOBAL_GET("application/run/main_loop_type");
 	}
 
+#ifndef APP_ENABLED
 	if (!script.is_empty()) {
 		Ref<Script> script_res = ResourceLoader::load(script);
 		ERR_FAIL_COND_V_MSG(script_res.is_null(), EXIT_FAILURE, "Can't load script: " + script);
@@ -4251,6 +4310,7 @@ int Main::start() {
 			main_loop = script_loop;
 		}
 	}
+#endif // APP_ENABLED
 
 	if (!main_loop && main_loop_type.is_empty()) {
 		main_loop_type = "SceneTree";
@@ -4315,9 +4375,11 @@ int Main::start() {
 			RenderingServer::get_singleton()->canvas_item_set_debug_redraw(true);
 		}
 
+#ifndef APP_ENABLED
 		if (debug_mute_audio) {
 			AudioServer::get_singleton()->set_debug_mute(true);
 		}
+#endif // APP_ENABLED
 #endif
 
 		if (single_threaded_scene) {
@@ -4325,7 +4387,7 @@ int Main::start() {
 		}
 
 #ifdef APP_ENABLED
-		bool embed_subwindows = false;
+		bool embed_subwindows = false; // TODO: laod from settings
 #else
 		bool embed_subwindows = GLOBAL_GET("display/window/subwindows/embed_subwindows");
 #endif
@@ -4337,6 +4399,7 @@ int Main::start() {
 		ResourceLoader::add_custom_loaders();
 		ResourceSaver::add_custom_savers();
 
+#ifndef APP_ENABLED
 		if (!project_manager && !editor) { // game
 			if (!game_path.is_empty() || !script.is_empty()) {
 				//autoload
@@ -4408,6 +4471,7 @@ int Main::start() {
 				OS::get_singleton()->benchmark_end_measure("Startup", "Load Autoloads");
 			}
 		}
+#endif // APP_ENABLED
 
 #ifdef TOOLS_ENABLED
 #ifdef MODULE_GDSCRIPT_ENABLED
@@ -4541,6 +4605,19 @@ int Main::start() {
 		}
 #endif
 
+#ifdef APP_ENABLED
+		OS::get_singleton()->benchmark_begin_measure("Startup", "App");
+
+		sml->get_root()->set_translation_domain("app");
+
+		AppNode *app_node = memnew(AppNode);
+		sml->get_root()->add_child(app_node);
+
+		OS::get_singleton()->benchmark_end_measure("Startup", "App");
+
+		// Load SSL Certificates from Project Settings (or builtin).
+		Crypto::load_default_certificates(GLOBAL_GET("network/tls/certificate_bundle_override")); // TODO: Project Settings
+#else
 		String local_game_path;
 		if (!game_path.is_empty() && !project_manager) {
 			local_game_path = game_path.replace_char('\\', '/');
@@ -4632,17 +4709,11 @@ int Main::start() {
 						has_icon = true;
 					}
 				}
-#ifdef APP_ENABLED
-			} else {
-				OS::get_singleton()->benchmark_begin_measure("Startup", "App");
-				AppNode *app_node = memnew(AppNode);
-				sml->get_root()->add_child(app_node);
-				OS::get_singleton()->benchmark_end_measure("Startup", "App");
-#endif
 			}
 
 			OS::get_singleton()->benchmark_end_measure("Startup", "Load Game");
 		}
+#endif // APP_ENABLED
 
 #ifdef TOOLS_ENABLED
 		if (project_manager) {
@@ -4892,11 +4963,13 @@ bool Main::iteration() {
 
 	GDExtensionManager::get_singleton()->frame();
 
+#ifndef APP_ENABLED
 	for (int i = 0; i < ScriptServer::get_language_count(); i++) {
 		ScriptServer::get_language(i)->frame();
 	}
 
 	AudioServer::get_singleton()->update();
+#endif // APP_ENABLED
 
 	if (EngineDebugger::is_active()) {
 		EngineDebugger::get_singleton()->iteration(frame_time, process_ticks, physics_process_ticks, physics_step);
@@ -5046,7 +5119,9 @@ void Main::cleanup(bool p_force) {
 
 	WorkerThreadPool::get_singleton()->exit_languages_threads();
 
+#ifndef APP_ENABLED
 	ScriptServer::finish_languages();
+#endif // APP_ENABLED
 
 	// Sync pending commands that may have been queued from a different thread during ScriptServer finalization
 	RenderingServer::get_singleton()->sync();
@@ -5103,6 +5178,7 @@ void Main::cleanup(bool p_force) {
 	}
 #endif // XR_DISABLED
 
+#ifndef APP_ENABLED
 	if (audio_server) {
 		audio_server->finish();
 		memdelete(audio_server);
@@ -5111,6 +5187,7 @@ void Main::cleanup(bool p_force) {
 	if (camera_server) {
 		memdelete(camera_server);
 	}
+#endif // APP_ENABLED
 
 	OS::get_singleton()->finalize();
 
