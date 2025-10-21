@@ -6,6 +6,45 @@ FileSystemAccess::CreateFunc FileSystemAccess::create_func = nullptr;
 
 Ref<FileSystemAccess> FileSystemAccess::singleton = nullptr;
 
+Error FileSystemAccess::_make_dir_recursive(const String &p_dir) {
+	if (p_dir.length() < 1) {
+		return OK;
+	}
+
+	String full_dir = p_dir.replace_char('\\', '/');
+
+	String base;
+
+	if (full_dir.is_network_share_path()) {
+		int pos = full_dir.find_char('/', 2);
+		ERR_FAIL_COND_V(pos < 0, ERR_INVALID_PARAMETER);
+		pos = full_dir.find_char('/', pos + 1);
+		ERR_FAIL_COND_V(pos < 0, ERR_INVALID_PARAMETER);
+		base = full_dir.substr(0, pos + 1);
+	} else if (full_dir.begins_with("/")) {
+		base = "/";
+	} else if (full_dir.contains(":/")) {
+		base = full_dir.substr(0, full_dir.find(":/") + 2);
+	} else {
+		ERR_FAIL_V(ERR_INVALID_PARAMETER);
+	}
+
+	full_dir = full_dir.replace_first(base, "").simplify_path();
+
+	Vector<String> subdirs = full_dir.split("/");
+
+	String curpath = base;
+	for (int i = 0; i < subdirs.size(); i++) {
+		curpath = curpath.path_join(subdirs[i]);
+		Error err = _make_dir(curpath);
+		if (err != OK && err != ERR_ALREADY_EXISTS) {
+			ERR_FAIL_V_MSG(err, vformat("Could not create directory: '%s'.", curpath));
+		}
+	}
+
+	return OK;
+}
+
 FileSystemAccess *FileSystemAccess::get_singleton() {
 	return singleton.ptr();
 }
@@ -43,6 +82,16 @@ Error FileSystemAccess::list_file_infos(const String &p_dir, List<FileInfo> &r_s
 Error FileSystemAccess::list_drives(List<FileInfo> &r_drives) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
 	return FileSystemAccess::get_singleton()->_list_drives(r_drives);
+}
+
+Error FileSystemAccess::make_dir(const String &p_dir) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_make_dir(p_dir);
+}
+
+Error FileSystemAccess::make_dir_recursive(const String &p_dir) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_make_dir_recursive(p_dir);
 }
 
 bool FileSystemAccess::file_exists(const String &p_file) {

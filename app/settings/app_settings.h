@@ -53,14 +53,16 @@ private:
 	void _set_initialized();
 	void _load_defaults(Ref<ConfigFile> p_extra_config = Ref<ConfigFile>());
 
+protected:
+	static void _bind_methods();
+
 public:
 	enum {
 		NOTIFICATION_APP_SETTINGS_CHANGED = 10000
 	};
 
 	static AppSettings *get_singleton();
-	// static String get_existing_settings_path();
-	// static String get_newest_settings_path();
+	static String get_settings_path();
 
 	static void create();
 	static void save();

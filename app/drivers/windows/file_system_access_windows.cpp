@@ -262,6 +262,33 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 	return OK;
 }
 
+Error FileSystemAccessWindows::_make_dir(const String &p_dir) {
+	GLOBAL_LOCK_FUNCTION
+
+	if (FileSystemAccessWindows::is_path_invalid(p_dir)) {
+#ifdef DEBUG_ENABLED
+		WARN_PRINT("The path :" + p_dir + " is a reserved Windows system pipe, so it can't be used for creating directories.");
+#endif
+		return ERR_INVALID_PARAMETER;
+	}
+
+	bool success;
+	int err;
+
+	success = CreateDirectoryW((LPCWSTR)(p_dir.utf16().get_data()), nullptr);
+	err = GetLastError();
+
+	if (success) {
+		return OK;
+	}
+
+	if (err == ERROR_ALREADY_EXISTS || err == ERROR_ACCESS_DENIED) {
+		return ERR_ALREADY_EXISTS;
+	}
+
+	return ERR_CANT_CREATE;
+}
+
 bool FileSystemAccessWindows::_file_exists(const String &p_file) const {
 	GLOBAL_LOCK_FUNCTION
 
@@ -285,6 +312,17 @@ bool FileSystemAccessWindows::_dir_exists(const String &p_dir) const {
 	return (fileAttr & FILE_ATTRIBUTE_DIRECTORY);
 }
 
+bool FileSystemAccessWindows::is_path_invalid(const String &p_path) {
+	// Check for invalid operating system file.
+	String fname = p_path.get_file().to_lower();
+
+	int dot = fname.find_char('.');
+	if (dot != -1) {
+		fname = fname.substr(0, dot);
+	}
+	return invalid_files.has(fname);
+}
+
 Error FileSystemAccessWindows::change_path(const String &p_dir) {
 	Error err = FAILED;
 	// if (p_dir == COMPUTER_PATH) {
@@ -305,6 +343,26 @@ Error FileSystemAccessWindows::change_path(const String &p_dir) {
 
 String FileSystemAccessWindows::get_current_path() const {
 	return current_path;
+}
+
+HashSet<String> FileSystemAccessWindows::invalid_files;
+
+void FileSystemAccessWindows::initialize() {
+	static const char *reserved_files[]{
+		"con", "prn", "aux", "nul", "com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9", "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9", nullptr
+	};
+	int reserved_file_index = 0;
+	while (reserved_files[reserved_file_index] != nullptr) {
+		invalid_files.insert(reserved_files[reserved_file_index]);
+		reserved_file_index++;
+	}
+
+	_setmaxstdio(8192);
+	print_verbose(vformat("Maximum number of file handles: %d", _getmaxstdio()));
+}
+
+void FileSystemAccessWindows::finalize() {
+	invalid_files.clear();
 }
 
 FileSystemAccessWindows::FileSystemAccessWindows() {

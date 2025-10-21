@@ -32,7 +32,8 @@ protected:
 	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false) const = 0;
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const = 0;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const = 0;
-
+	virtual Error _make_dir(const String &p_dir) = 0;
+	virtual Error _make_dir_recursive(const String &p_dir);
 	virtual bool _file_exists(const String &p_file) const = 0;
 	virtual bool _dir_exists(const String &p_dir) const = 0;
 
@@ -52,13 +53,19 @@ public:
 
 	// static bool is_link(String p_file);
 
+	// Support absolute paths only.
+
 	static Ref<Texture2D> get_icon(const String &p_file_path, bool p_is_dir = false);
 	static Error list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME);
 	static Error list_drives(List<FileInfo> &r_drives);
 
+	static Error make_dir(const String &p_dir);
+	static Error make_dir_recursive(const String &p_dir);
+
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);
 
+	// Icon cache
 	static void set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon);
 	static Ref<Texture2D> get_system_icon(const StringName &p_name);
 	static bool has_system_icon(const StringName &p_name);

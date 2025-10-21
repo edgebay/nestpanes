@@ -1,5 +1,8 @@
 #include "app_settings.h"
 
+#include "app/core/io/file_system_access.h"
+#include "app/paths/app_paths.h"
+
 #include "core/input/input_event.h"
 #include "core/input/input_map.h"
 #include "core/input/shortcut.h"
@@ -363,28 +366,10 @@ AppSettings *AppSettings::get_singleton() {
 	return singleton.ptr();
 }
 
-// String AppSettings::get_existing_settings_path() {
-// 	const String config_dir = EditorPaths::get_singleton()->get_config_dir();
-// 	int minor = APP_VERSION_MINOR;
-// 	String filename;
-
-// 	do {
-// 		if (APP_VERSION_MAJOR == 4 && minor < 3) {
-// 			// Minor version is used since 4.3, so special case to load older settings.
-// 			filename = vformat("app_settings-%d.tres", APP_VERSION_MAJOR);
-// 			minor = -1;
-// 		} else {
-// 			filename = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, minor);
-// 			minor--;
-// 		}
-// 	} while (minor >= 0 && !FileAccess::exists(config_dir.path_join(filename)));
-// 	return config_dir.path_join(filename);
-// }
-
-// String AppSettings::get_newest_settings_path() {
-// 	const String config_file_name = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, APP_VERSION_MINOR);
-// 	return EditorPaths::get_singleton()->get_config_dir().path_join(config_file_name);
-// }
+String AppSettings::get_settings_path() {
+	const String config_file_name = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, APP_VERSION_MINOR);
+	return AppPaths::get_singleton()->get_config_dir().path_join(config_file_name);
+}
 
 void AppSettings::create() {
 	// IMPORTANT: create() *must* create a valid AppSettings singleton,
@@ -396,73 +381,50 @@ void AppSettings::create() {
 		return;
 	}
 
-	String config_file_path;
-	Ref<ConfigFile> extra_config = memnew(ConfigFile);
+	bool success = false;
+	String config_file_path = get_settings_path();
 
-	// 	if (!EditorPaths::get_singleton()) {
-	// 		ERR_PRINT("Bug (please report): EditorPaths haven't been initialized, AppSettings cannot be created properly.");
-	// 		goto fail;
-	// 	}
-
-	// 	if (EditorPaths::get_singleton()->is_self_contained()) {
-	// 		Error err = extra_config->load(EditorPaths::get_singleton()->get_self_contained_file());
-	// 		if (err != OK) {
-	// 			ERR_PRINT("Can't load extra config from path: " + EditorPaths::get_singleton()->get_self_contained_file());
-	// 		}
-	// 	}
-
-	// 	if (EditorPaths::get_singleton()->are_paths_valid()) {
-	// 		// Validate config file.
-	// 		ERR_FAIL_COND(!DirAccess::dir_exists_absolute(EditorPaths::get_singleton()->get_config_dir()));
-
-	// 		config_file_path = get_existing_settings_path();
-	// 		if (!FileAccess::exists(config_file_path)) {
-	// 			config_file_path = get_newest_settings_path();
-	// 			goto fail;
-	// 		}
-
-	// 		singleton = ResourceLoader::load(config_file_path, "AppSettings");
-	// 		if (singleton.is_null()) {
-	// 			ERR_PRINT("Could not load settings from path: " + config_file_path);
-	// 			config_file_path = get_newest_settings_path();
-	// 			goto fail;
-	// 		}
-
-	// 		singleton->set_path(get_newest_settings_path()); // Settings can be loaded from older version file, so make sure it's newest.
-	// 		singleton->save_changed_setting = true;
-
-	// 		print_verbose("AppSettings: Load OK!");
-
-	// 		singleton->setup_language();
-	// 		singleton->setup_network();
-	// 		singleton->load_favorites_and_recent_dirs();
-	// 		singleton->list_text_editor_themes();
-	// #ifndef DISABLE_DEPRECATED
-	// 		singleton->_remove_deprecated_settings();
-	// #endif
-
-	// 		return;
-	// 	}
-
-	// fail:
-	// patch init projects
-	String exe_path = OS::get_singleton()->get_executable_path().get_base_dir();
-
-	if (extra_config->has_section("init_projects")) {
-		Vector<String> list = extra_config->get_value("init_projects", "list");
-		for (int i = 0; i < list.size(); i++) {
-			list.write[i] = exe_path.path_join(list[i]);
+	do {
+		if (!AppPaths::get_singleton()->are_paths_valid()) {
+			break;
 		}
-		extra_config->set_value("init_projects", "list", list);
-	}
 
-	singleton.instantiate();
-	singleton->set_path(config_file_path, true);
-	singleton->save_changed_setting = true;
-	singleton->_load_defaults(extra_config);
-	// singleton->setup_language();
-	// singleton->setup_network();
-	// singleton->list_text_editor_themes();
+		if (!FileSystemAccess::file_exists(config_file_path)) {
+			break;
+		}
+
+		singleton = ResourceLoader::load(config_file_path, "AppSettings");
+		if (singleton.is_null()) {
+			ERR_PRINT("Could not load settings from path: " + config_file_path);
+			break;
+		}
+
+		singleton->save_changed_setting = true;
+
+		print_verbose("AppSettings: Load OK!");
+
+		// TODO
+		// singleton->setup_language();
+		// singleton->list_text_editor_themes();
+
+		success = true;
+	} while (0);
+
+	if (!success) {
+		// patch init projects
+		String exe_path = OS::get_singleton()->get_executable_path().get_base_dir();
+
+		singleton.instantiate();
+		singleton->set_path(config_file_path, true);
+		singleton->save_changed_setting = true;
+		singleton->_load_defaults();
+
+		// TODO
+		// singleton->setup_language();
+		// singleton->list_text_editor_themes();
+
+		singleton->save();
+	}
 }
 
 void AppSettings::save() {
@@ -642,6 +604,23 @@ void AppSettings::notify_changes() {
 		return;
 	}
 	root->propagate_notification(NOTIFICATION_APP_SETTINGS_CHANGED);
+}
+
+void AppSettings::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("has_setting", "name"), &AppSettings::has_setting);
+	ClassDB::bind_method(D_METHOD("set_setting", "name", "value"), &AppSettings::set_setting);
+	ClassDB::bind_method(D_METHOD("get_setting", "name"), &AppSettings::get_setting);
+	ClassDB::bind_method(D_METHOD("erase", "property"), &AppSettings::erase);
+	ClassDB::bind_method(D_METHOD("set_initial_value", "name", "value", "update_current"), &AppSettings::set_initial_value);
+	ClassDB::bind_method(D_METHOD("add_property_info", "info"), &AppSettings::_add_property_info_bind);
+
+	ClassDB::bind_method(D_METHOD("check_changed_settings_in_group", "setting_prefix"), &AppSettings::check_changed_settings_in_group);
+	ClassDB::bind_method(D_METHOD("get_changed_settings"), &AppSettings::get_changed_settings);
+	ClassDB::bind_method(D_METHOD("mark_setting_changed", "setting"), &AppSettings::mark_setting_changed);
+
+	ADD_SIGNAL(MethodInfo("settings_changed"));
+
+	BIND_CONSTANT(NOTIFICATION_APP_SETTINGS_CHANGED);
 }
 
 AppSettings::AppSettings() {

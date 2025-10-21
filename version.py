@@ -1,7 +1,7 @@
 #####################
 ### App version ###
 #####################
-app_short_name = "DailyEngine"
+app_short_name = "daily-engine"
 app_name = "Daily Engine"
 app_major = 0
 app_minor = 1

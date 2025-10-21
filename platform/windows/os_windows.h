@@ -236,6 +236,9 @@ public:
 	virtual String get_data_path() const override;
 	virtual String get_cache_path() const override;
 	virtual String get_temp_path() const override;
+#ifdef APP_ENABLED
+	virtual String get_app_dir_name() const override;
+#endif // APP_ENABLED
 	virtual String get_godot_dir_name() const override;
 
 	virtual String get_system_dir(SystemDir p_dir, bool p_shared_storage = true) const override;

@@ -12,6 +12,7 @@ SConscript("drivers/SCsub")
 SConscript("file_manager/SCsub")
 SConscript("gui/SCsub")
 SConscript("icons/SCsub")
+SConscript("paths/SCsub")
 SConscript("settings/SCsub")
 SConscript("themes/SCsub")
 

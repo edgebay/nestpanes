@@ -112,6 +112,7 @@
 
 #ifdef APP_ENABLED
 #include "app/app_node.h"
+#include "app/paths/app_paths.h"
 #include "app/register_app_types.h"
 #endif
 
@@ -3170,6 +3171,12 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 		OS::get_singleton()->benchmark_end_measure("Startup", "Initialize Early Settings");
 	}
+#elif defined(APP_ENABLED)
+	OS::get_singleton()->benchmark_begin_measure("Startup", "Initialize Early Settings");
+
+	AppPaths::create();
+
+	OS::get_singleton()->benchmark_end_measure("Startup", "Initialize Early Settings");
 #endif
 
 	OS::get_singleton()->benchmark_begin_measure("Startup", "Servers");

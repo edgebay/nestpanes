@@ -9,6 +9,8 @@ private:
 
 	void _update_drives_icon();
 
+	static HashSet<String> invalid_files;
+
 protected:
 	virtual Ref<Texture2D> _get_this_pc_icon() const;
 
@@ -16,12 +18,19 @@ protected:
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const override;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
 
+	virtual Error _make_dir(const String &p_dir) override;
+
 	virtual bool _file_exists(const String &p_file) const override;
 	virtual bool _dir_exists(const String &p_dir) const override;
 
 public:
+	static bool is_path_invalid(const String &p_path);
+
 	virtual Error change_path(const String &p_dir) override; ///< can be relative or absolute, return false on success
 	virtual String get_current_path() const override; ///< return current dir location
+
+	static void initialize();
+	static void finalize();
 
 	FileSystemAccessWindows();
 	~FileSystemAccessWindows();

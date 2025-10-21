@@ -280,6 +280,7 @@ void OS_Windows::initialize() {
 
 #ifdef APP_ENABLED
 	FileSystemAccess::make_default<FileSystemAccessWindows>();
+	FileSystemAccessWindows::initialize();
 #endif
 
 	NetSocketWinSock::make_default();
@@ -383,6 +384,9 @@ void OS_Windows::finalize_core() {
 		_remove_temp_library(temp_libraries.last()->key);
 	}
 
+#ifdef APP_ENABLED
+	FileSystemAccessWindows::finalize();
+#endif
 	FileAccessWindows::finalize();
 
 #if WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP
@@ -2370,6 +2374,12 @@ String OS_Windows::get_temp_path() const {
 }
 
 // Get properly capitalized engine name for system paths
+#ifdef APP_ENABLED
+String OS_Windows::get_app_dir_name() const {
+	return String(APP_VERSION_SHORT_NAME).to_pascal_case();
+}
+#endif // APP_ENABLED
+
 String OS_Windows::get_godot_dir_name() const {
 	return String(GODOT_VERSION_SHORT_NAME).capitalize();
 }
