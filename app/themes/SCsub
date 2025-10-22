@@ -3,4 +3,18 @@ from misc.utility.scons_hints import *
 
 Import("env")
 
+import app_theme_builders
+
+# Fonts
+flist = Glob("#thirdparty/fonts/*.ttf")
+flist.extend(Glob("#thirdparty/fonts/*.otf"))
+flist.extend(Glob("#thirdparty/fonts/*.woff"))
+flist.extend(Glob("#thirdparty/fonts/*.woff2"))
+flist.sort()
+env.CommandNoCache(
+    "#app/themes/builtin_fonts.gen.h",
+    flist,
+    env.Run(app_theme_builders.make_fonts_header),
+)
+
 env.add_source_files(env.app_sources, "*.cpp")

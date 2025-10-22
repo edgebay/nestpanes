@@ -534,4 +534,8 @@ FileSystemTree::FileSystemTree() {
 }
 
 FileSystemTree::~FileSystemTree() {
+	if (filesystem) {
+		memdelete(filesystem);
+	}
+	filesystem = nullptr;
 }

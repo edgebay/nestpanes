@@ -125,6 +125,7 @@ class AppThemeManager {
 
 	static void _create_shared_styles(const Ref<AppTheme> &p_theme, ThemeConfiguration &p_config);
 	static void _populate_standard_styles(const Ref<AppTheme> &p_theme, ThemeConfiguration &p_config);
+	static void _populate_app_styles(const Ref<AppTheme> &p_theme, ThemeConfiguration &p_config);
 
 public:
 	static Ref<AppTheme> generate_theme(const Ref<AppTheme> &p_old_theme = nullptr);

@@ -66,6 +66,7 @@ void FileSystemAccess::destroy() {
 	if (!singleton.ptr()) {
 		return;
 	}
+	icon_map.clear();
 	singleton = Ref<FileSystemAccess>();
 }
 

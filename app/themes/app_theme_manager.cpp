@@ -14,6 +14,7 @@
 
 #include "app/app_string_names.h"
 #include "app/settings/app_settings.h"
+#include "app/themes/app_fonts.h"
 #include "app/themes/app_icons.h"
 
 // Theme configuration.
@@ -59,7 +60,7 @@ uint32_t AppThemeManager::ThemeConfiguration::hash() {
 uint32_t AppThemeManager::ThemeConfiguration::hash_fonts() {
 	uint32_t hash = hash_murmur3_one_float(APP_SCALE);
 
-	// TODO: Implement the hash based on what editor_register_fonts() uses.
+	// TODO: Implement the hash based on what app_register_fonts() uses.
 
 	return hash;
 }
@@ -164,9 +165,22 @@ Ref<AppTheme> AppThemeManager::_create_base_theme(const Ref<AppTheme> &p_old_the
 		OS::get_singleton()->benchmark_end_measure(get_benchmark_key(), "Register Icons");
 	}
 
+	// Register fonts.
+	{
+		OS::get_singleton()->benchmark_begin_measure(get_benchmark_key(), "Register Fonts");
+
+		// TODO: Check if existing font definitions from the old theme are usable and copy them.
+
+		// External function, see app_fonts.cpp.
+		print_verbose("AppTheme: Generating new fonts.");
+		app_register_fonts(theme);
+
+		OS::get_singleton()->benchmark_end_measure(get_benchmark_key(), "Register Fonts");
+	}
+
 	print_verbose("AppTheme: Generating new styles.");
 	_populate_standard_styles(theme, config);
-	// _populate_editor_styles(theme, config);
+	_populate_app_styles(theme, config);
 	// _populate_text_editor_styles(theme, config);
 	// _populate_visual_shader_styles(theme, config);
 
@@ -179,9 +193,7 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 
 	// Basic properties.
 
-	// TODO: theme preset
-	config.preset = "Light"; // APP_GET("interface/theme/preset");
-	// config.preset = APP_GET("interface/theme/preset");
+	config.preset = APP_GET("interface/theme/preset");
 	config.spacing_preset = APP_GET("interface/theme/spacing_preset");
 
 	config.base_color = APP_GET("interface/theme/base_color");
@@ -193,7 +205,7 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 
 	config.base_spacing = APP_GET("interface/theme/base_spacing");
 	config.extra_spacing = APP_GET("interface/theme/additional_spacing");
-	// Ensure borders are visible when using an editor scale below 100%.
+	// Ensure borders are visible when using an app scale below 100%.
 	config.border_width = CLAMP((int)APP_GET("interface/theme/border_size"), 0, 2) * MAX(1, APP_SCALE);
 	config.corner_radius = CLAMP((int)APP_GET("interface/theme/corner_radius"), 0, 6);
 
@@ -201,12 +213,12 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 	config.relationship_line_opacity = APP_GET("interface/theme/relationship_line_opacity");
 	config.thumb_size = APP_GET("filesystem/file_dialog/thumbnail_size");
 	config.class_icon_size = 16 * APP_SCALE;
-	config.enable_touch_optimizations = APP_GET("interface/touchscreen/enable_touch_optimizations");
-	config.gizmo_handle_scale = APP_GET("interface/touchscreen/scale_gizmo_handles");
+	// config.enable_touch_optimizations = APP_GET("interface/touchscreen/enable_touch_optimizations");
+	// config.gizmo_handle_scale = APP_GET("interface/touchscreen/scale_gizmo_handles");
 	config.color_picker_button_height = 28 * APP_SCALE;
-	config.subresource_hue_tint = APP_GET("docks/property_editor/subresource_hue_tint");
+	// config.subresource_hue_tint = APP_GET("docks/property_editor/subresource_hue_tint");
 
-	config.default_contrast = 0.3; // Make sure to keep this in sync with the editor settings definition.
+	config.default_contrast = 0.3; // Make sure to keep this in sync with the app settings definition.
 
 	// Handle main theme preset.
 	{
@@ -233,7 +245,6 @@ AppThemeManager::ThemeConfiguration AppThemeManager::_create_theme_config(const 
 			}
 		}
 
-		print_line("config preset: " + config.preset + ", follow system: " + (follow_system_theme ? "true" : "false"));
 		if (config.preset != "Custom") {
 			Color preset_accent_color;
 			Color preset_base_color;
@@ -408,9 +419,6 @@ void AppThemeManager::_create_shared_styles(const Ref<AppTheme> &p_theme, ThemeC
 		p_theme->set_color("success_color", AppStringName(App), p_config.success_color);
 		p_theme->set_color("warning_color", AppStringName(App), p_config.warning_color);
 		p_theme->set_color("error_color", AppStringName(App), p_config.error_color);
-#ifndef DISABLE_DEPRECATED // Used before 4.3.
-		p_theme->set_color("disabled_highlight_color", AppStringName(App), p_config.highlight_disabled_color);
-#endif
 
 		// Only used when the Draw Extra Borders editor setting is enabled.
 		p_config.extra_border_color_1 = Color(0.5, 0.5, 0.5);
@@ -440,12 +448,6 @@ void AppThemeManager::_create_shared_styles(const Ref<AppTheme> &p_theme, ThemeC
 		p_theme->set_color("font_readonly_color", AppStringName(App), p_config.font_readonly_color);
 		p_theme->set_color("font_placeholder_color", AppStringName(App), p_config.font_placeholder_color);
 		p_theme->set_color("font_outline_color", AppStringName(App), p_config.font_outline_color);
-#ifndef DISABLE_DEPRECATED // Used before 4.3.
-		p_theme->set_color("readonly_font_color", AppStringName(App), p_config.font_readonly_color);
-		p_theme->set_color("disabled_font_color", AppStringName(App), p_config.font_disabled_color);
-		p_theme->set_color("readonly_color", AppStringName(App), p_config.font_readonly_color);
-		p_theme->set_color("highlighted_font_color", AppStringName(App), p_config.font_hover_color); // Closest equivalent.
-#endif
 
 		// Icon colors.
 
@@ -1487,9 +1489,6 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_constant("buttons_vertical_separation", "SpinBox", 0);
 		p_theme->set_constant("field_and_buttons_separation", "SpinBox", 2);
 		p_theme->set_constant("buttons_width", "SpinBox", 16);
-#ifndef DISABLE_DEPRECATED
-		p_theme->set_constant("set_min_buttons_width_from_icons", "SpinBox", 1);
-#endif
 	}
 
 	// ProgressBar.
@@ -1525,8 +1524,8 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 				break;
 		}
 
-		p_theme->set_color("selection_fill", "GraphEdit", p_theme->get_color(SNAME("box_selection_fill_color"), AppStringName(Editor)));
-		p_theme->set_color("selection_stroke", "GraphEdit", p_theme->get_color(SNAME("box_selection_stroke_color"), AppStringName(Editor)));
+		p_theme->set_color("selection_fill", "GraphEdit", p_theme->get_color(SNAME("box_selection_fill_color"), AppStringName(App)));
+		p_theme->set_color("selection_stroke", "GraphEdit", p_theme->get_color(SNAME("box_selection_stroke_color"), AppStringName(App)));
 		p_theme->set_color("activity", "GraphEdit", p_config.dark_theme ? Color(1, 1, 1) : Color(0, 0, 0));
 
 		p_theme->set_color("connection_hover_tint_color", "GraphEdit", p_config.dark_theme ? Color(0, 0, 0, 0.3) : Color(1, 1, 1, 0.3));
@@ -1714,7 +1713,6 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 			p_theme->set_color("selected_rim_color", "VSRerouteNode", p_config.dark_theme ? Color(1, 1, 1) : Color(0, 0, 0));
 		}
 	}
-#endif
 
 	// ColorPicker and related nodes.
 	{
@@ -1755,6 +1753,82 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_stylebox("preset_fg", "ColorPresetButton", make_flat_stylebox(Color(1, 1, 1), 2, 2, 2, 2, 2));
 		p_theme->set_icon("preset_bg", "ColorPresetButton", p_theme->get_icon(SNAME("GuiMiniCheckerboard"), AppStringName(AppIcons)));
 		p_theme->set_icon("overbright_indicator", "ColorPresetButton", p_theme->get_icon(SNAME("OverbrightIndicator"), AppStringName(AppIcons)));
+	}
+#endif
+}
+
+void AppThemeManager::_populate_app_styles(const Ref<AppTheme> &p_theme, ThemeConfiguration &p_config) {
+	// App and main screen.
+	{
+		// App background.
+		Color background_color_opaque = p_config.dark_color_2;
+		background_color_opaque.a = 1.0;
+		p_theme->set_color("background", AppStringName(App), background_color_opaque);
+		p_theme->set_stylebox("Background", AppStringName(AppStyles), make_flat_stylebox(background_color_opaque, p_config.base_margin, p_config.base_margin, p_config.base_margin, p_config.base_margin));
+
+		Ref<StyleBoxFlat> app_panel_foreground = p_config.base_style->duplicate();
+		app_panel_foreground->set_corner_radius_all(0);
+		p_theme->set_stylebox("PanelForeground", AppStringName(AppStyles), app_panel_foreground);
+
+		// App focus.
+		p_theme->set_stylebox("Focus", AppStringName(AppStyles), p_config.button_style_focus);
+	}
+
+	// Standard GUI variations.
+	{
+		// Custom theme type for MarginContainer with 4px margins.
+		p_theme->set_type_variation("MarginContainer4px", "MarginContainer");
+		p_theme->set_constant("margin_left", "MarginContainer4px", 4 * APP_SCALE);
+		p_theme->set_constant("margin_top", "MarginContainer4px", 4 * APP_SCALE);
+		p_theme->set_constant("margin_right", "MarginContainer4px", 4 * APP_SCALE);
+		p_theme->set_constant("margin_bottom", "MarginContainer4px", 4 * APP_SCALE);
+
+		// Header LinkButton variation.
+		p_theme->set_type_variation("HeaderSmallLink", "LinkButton");
+		p_theme->set_font(SceneStringName(font), "HeaderSmallLink", p_theme->get_font(SceneStringName(font), SNAME("HeaderSmall")));
+		p_theme->set_font_size(SceneStringName(font_size), "HeaderSmallLink", p_theme->get_font_size(SceneStringName(font_size), SNAME("HeaderSmall")));
+
+		// Flat button variations.
+		{
+			Ref<StyleBoxEmpty> style_flat_button = make_empty_stylebox();
+			Ref<StyleBoxFlat> style_flat_button_hover = p_config.button_style_hover->duplicate();
+			Ref<StyleBoxFlat> style_flat_button_pressed = p_config.button_style_pressed->duplicate();
+
+			for (int i = 0; i < 4; i++) {
+				style_flat_button->set_content_margin((Side)i, p_config.button_style->get_content_margin((Side)i));
+				style_flat_button_hover->set_content_margin((Side)i, p_config.button_style->get_content_margin((Side)i));
+				style_flat_button_pressed->set_content_margin((Side)i, p_config.button_style->get_content_margin((Side)i));
+			}
+			Color flat_pressed_color = p_config.dark_color_1.lightened(0.24).lerp(p_config.accent_color, 0.2) * Color(0.8, 0.8, 0.8, 0.85);
+			if (p_config.dark_theme) {
+				flat_pressed_color = p_config.dark_color_1.lerp(p_config.accent_color, 0.12) * Color(0.6, 0.6, 0.6, 0.85);
+			}
+			style_flat_button_pressed->set_bg_color(flat_pressed_color);
+
+			p_theme->set_stylebox(CoreStringName(normal), SceneStringName(FlatButton), style_flat_button);
+			p_theme->set_stylebox(SceneStringName(hover), SceneStringName(FlatButton), style_flat_button_hover);
+			p_theme->set_stylebox(SceneStringName(pressed), SceneStringName(FlatButton), style_flat_button_pressed);
+			p_theme->set_stylebox("disabled", SceneStringName(FlatButton), style_flat_button);
+
+			p_theme->set_stylebox(CoreStringName(normal), "FlatMenuButton", style_flat_button);
+			p_theme->set_stylebox(SceneStringName(hover), "FlatMenuButton", style_flat_button_hover);
+			p_theme->set_stylebox(SceneStringName(pressed), "FlatMenuButton", style_flat_button_pressed);
+			p_theme->set_stylebox("disabled", "FlatMenuButton", style_flat_button);
+		}
+
+		// TabContainerOdd variation.
+		{
+			// Can be used on tabs against the base color background (e.g. nested tabs).
+			p_theme->set_type_variation("TabContainerOdd", "TabContainer");
+
+			Ref<StyleBoxFlat> style_tab_selected_odd = p_theme->get_stylebox(SNAME("tab_selected"), SNAME("TabContainer"))->duplicate();
+			style_tab_selected_odd->set_bg_color(p_config.disabled_bg_color);
+			p_theme->set_stylebox("tab_selected", "TabContainerOdd", style_tab_selected_odd);
+
+			Ref<StyleBoxFlat> style_content_panel_odd = p_config.content_panel_style->duplicate();
+			style_content_panel_odd->set_bg_color(p_config.disabled_bg_color);
+			p_theme->set_stylebox(SceneStringName(panel), "TabContainerOdd", style_content_panel_odd);
+		}
 	}
 }
 

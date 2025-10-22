@@ -320,6 +320,24 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set(m_name, m_default_value);                                                          \
 	hints[m_name] = PropertyInfo(m_type, m_name, m_property_hint, m_hint_string, m_usage);
 
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "version", vformat("%d.%d.%d", APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH), "")
+
+	// Font
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/main_font_size", 14, "8,48,1")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/code_font_size", 14, "8,48,1")
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/code_font_contextual_ligatures", 1, "Enabled,Disable Contextual Alternates (Coding Ligatures),Use Custom OpenType Feature Set")
+	_initial_set("interface/app/code_font_custom_opentype_features", "");
+	_initial_set("interface/app/code_font_custom_variations", "");
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/font_antialiasing", 1, "None,Grayscale,LCD Subpixel")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/font_hinting", 0, "Auto (Light),None,Light,Normal")
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/font_subpixel_positioning", 1, "Disabled,Auto,One Half of a Pixel,One Quarter of a Pixel")
+	APP_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/font_disable_embedded_bitmaps", true, "");
+	APP_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/font_allow_msdf", true, "")
+
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font_bold", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/code_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
+
 	// Theme
 	APP_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_ENUM, "interface/theme/follow_system_theme", false, "")
 	APP_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/preset", "Default", "Default,Breeze Dark,Godot 2,Gray,Light,Solarized (Dark),Solarized (Light),Black (OLED),Custom")
@@ -337,6 +355,178 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/base_spacing", 4, "0,8,1")
 	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/additional_spacing", 0, "0,8,1")
 	APP_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/theme/custom_theme", "", "*.res,*.tres,*.theme", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED)
+
+	// File dialog
+	_initial_set("filesystem/file_dialog/show_hidden_files", false);
+	// APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "filesystem/file_dialog/display_mode", 0, "Thumbnails,List")
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "filesystem/file_dialog/thumbnail_size", 64, "32,128,16")
+
+	/* Text editor */
+
+	// Theme
+	APP_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "text_editor/theme/color_theme", "Default", "Default,Godot 2,Custom")
+
+	// Theme: Highlighting
+	const LocalVector<StringName> basic_text_editor_settings = {
+		"text_editor/theme/highlighting/symbol_color",
+		"text_editor/theme/highlighting/keyword_color",
+		"text_editor/theme/highlighting/control_flow_keyword_color",
+		"text_editor/theme/highlighting/base_type_color",
+		"text_editor/theme/highlighting/engine_type_color",
+		"text_editor/theme/highlighting/user_type_color",
+		"text_editor/theme/highlighting/comment_color",
+		"text_editor/theme/highlighting/doc_comment_color",
+		"text_editor/theme/highlighting/string_color",
+		"text_editor/theme/highlighting/background_color",
+		"text_editor/theme/highlighting/text_color",
+		"text_editor/theme/highlighting/line_number_color",
+		"text_editor/theme/highlighting/safe_line_number_color",
+		"text_editor/theme/highlighting/caret_color",
+		"text_editor/theme/highlighting/caret_background_color",
+		"text_editor/theme/highlighting/text_selected_color",
+		"text_editor/theme/highlighting/selection_color",
+		"text_editor/theme/highlighting/brace_mismatch_color",
+		"text_editor/theme/highlighting/current_line_color",
+		"text_editor/theme/highlighting/line_length_guideline_color",
+		"text_editor/theme/highlighting/word_highlighted_color",
+		"text_editor/theme/highlighting/number_color",
+		"text_editor/theme/highlighting/function_color",
+		"text_editor/theme/highlighting/member_variable_color",
+		"text_editor/theme/highlighting/mark_color",
+	};
+
+	// TODO: text editor theme
+	// // These values will be overwritten by EditorThemeManager, but can still be seen in some edge cases.
+	// const HashMap<StringName, Color> text_colors = get_godot2_text_editor_theme();
+	// for (const KeyValue<StringName, Color> &text_color : text_colors) {
+	// 	if (basic_text_editor_settings.has(text_color.key)) {
+	// 		APP_SETTING_BASIC(Variant::COLOR, PROPERTY_HINT_NONE, text_color.key, text_color.value, "")
+	// 	} else {
+	// 		APP_SETTING(Variant::COLOR, PROPERTY_HINT_NONE, text_color.key, text_color.value, "")
+	// 	}
+	// }
+
+	// The list is based on <https://github.com/KDE/syntax-highlighting/blob/master/data/syntax/alert.xml>.
+	_initial_set("text_editor/theme/highlighting/comment_markers/critical_list", "ALERT,ATTENTION,CAUTION,CRITICAL,DANGER,SECURITY");
+	_initial_set("text_editor/theme/highlighting/comment_markers/warning_list", "BUG,DEPRECATED,FIXME,HACK,TASK,TBD,TODO,WARNING");
+	_initial_set("text_editor/theme/highlighting/comment_markers/notice_list", "INFO,NOTE,NOTICE,TEST,TESTING");
+
+	// Appearance
+	APP_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "text_editor/appearance/enable_inline_color_picker", true, "");
+
+	// Appearance: Caret
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/appearance/caret/type", 0, "Line,Block")
+	_initial_set("text_editor/appearance/caret/caret_blink", true, true);
+	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "text_editor/appearance/caret/caret_blink_interval", 0.5, "0.1,10,0.01")
+	_initial_set("text_editor/appearance/caret/highlight_current_line", true, true);
+	_initial_set("text_editor/appearance/caret/highlight_all_occurrences", true, true);
+
+	// Appearance: Guidelines
+	_initial_set("text_editor/appearance/guidelines/show_line_length_guidelines", true, true);
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/appearance/guidelines/line_length_guideline_soft_column", 80, "20,160,1")
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/appearance/guidelines/line_length_guideline_hard_column", 100, "20,160,1")
+
+	// Appearance: Gutters
+	_initial_set("text_editor/appearance/gutters/show_line_numbers", true, true);
+	_initial_set("text_editor/appearance/gutters/line_numbers_zero_padded", false, true);
+	_initial_set("text_editor/appearance/gutters/highlight_type_safe_lines", true, true);
+	_initial_set("text_editor/appearance/gutters/show_info_gutter", true, true);
+
+	// Appearance: Minimap
+	_initial_set("text_editor/appearance/minimap/show_minimap", true, true);
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/appearance/minimap/minimap_width", 80, "50,250,1")
+
+	// Appearance: Lines
+	_initial_set("text_editor/appearance/lines/code_folding", true, true);
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/appearance/lines/word_wrap", 0, "None,Boundary")
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/appearance/lines/autowrap_mode", 3, "Arbitrary:1,Word:2,Word (Smart):3")
+
+	// Appearance: Whitespace
+	_initial_set("text_editor/appearance/whitespace/draw_tabs", true, true);
+	_initial_set("text_editor/appearance/whitespace/draw_spaces", false, true);
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/appearance/whitespace/line_spacing", 4, "0,50,1")
+
+	// Behavior
+	// Behavior: General
+	_initial_set("text_editor/behavior/general/empty_selection_clipboard", true);
+
+	// Behavior: Navigation
+	_initial_set("text_editor/behavior/navigation/move_caret_on_right_click", true, true);
+	_initial_set("text_editor/behavior/navigation/scroll_past_end_of_file", false, true);
+	_initial_set("text_editor/behavior/navigation/smooth_scrolling", true, true);
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/behavior/navigation/v_scroll_speed", 80, "1,10000,1")
+	_initial_set("text_editor/behavior/navigation/drag_and_drop_selection", true, true);
+	_initial_set("text_editor/behavior/navigation/stay_in_script_editor_on_node_selected", true, true);
+	_initial_set("text_editor/behavior/navigation/open_script_when_connecting_signal_to_existing_method", true, true);
+	_initial_set("text_editor/behavior/navigation/use_default_word_separators", true); // Includes ´`~$^=+|<> General punctuation and CJK punctuation.
+	_initial_set("text_editor/behavior/navigation/use_custom_word_separators", false);
+	_initial_set("text_editor/behavior/navigation/custom_word_separators", ""); // Custom word separators.
+
+	// Behavior: Indent
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/behavior/indent/type", 0, "Tabs,Spaces")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/behavior/indent/size", 4, "1,64,1") // size of 0 crashes.
+	_initial_set("text_editor/behavior/indent/auto_indent", true);
+	_initial_set("text_editor/behavior/indent/indent_wrapped_lines", true);
+
+	// Behavior: Files
+	_initial_set("text_editor/behavior/files/trim_trailing_whitespace_on_save", false);
+	_initial_set("text_editor/behavior/files/trim_final_newlines_on_save", true);
+	_initial_set("text_editor/behavior/files/autosave_interval_secs", 0);
+	_initial_set("text_editor/behavior/files/restore_scripts_on_load", true);
+	_initial_set("text_editor/behavior/files/convert_indent_on_save", true);
+	_initial_set("text_editor/behavior/files/auto_reload_scripts_on_external_change", true);
+	_initial_set("text_editor/behavior/files/auto_reload_and_parse_scripts_on_save", true);
+	_initial_set("text_editor/behavior/files/open_dominant_script_on_scene_change", false, true);
+	_initial_set("text_editor/behavior/files/drop_preload_resources_as_uid", true, true);
+
+	// Behavior: Documentation
+	_initial_set("text_editor/behavior/documentation/enable_tooltips", true, true);
+
+	// Script list
+	_initial_set("text_editor/script_list/show_members_overview", true, true);
+	_initial_set("text_editor/script_list/sort_members_outline_alphabetically", false, true);
+	_initial_set("text_editor/script_list/script_temperature_enabled", true);
+	_initial_set("text_editor/script_list/script_temperature_history_size", 15);
+	_initial_set("text_editor/script_list/highlight_scene_scripts", true);
+	_initial_set("text_editor/script_list/group_help_pages", true);
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/script_list/sort_scripts_by", 0, "Name,Path,None");
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/script_list/list_script_names_as", 0, "Name,Parent Directory And Name,Full Path");
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "text_editor/external/exec_path", "", "");
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_PLACEHOLDER_TEXT, "text_editor/external/exec_flags", "{file}", "Call flags with placeholders: {project}, {file}, {col}, {line}.");
+
+	// Completion
+	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "text_editor/completion/idle_parse_delay", 1.5, "0.1,10,0.01")
+	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "text_editor/completion/idle_parse_delay_with_errors_found", 0.5, "0.1,5,0.01")
+	_initial_set("text_editor/completion/auto_brace_complete", true, true);
+	_initial_set("text_editor/completion/code_complete_enabled", true, true);
+	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "text_editor/completion/code_complete_delay", 0.3, "0.01,5,0.01,or_greater")
+	_initial_set("text_editor/completion/put_callhint_tooltip_below_current_line", true);
+	_initial_set("text_editor/completion/complete_file_paths", true);
+	_initial_set("text_editor/completion/add_type_hints", true, true);
+	_initial_set("text_editor/completion/add_string_name_literals", false, true);
+	_initial_set("text_editor/completion/add_node_path_literals", false, true);
+	_initial_set("text_editor/completion/use_single_quotes", false, true);
+	_initial_set("text_editor/completion/colorize_suggestions", true);
+
+	// External editor (ScriptEditorPlugin)
+	_initial_set("text_editor/external/use_external_editor", false, true);
+	_initial_set("text_editor/external/exec_path", "");
+
+	// Help
+	_initial_set("text_editor/help/show_help_index", true);
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/help/help_font_size", 16, "8,48,1")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/help/help_source_font_size", 15, "8,48,1")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "text_editor/help/help_title_font_size", 23, "8,64,1")
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_ENUM, "text_editor/help/class_reference_examples", 0, "GDScript,C#,GDScript and C#")
+	_initial_set("text_editor/help/sort_functions_alphabetically", true);
+
+	/* Editors */
+
+	// Output
+	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "run/output/font_size", 13, "8,48,1")
+	_initial_set("run/output/always_clear_output_on_play", true, true);
+
+	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "run/output/max_lines", 10000, "100,100000,1")
 
 #undef APP_SETTING
 #undef APP_SETTING_BASIC
@@ -367,7 +557,7 @@ AppSettings *AppSettings::get_singleton() {
 }
 
 String AppSettings::get_settings_path() {
-	const String config_file_name = vformat("app_settings-%d.%d.tres", APP_VERSION_MAJOR, APP_VERSION_MINOR);
+	const String config_file_name = "app_settings.tres";
 	return AppPaths::get_singleton()->get_config_dir().path_join(config_file_name);
 }
 
