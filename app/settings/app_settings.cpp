@@ -320,7 +320,7 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set(m_name, m_default_value);                                                          \
 	hints[m_name] = PropertyInfo(m_type, m_name, m_property_hint, m_hint_string, m_usage);
 
-	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "version", vformat("%d.%d.%d", APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH), "")
+	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
 
 	// Font
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/main_font_size", 14, "8,48,1")
@@ -613,6 +613,7 @@ void AppSettings::create() {
 		// singleton->setup_language();
 		// singleton->list_text_editor_themes();
 
+		singleton->set_manually("app_version", vformat("%d.%d.%d", APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH));
 		singleton->save();
 	}
 }
