@@ -1084,6 +1084,7 @@ void register_scene_types() {
 
 	OS::get_singleton()->yield(); // may take time to init
 
+#ifndef APP_ENABLED
 	GDREGISTER_CLASS(AudioStreamPlayer);
 	GDREGISTER_CLASS(AudioStreamWAV);
 	GDREGISTER_CLASS(AudioStreamPolyphonic);
@@ -1092,6 +1093,7 @@ void register_scene_types() {
 	OS::get_singleton()->yield(); // may take time to init
 
 	GDREGISTER_CLASS(AudioStreamPlayer2D);
+#endif // APP_ENABLED
 	GDREGISTER_CLASS(Curve2D);
 	GDREGISTER_CLASS(Path2D);
 	GDREGISTER_CLASS(PathFollow2D);

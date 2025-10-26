@@ -63,11 +63,11 @@ TEST_CASE("[Logger][RotatedFileLogger] Creates the first log file and logs on it
 	initialize_logs();
 
 	String waiting_for_godot = "Waiting for Godot";
-	RotatedFileLogger logger("user://logs/godot.log");
+	RotatedFileLogger logger("user://logs/app.log");
 	logger.logf("%s", "Waiting for Godot");
 
 	Error err = Error::OK;
-	Ref<FileAccess> log = FileAccess::open("user://logs/godot.log", FileAccess::READ, &err);
+	Ref<FileAccess> log = FileAccess::open("user://logs/app.log", FileAccess::READ, &err);
 	CHECK_EQ(err, Error::OK);
 	CHECK_EQ(log->get_as_text(), waiting_for_godot);
 
@@ -79,14 +79,14 @@ void get_log_files(Vector<String> &log_files) {
 	dir->list_dir_begin();
 	String file = dir->get_next();
 	while (file != "") {
-		// Filtering godot.log because ordered_insert will put it first and should be the last.
-		if (file.match("*.log") && file != "godot.log") {
+		// Filtering app.log because ordered_insert will put it first and should be the last.
+		if (file.match("*.log") && file != "app.log") {
 			log_files.ordered_insert(file);
 		}
 		file = dir->get_next();
 	}
-	if (FileAccess::exists("user://logs/godot.log")) {
-		log_files.push_back("godot.log");
+	if (FileAccess::exists("user://logs/app.log")) {
+		log_files.push_back("app.log");
 	}
 }
 
@@ -99,7 +99,7 @@ TEST_CASE("[Logger][RotatedFileLogger] Rotates logs files") {
 	const int number_of_files = 3;
 	for (int i = 0; i < number_of_files; i++) {
 		String waiting_for_godot = "Waiting for Godot " + itos(i);
-		RotatedFileLogger logger("user://logs/godot.log", number_of_files);
+		RotatedFileLogger logger("user://logs/app.log", number_of_files);
 		logger.logf("%s", waiting_for_godot.ascii().get_data());
 		all_waiting_for_godot.push_back(waiting_for_godot);
 
@@ -121,11 +121,11 @@ TEST_CASE("[Logger][RotatedFileLogger] Rotates logs files") {
 	// Required to ensure the rotation of the log file.
 	OS::get_singleton()->delay_usec(sleep_duration);
 
-	// This time the oldest log must be removed and godot.log updated.
+	// This time the oldest log must be removed and app.log updated.
 	String new_waiting_for_godot = "Waiting for Godot " + itos(number_of_files);
 	all_waiting_for_godot = all_waiting_for_godot.slice(1, all_waiting_for_godot.size());
 	all_waiting_for_godot.push_back(new_waiting_for_godot);
-	RotatedFileLogger logger("user://logs/godot.log", number_of_files);
+	RotatedFileLogger logger("user://logs/app.log", number_of_files);
 	logger.logf("%s", new_waiting_for_godot.ascii().get_data());
 
 	log_files.clear();
