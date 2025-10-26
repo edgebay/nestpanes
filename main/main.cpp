@@ -1972,12 +1972,15 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	}
 
 	OS::get_singleton()->_in_editor = editor;
+#ifdef APP_ENABLED
+	globals->setup(project_path, main_pack, upwards, editor);
+	globals->set("application/config/name", String(APP_VERSION_NAME).to_snake_case());
+#else
 	if (globals->setup(project_path, main_pack, upwards, editor) == OK) {
 #ifdef TOOLS_ENABLED
 		found_project = true;
 #endif
 	} else {
-#ifndef APP_ENABLED
 #ifdef TOOLS_ENABLED
 		editor = false;
 #else
@@ -1987,8 +1990,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		goto error;
 #endif
-#endif // APP_ENABLED
 	}
+#endif // APP_ENABLED
 
 	// Initialize WorkerThreadPool.
 	{
