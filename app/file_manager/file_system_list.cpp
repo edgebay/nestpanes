@@ -78,6 +78,31 @@ void FileSystemList::_update_history_button() {
 	dir_next->set_disabled(local_history_pos == local_history.size() - 1);
 }
 
+void FileSystemList::_item_menu_id_pressed(int p_option) {
+}
+
+void FileSystemList::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	popup_menu(p_pos, MENU_MODE_EMPTY);
+}
+
+void FileSystemList::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	Dictionary d = item_list->get_item_metadata(p_item);
+
+	if (d["dir"]) {
+		popup_menu(p_pos, MENU_MODE_FOLDER);
+	} else {
+		popup_menu(p_pos, MENU_MODE_FILE);
+	}
+}
+
 void FileSystemList::_item_dc_selected(int p_item) {
 	int current = p_item;
 	if (current < 0 || current >= item_list->get_item_count()) {
@@ -271,17 +296,14 @@ void FileSystemList::_initialize_ui() {
 
 	// item_list->connect("item_clicked", callable_mp(this, &FileSystemList::_item_list_item_rmb_clicked));
 	// item_list->connect("empty_clicked", callable_mp(this, &FileSystemList::_item_list_empty_clicked));
+	item_list->connect("item_clicked", callable_mp(this, &FileSystemList::_item_clicked));
+	item_list->connect("empty_clicked", callable_mp(this, &FileSystemList::_empty_clicked));
 	// item_list->connect(SceneStringName(gui_input), callable_mp(this, &FileSystemList::_item_list_gui_input));
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FileSystemList::_item_selected), CONNECT_DEFERRED);
 	// item_list->connect("multi_selected", callable_mp(this, &FileSystemList::_multi_selected), CONNECT_DEFERRED);
 	item_list->connect("item_activated", callable_mp(this, &FileSystemList::_item_dc_selected).bind());
 	// item_list->connect("empty_clicked", callable_mp(this, &FileSystemList::_items_clear_selection));
 	dir->connect(SceneStringName(text_submitted), callable_mp(this, &FileSystemList::_dir_submitted));
-
-	// item_menu = memnew(PopupMenu);
-	// // item_menu->set_flag(Window::FLAG_MOUSE_PASSTHROUGH, true);
-	// item_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemList::_item_menu_id_pressed));
-	// add_child(item_menu);
 }
 
 void FileSystemList::_update_icons() {
@@ -311,6 +333,81 @@ void FileSystemList::_update_file_ui() {
 	// _update_recent();
 
 	_push_history();
+}
+
+void FileSystemList::_set_empty_menu_item(PopupMenu *p_popup) {
+	PopupMenu *new_menu = memnew(PopupMenu);
+	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemList::_item_menu_id_pressed));
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("List"), FILE_MENU_VIEW_LIST);
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("Detail"), FILE_MENU_VIEW_DETAIL);
+	p_popup->add_submenu_node_item(RTR("View"), new_menu, FILE_MENU_VIEW);
+	p_popup->set_item_icon(new_menu->get_item_index(FILE_MENU_VIEW), get_app_theme_icon(SNAME("Folder"))); // TODO
+
+	new_menu = memnew(PopupMenu);
+	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemList::_item_menu_id_pressed));
+	// new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("List"), FILE_MENU_VIEW_LIST);
+	// new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("Detail"), FILE_MENU_VIEW_DETAIL);
+	p_popup->add_submenu_node_item(RTR("Sort"), new_menu, FILE_MENU_SORT);
+	p_popup->set_item_icon(new_menu->get_item_index(FILE_MENU_SORT), get_app_theme_icon(SNAME("Folder"))); // TODO
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Paste"), FILE_MENU_PASTE);
+
+	new_menu = memnew(PopupMenu);
+	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemList::_item_menu_id_pressed));
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("Folder..."), FILE_MENU_NEW_FOLDER);
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("TextFile..."), FILE_MENU_NEW_TEXTFILE);
+	p_popup->add_submenu_node_item(RTR("Create New"), new_menu, FILE_MENU_NEW);
+	p_popup->set_item_icon(new_menu->get_item_index(FILE_MENU_NEW), get_app_theme_icon(SNAME("Folder")));
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Open in terminal"), FILE_MENU_OPEN_IN_TERMINAL);
+}
+
+void FileSystemList::_set_file_menu_item(PopupMenu *p_popup) {
+	p_popup->add_item(RTR("Open"), FILE_MENU_OPEN);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Copy path"), FILE_MENU_COPY_PATH);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Cut"), FILE_MENU_CUT);
+	p_popup->add_item(RTR("Copy"), FILE_MENU_COPY);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Delete"), FILE_MENU_DELETE);
+	p_popup->add_item(RTR("Rename"), FILE_MENU_RENAME);
+}
+
+void FileSystemList::_set_folder_menu_item(PopupMenu *p_popup) {
+	p_popup->add_item(RTR("Open"), FILE_MENU_OPEN);
+	p_popup->add_item(RTR("Open in new tab"), FILE_MENU_OPEN_IN_NEW_TAB);
+	p_popup->add_item(RTR("Open in new window"), FILE_MENU_OPEN_IN_NEW_WINDOW);
+	// p_popup->add_item(RTR("Pin"), FILE_MENU_PIN_TO_QUICK_ACCESS);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Open in terminal"), FILE_MENU_OPEN_IN_TERMINAL);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Copy path"), FILE_MENU_COPY_PATH);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Cut"), FILE_MENU_CUT);
+	p_popup->add_item(RTR("Copy"), FILE_MENU_COPY);
+	p_popup->add_item(RTR("Paste"), FILE_MENU_PASTE);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Delete"), FILE_MENU_DELETE);
+	p_popup->add_item(RTR("Rename"), FILE_MENU_RENAME);
 }
 
 FileSystemList::FileSystemList() {

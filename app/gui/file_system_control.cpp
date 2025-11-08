@@ -1,5 +1,7 @@
 #include "file_system_control.h"
 
+#include "scene/gui/popup_menu.h"
+
 #include "app/core/io/file_system_access.h"
 
 void FileSystemControl::_notification(int p_what) {
@@ -25,6 +27,10 @@ bool FileSystemControl::change_path(const String &p_path) {
 void FileSystemControl::_bind_methods() {
 	// ADD_SIGNAL(MethodInfo("path_changed", PropertyInfo(Variant::STRING, "path")));
 	ADD_SIGNAL(MethodInfo("path_changed", PropertyInfo(Variant::OBJECT, "fs")));
+}
+
+PopupMenu *FileSystemControl::get_menu() const {
+	return item_menu;
 }
 
 bool FileSystemControl::_set_path(const String &p_path) {
@@ -64,6 +70,23 @@ bool FileSystemControl::is_updating_file() {
 	return updating_file_ui;
 }
 
+void FileSystemControl::_item_menu_id_pressed(int p_option) {
+}
+
+void FileSystemControl::_set_menu_item(PopupMenu *p_popup, MenuMode p_mode) {
+	switch (p_mode) {
+		case MENU_MODE_EMPTY:
+			_set_empty_menu_item(p_popup);
+			break;
+		case MENU_MODE_FILE:
+			_set_file_menu_item(p_popup);
+			break;
+		case MENU_MODE_FOLDER:
+			_set_folder_menu_item(p_popup);
+			break;
+	}
+}
+
 void FileSystemControl::set_current_path(const String &p_path) {
 	change_path(p_path);
 }
@@ -85,8 +108,22 @@ Ref<Texture2D> FileSystemControl::get_current_dir_icon() const {
 	return get_app_theme_icon(SNAME("Folder"));
 }
 
+void FileSystemControl::popup_menu(const Vector2 &p_pos, MenuMode p_mode) {
+	item_menu->clear();
+
+	_set_menu_item(item_menu, p_mode);
+
+	item_menu->set_position(get_screen_position() + p_pos);
+	item_menu->reset_size();
+	item_menu->popup();
+}
+
 FileSystemControl::FileSystemControl() {
 	_set_path(COMPUTER_PATH);
+
+	item_menu = memnew(PopupMenu);
+	item_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemControl::_item_menu_id_pressed));
+	add_child(item_menu, false, INTERNAL_MODE_FRONT);
 }
 
 FileSystemControl::~FileSystemControl() {

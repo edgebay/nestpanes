@@ -7,7 +7,6 @@
 class Button;
 class HBoxContainer;
 class LineEdit;
-class PopupMenu;
 class Tree;
 class TreeItem;
 class VBoxContainer;
@@ -52,8 +51,6 @@ private:
 
 	Tree *tree = nullptr;
 
-	PopupMenu *item_menu = nullptr;
-
 	bool updating_tree = false;
 	TreeItem *collapsed_changed_item = nullptr;
 
@@ -75,12 +72,19 @@ private:
 	void _tree_rmb_select(const Vector2 &p_pos, MouseButton p_button);
 	void _tree_item_collapsed(TreeItem *p_item);
 
+	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
+	void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
+
 	void _scan_dir(FileSystemTreeDirectory *r_dir, const String &p_path, bool p_scan_subdirs = false);
 
 	void _initialize_filesystem();
 
 protected:
 	virtual void _update_file_ui() override;
+
+	virtual void _set_empty_menu_item(PopupMenu *p_popup) override;
+	virtual void _set_file_menu_item(PopupMenu *p_popup) override;
+	virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
 
 	void _notification(int p_what);
 

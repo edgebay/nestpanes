@@ -359,6 +359,31 @@ void FileSystemTree::_tree_item_collapsed(TreeItem *p_item) {
 	}
 }
 
+void FileSystemTree::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	popup_menu(p_pos, MENU_MODE_EMPTY);
+}
+
+void FileSystemTree::_item_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	TreeItem *selected = tree->get_selected();
+	if (selected) {
+		Dictionary d = selected->get_metadata(0);
+		bool is_dir = d["is_dir"];
+		if (is_dir) {
+			popup_menu(p_pos, MENU_MODE_FOLDER);
+		} else {
+			popup_menu(p_pos, MENU_MODE_FILE);
+		}
+	}
+}
+
 void FileSystemTree::_scan_dir(FileSystemTreeDirectory *r_dir, const String &p_path, bool p_scan_subdirs) {
 	List<FileInfo> subdirs;
 	List<FileInfo> files;
@@ -398,6 +423,68 @@ void FileSystemTree::_initialize_filesystem() {
 }
 
 void FileSystemTree::_update_file_ui() {
+}
+
+void FileSystemTree::_set_empty_menu_item(PopupMenu *p_popup) {
+	p_popup->add_item(RTR("Expand to current"), FILE_MENU_EXPAND_TO_CURRENT);
+}
+
+void FileSystemTree::_set_file_menu_item(PopupMenu *p_popup) {
+	p_popup->add_item(RTR("Open"), FILE_MENU_OPEN);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Copy path"), FILE_MENU_COPY_PATH);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Cut"), FILE_MENU_CUT);
+	p_popup->add_item(RTR("Copy"), FILE_MENU_COPY);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Delete"), FILE_MENU_DELETE);
+	p_popup->add_item(RTR("Rename"), FILE_MENU_RENAME);
+}
+
+void FileSystemTree::_set_folder_menu_item(PopupMenu *p_popup) {
+	p_popup->add_item(RTR("Expand"), FILE_MENU_EXPAND);
+	// p_popup->add_item(RTR("Collapse"), FILE_MENU_COLLAPSE);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Open"), FILE_MENU_OPEN);
+	p_popup->add_item(RTR("Open in new tab"), FILE_MENU_OPEN_IN_NEW_TAB);
+	p_popup->add_item(RTR("Open in new window"), FILE_MENU_OPEN_IN_NEW_WINDOW);
+	// p_popup->add_item(RTR("Pin"), FILE_MENU_PIN_TO_QUICK_ACCESS);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Open in terminal"), FILE_MENU_OPEN_IN_TERMINAL);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Copy path"), FILE_MENU_COPY_PATH);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Cut"), FILE_MENU_CUT);
+	p_popup->add_item(RTR("Copy"), FILE_MENU_COPY);
+	p_popup->add_item(RTR("Paste"), FILE_MENU_PASTE);
+
+	p_popup->add_separator();
+
+	p_popup->add_item(RTR("Delete"), FILE_MENU_DELETE);
+	p_popup->add_item(RTR("Rename"), FILE_MENU_RENAME);
+
+	p_popup->add_separator();
+
+	PopupMenu *new_menu = memnew(PopupMenu);
+	// new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemControl::_item_menu_id_pressed));
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("Folder..."), FILE_MENU_NEW_FOLDER);
+	new_menu->add_icon_item(get_app_theme_icon(SNAME("Folder")), RTR("TextFile..."), FILE_MENU_NEW_TEXTFILE);
+	p_popup->add_submenu_node_item(RTR("Create New"), new_menu, FILE_MENU_NEW);
+	p_popup->set_item_icon(new_menu->get_item_index(FILE_MENU_NEW), get_app_theme_icon(SNAME("Folder")));
 }
 
 void FileSystemTree::_bind_methods() {
@@ -517,14 +604,12 @@ FileSystemTree::FileSystemTree() {
 	tree->connect("multi_selected", callable_mp(this, &FileSystemTree::_tree_multi_selected));
 	// tree->connect("item_mouse_selected", callable_mp(this, &FileSystemTree::_tree_item_mouse_select));
 	// tree->connect("empty_clicked", callable_mp(this, &FileSystemTree::_tree_empty_click));
+	tree->connect("item_mouse_selected", callable_mp(this, &FileSystemTree::_item_clicked));
+	tree->connect("empty_clicked", callable_mp(this, &FileSystemTree::_empty_clicked));
 	// tree->connect("nothing_selected", callable_mp(this, &FileSystemTree::_tree_empty_selected));
 	// tree->connect(SceneStringName(gui_input), callable_mp(this, &FileSystemTree::_tree_gui_input));
 	// tree->connect(SceneStringName(mouse_exited), callable_mp(this, &FileSystemTree::_tree_mouse_exited));
 	// tree->connect("item_edited", callable_mp(this, &FileSystemTree::_rename_operation_confirm));
-
-	item_menu = memnew(PopupMenu);
-	// item_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileManager::_item_menu_id_pressed));
-	add_child(item_menu);
 
 	home_path = COMPUTER_PATH;
 

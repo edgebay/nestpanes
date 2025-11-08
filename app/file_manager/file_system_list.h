@@ -12,7 +12,6 @@ class ItemList;
 class LineEdit;
 class MenuButton;
 class OptionButton;
-class PopupMenu;
 class TextureRect;
 class VBoxContainer;
 
@@ -46,6 +45,11 @@ private:
 	void _update_up_button();
 	void _update_history_button();
 
+	virtual void _item_menu_id_pressed(int p_option) override;
+
+	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
+	void _item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button);
+
 	// double-clicking selected.
 	void _item_dc_selected(int p_item);
 
@@ -68,6 +72,10 @@ private:
 protected:
 	virtual void _update_icons() override;
 	virtual void _update_file_ui() override;
+
+	virtual void _set_empty_menu_item(PopupMenu *p_popup) override;
+	virtual void _set_file_menu_item(PopupMenu *p_popup) override;
+	virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
 
 	// void _notification(int p_what);
 
