@@ -53,7 +53,8 @@ public:
 		FILE_MENU_COPY,
 		FILE_MENU_PASTE,
 
-		FILE_MENU_DELETE,
+		FILE_MENU_REMOVE,
+		FILE_MENU_DELETE = FILE_MENU_REMOVE,
 		FILE_MENU_RENAME,
 
 		FILE_MENU_NEW,
@@ -94,6 +95,8 @@ protected:
 	void _update_file_ui_method();
 	void update_file_ui();
 	bool is_updating_file();
+
+	virtual Vector<String> _get_selected() const { return Vector<String>(); }
 
 	virtual void _item_menu_id_pressed(int p_option);
 	virtual void _set_empty_menu_item(PopupMenu *p_popup) {}

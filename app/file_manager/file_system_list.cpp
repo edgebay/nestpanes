@@ -78,7 +78,23 @@ void FileSystemList::_update_history_button() {
 	dir_next->set_disabled(local_history_pos == local_history.size() - 1);
 }
 
+Vector<String> FileSystemList::_get_selected() const {
+	Vector<int> selected_ids = item_list->get_selected_items();
+	Vector<String> selected;
+	selected.resize(selected_ids.size());
+
+	String *selected_write = selected.ptrw();
+	int i = 0;
+	for (const int id : selected_ids) {
+		Dictionary d = item_list->get_item_metadata(id);
+		selected_write[i] = d["path"];
+		i++;
+	}
+	return selected;
+}
+
 void FileSystemList::_item_menu_id_pressed(int p_option) {
+	FileSystemControl::_item_menu_id_pressed(p_option);
 }
 
 void FileSystemList::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {

@@ -71,6 +71,39 @@ bool FileSystemControl::is_updating_file() {
 }
 
 void FileSystemControl::_item_menu_id_pressed(int p_option) {
+	const Vector<String> &p_selected = _get_selected(); // TODO: p_selected -> selected
+	switch (p_option) {
+		case FILE_MENU_CUT: {
+			FileSystemAccess::cut(p_selected);
+		} break;
+
+		case FILE_MENU_COPY: {
+			FileSystemAccess::copy(p_selected);
+		} break;
+
+		case FILE_MENU_PASTE: {
+			String path;
+			if (!p_selected.is_empty()) {
+				path = p_selected[0];
+			} else {
+				path = _get_path();
+			}
+
+			if (!path.is_empty()) {
+				FileSystemAccess::paste(path);
+			}
+		} break;
+
+		case FILE_MENU_REMOVE: {
+			// Remove the selected files.
+			for (const auto &path : p_selected) {
+				Error err = OS::get_singleton()->move_to_trash(path);
+				if (err != OK) {
+					print_line("Cannot remove: " + path); // TODO
+				}
+			}
+		}
+	}
 }
 
 void FileSystemControl::_set_menu_item(PopupMenu *p_popup, MenuMode p_mode) {

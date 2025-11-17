@@ -45,6 +45,8 @@ private:
 	void _update_up_button();
 	void _update_history_button();
 
+	virtual Vector<String> _get_selected() const override;
+
 	virtual void _item_menu_id_pressed(int p_option) override;
 
 	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);

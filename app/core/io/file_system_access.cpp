@@ -105,6 +105,39 @@ bool FileSystemAccess::dir_exists(const String &p_dir) {
 	return FileSystemAccess::get_singleton()->_dir_exists(p_dir);
 }
 
+bool FileSystemAccess::open_in_terminal(const String &p_path) {
+	return false;
+}
+
+bool FileSystemAccess::cut(const Vector<String> &p_files) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_cut(p_files);
+}
+
+bool FileSystemAccess::copy(const Vector<String> &p_files) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_copy(p_files);
+}
+
+bool FileSystemAccess::paste(const String &p_dir) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_paste(p_dir);
+}
+
+Error FileSystemAccess::rename(String p_path, String p_new_path) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_rename(p_path, p_new_path);
+}
+
+Error FileSystemAccess::remove(String p_path) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_remove(p_path);
+}
+
+bool FileSystemAccess::new_file(const String &p_dir, const String &p_filename) {
+	return false;
+}
+
 void FileSystemAccess::set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon) {
 	ERR_FAIL_COND_MSG(!p_icon.is_valid(), vformat("Invalid icon, name: '%s'", p_name));
 

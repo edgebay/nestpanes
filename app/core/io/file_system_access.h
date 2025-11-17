@@ -37,6 +37,17 @@ protected:
 	virtual bool _file_exists(const String &p_file) const = 0;
 	virtual bool _dir_exists(const String &p_dir) const = 0;
 
+	virtual bool _open_in_terminal(const String &p_path) = 0;
+
+	virtual bool _cut(const Vector<String> &p_files) = 0;
+	virtual bool _copy(const Vector<String> &p_files) = 0;
+	virtual bool _paste(const String &p_dir) = 0;
+
+	virtual Error _rename(String p_path, String p_new_path) = 0;
+	virtual Error _remove(String p_path) = 0;
+
+	virtual bool _new_file(const String &p_dir, const String &p_filename) = 0;
+
 public:
 	virtual Error change_path(const String &p_dir) = 0; ///< can be relative or absolute, return false on success
 	virtual String get_current_path() const = 0; ///< return current dir location
@@ -64,6 +75,19 @@ public:
 
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);
+
+	// TODO: return Error
+	static bool open_in_terminal(const String &p_path);
+
+	static bool cut(const Vector<String> &p_files);
+	static bool copy(const Vector<String> &p_files);
+	// TODO: static bool can_paste();?
+	static bool paste(const String &p_dir);
+
+	static Error rename(String p_path, String p_new_path);
+	static Error remove(String p_path);
+
+	static bool new_file(const String &p_dir, const String &p_filename);
 
 	// Icon cache
 	static void set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon);

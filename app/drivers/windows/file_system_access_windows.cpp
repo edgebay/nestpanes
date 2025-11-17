@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include <shellapi.h>
+#include <shlobj.h> // for DROPFILES
 
 // 将 HICON 转换为 Image（RGBA8 格式）
 Ref<Image> _icon_to_image(HICON hIcon) {
@@ -310,6 +311,340 @@ bool FileSystemAccessWindows::_dir_exists(const String &p_dir) const {
 		return false;
 	}
 	return (fileAttr & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+bool FileSystemAccessWindows::_open_in_terminal(const String &p_path) {
+	return false;
+}
+
+bool FileSystemAccessWindows::_cut(const Vector<String> &p_files) {
+	if (p_files.is_empty()) {
+		return false;
+	}
+
+	Vector<Char16String> files;
+
+	// 打开剪切板
+	if (!OpenClipboard(nullptr)) {
+		return false;
+	}
+
+	// 清空剪切板
+	EmptyClipboard();
+
+	// ========== 1. 设置 CF_HDROP ==========
+
+	// 计算 DROPFILES 结构 + 所有文件路径所需内存大小
+	size_t totalSize = sizeof(DROPFILES);
+	for (const auto &path : p_files) {
+		// print_line("cut: " + path);
+
+		Char16String tmpfile_utf16 = path.utf16();
+		files.push_back(tmpfile_utf16);
+
+		totalSize += (tmpfile_utf16.size() + 1) * sizeof(wchar_t); // 包括 null 分隔符
+	}
+	totalSize += sizeof(wchar_t); // 结尾双 null（实际只需一个额外 null，但安全起见）
+
+	// 分配全局内存（可移动，GMEM_MOVEABLE）
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
+	if (!hMem) {
+		CloseClipboard();
+		return false;
+	}
+
+	// 锁定内存
+	DROPFILES *pDropFiles = static_cast<DROPFILES *>(GlobalLock(hMem));
+	if (!pDropFiles) {
+		GlobalFree(hMem);
+		CloseClipboard();
+		return false;
+	}
+
+	// 初始化 DROPFILES
+	ZeroMemory(pDropFiles, sizeof(DROPFILES));
+	pDropFiles->pFiles = sizeof(DROPFILES); // 偏移量：文件路径起始位置
+	pDropFiles->fWide = TRUE; // 使用宽字符（Unicode）
+
+	// 在 DROPFILES 后面写入文件路径
+	wchar_t *pFileList = reinterpret_cast<wchar_t *>(reinterpret_cast<BYTE *>(pDropFiles) + sizeof(DROPFILES));
+	wchar_t *pCurrent = pFileList;
+
+	for (const auto &path : files) {
+		int size = path.size(); // len = size - 1
+		memcpy(pCurrent, path.ptr(), size * sizeof(wchar_t));
+
+		// wcscpy_s(pCurrent, path.size(), (LPCWSTR)path.get_data());
+		// pCurrent += path.size(); // 移动指针，保留 null 分隔
+		pCurrent += size;
+	}
+
+	// 结尾再加一个 null（表示列表结束）
+	*pCurrent = L'\0';
+
+	// 解锁内存
+	GlobalUnlock(hMem);
+
+	// 设置剪切板数据
+	if (!SetClipboardData(CF_HDROP, hMem)) {
+		GlobalFree(hMem);
+		CloseClipboard();
+		return false;
+	}
+
+	// ========== 2. 设置 "Preferred DropEffect" ==========
+	// 注册格式（通常已预定义，但安全起见）
+	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
+
+	HGLOBAL hEffect = GlobalAlloc(GMEM_MOVEABLE, sizeof(DWORD));
+	if (!hEffect) {
+		CloseClipboard();
+		return false;
+	}
+
+	DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
+	if (!pEffect) {
+		GlobalFree(hEffect);
+		CloseClipboard();
+		return false;
+	}
+
+	*pEffect = DROPEFFECT_MOVE; // 关键：表示“剪切”， DROPEFFECT_COPY;  // 复制
+	GlobalUnlock(hEffect);
+
+	if (!SetClipboardData(cfDropEffect, hEffect)) {
+		GlobalFree(hEffect);
+		CloseClipboard();
+		return false;
+	}
+
+	// 关闭剪切板（不要手动释放 hMem，系统会自动管理）
+	CloseClipboard();
+	return true;
+}
+
+bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
+	if (p_files.is_empty()) {
+		return false;
+	}
+
+	Vector<Char16String> files;
+
+	// 打开剪切板
+	if (!OpenClipboard(nullptr)) {
+		return false;
+	}
+
+	// 清空剪切板
+	EmptyClipboard();
+
+	// 计算 DROPFILES 结构 + 所有文件路径所需内存大小
+	size_t totalSize = sizeof(DROPFILES);
+	for (const auto &path : p_files) {
+		// print_line("copy: " + path);
+
+		Char16String tmpfile_utf16 = path.utf16();
+		files.push_back(tmpfile_utf16);
+
+		totalSize += (tmpfile_utf16.size() + 1) * sizeof(wchar_t); // 包括 null 分隔符
+	}
+	totalSize += sizeof(wchar_t); // 结尾双 null（实际只需一个额外 null，但安全起见）
+
+	// 分配全局内存（可移动，GMEM_MOVEABLE）
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, totalSize);
+	if (!hMem) {
+		CloseClipboard();
+		return false;
+	}
+
+	// 锁定内存
+	DROPFILES *pDropFiles = static_cast<DROPFILES *>(GlobalLock(hMem));
+	if (!pDropFiles) {
+		GlobalFree(hMem);
+		CloseClipboard();
+		return false;
+	}
+
+	// 初始化 DROPFILES
+	ZeroMemory(pDropFiles, sizeof(DROPFILES));
+	pDropFiles->pFiles = sizeof(DROPFILES); // 偏移量：文件路径起始位置
+	pDropFiles->fWide = TRUE; // 使用宽字符（Unicode）
+
+	// 在 DROPFILES 后面写入文件路径
+	wchar_t *pFileList = reinterpret_cast<wchar_t *>(reinterpret_cast<BYTE *>(pDropFiles) + sizeof(DROPFILES));
+	wchar_t *pCurrent = pFileList;
+
+	for (const auto &path : files) {
+		int size = path.size(); // len = size - 1
+		memcpy(pCurrent, path.ptr(), size * sizeof(wchar_t));
+
+		// wcscpy_s(pCurrent, path.size(), (LPCWSTR)path.get_data());
+		// pCurrent += path.size(); // 移动指针，保留 null 分隔
+		pCurrent += size;
+	}
+
+	// 结尾再加一个 null（表示列表结束）
+	*pCurrent = L'\0';
+
+	// 解锁内存
+	GlobalUnlock(hMem);
+
+	// 设置剪切板数据
+	if (!SetClipboardData(CF_HDROP, hMem)) {
+		GlobalFree(hMem);
+		CloseClipboard();
+		return false;
+	}
+
+	// 关闭剪切板（不要手动释放 hMem，系统会自动管理）
+	CloseClipboard();
+	return true;
+}
+
+bool FileSystemAccessWindows::_paste(const String &p_dir) {
+	bool success = false;
+
+	// 确保目标目录存在
+	if (!_dir_exists(p_dir)) {
+		return false;
+	}
+
+	// 打开剪切板
+	if (!OpenClipboard(nullptr)) {
+		return false;
+	}
+
+	// 检查是否有 CF_HDROP 数据
+	if (!IsClipboardFormatAvailable(CF_HDROP)) {
+		return false;
+	}
+
+	HDROP hDrop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
+	if (!hDrop) {
+		CloseClipboard();
+		return false;
+	}
+
+	// 获取文件数量
+	UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+	if (fileCount == 0) {
+		CloseClipboard();
+		return false;
+	}
+
+	// 获取操作类型（复制 or 剪切）
+	DWORD dropEffect = DROPEFFECT_COPY; // 默认复制
+	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
+	HANDLE hEffect = GetClipboardData(cfDropEffect);
+	if (hEffect) {
+		DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
+		if (pEffect) {
+			dropEffect = *pEffect;
+			GlobalUnlock(hEffect);
+		}
+	}
+
+	// 遍历所有文件并执行操作
+	for (UINT i = 0; i < fileCount; ++i) {
+		// 获取源文件路径
+		UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
+		Char16String src_file_utf16;
+		src_file_utf16.resize_uninitialized(pathLen + 1);
+		DragQueryFileW(hDrop, i, (LPWSTR)src_file_utf16.ptr(), pathLen + 1);
+
+		// 构造目标路径（保留原文件名）
+		String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
+		String filename = src_path.get_file();
+		String dest_path = p_dir + "\\" + filename;
+
+		// print_line("paste: " + src_path + "\nto: " + dest_path);
+
+		// 执行操作
+		BOOL result = FALSE;
+		if (dropEffect & DROPEFFECT_MOVE) {
+			// 剪切 = 移动
+			result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
+		} else {
+			// 复制
+			result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
+		}
+
+		if (!result) {
+			DWORD err = GetLastError();
+			// 可选择继续或中止
+		} else {
+			success = true;
+		}
+	}
+
+	CloseClipboard();
+	return success;
+}
+
+Error FileSystemAccessWindows::_rename(String p_path, String p_new_path) {
+	String path = p_path;
+	String new_path = p_new_path;
+
+	// If we're only changing file name case we need to do a little juggling
+	if (path.to_lower() == new_path.to_lower()) {
+		if (_dir_exists(path)) {
+			// The path is a dir; just rename
+			return MoveFileW((LPCWSTR)(path.utf16().get_data()), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
+		}
+		// The path is a file; juggle
+		// Note: do not use GetTempFileNameW, it's not long path aware!
+		Char16String tmpfile_utf16;
+		uint64_t id = OS::get_singleton()->get_ticks_usec();
+		while (true) {
+			tmpfile_utf16 = (path + itos(id++) + ".tmp").utf16();
+			HANDLE handle = CreateFileW((LPCWSTR)tmpfile_utf16.get_data(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (handle != INVALID_HANDLE_VALUE) {
+				CloseHandle(handle);
+				break;
+			}
+			if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_SHARING_VIOLATION) {
+				return FAILED;
+			}
+		}
+
+		if (!::ReplaceFileW((LPCWSTR)tmpfile_utf16.get_data(), (LPCWSTR)(path.utf16().get_data()), nullptr, 0, nullptr, nullptr)) {
+			DeleteFileW((LPCWSTR)tmpfile_utf16.get_data());
+			return FAILED;
+		}
+
+		return MoveFileW((LPCWSTR)tmpfile_utf16.get_data(), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
+
+	} else {
+		// TODO: confirmation dialog
+		if (file_exists(new_path)) {
+			if (remove(new_path) != OK) {
+				return FAILED;
+			}
+		}
+
+		return MoveFileW((LPCWSTR)(path.utf16().get_data()), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
+	}
+}
+
+Error FileSystemAccessWindows::_remove(String p_path) {
+	String path = p_path;
+	const Char16String &path_utf16 = path.utf16();
+
+	DWORD fileAttr;
+
+	fileAttr = GetFileAttributesW((LPCWSTR)(path_utf16.get_data()));
+	if (INVALID_FILE_ATTRIBUTES == fileAttr) {
+		return FAILED;
+	}
+	if ((fileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
+		return RemoveDirectoryW((LPCWSTR)(path_utf16.get_data())) != 0 ? OK : FAILED;
+	} else {
+		return DeleteFileW((LPCWSTR)(path_utf16.get_data())) != 0 ? OK : FAILED;
+	}
+}
+
+bool FileSystemAccessWindows::_new_file(const String &p_dir, const String &p_filename) {
+	return false;
 }
 
 bool FileSystemAccessWindows::is_path_invalid(const String &p_path) {

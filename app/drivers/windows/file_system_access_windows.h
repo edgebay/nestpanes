@@ -23,6 +23,17 @@ protected:
 	virtual bool _file_exists(const String &p_file) const override;
 	virtual bool _dir_exists(const String &p_dir) const override;
 
+	virtual bool _open_in_terminal(const String &p_path) override;
+
+	virtual bool _cut(const Vector<String> &p_files) override;
+	virtual bool _copy(const Vector<String> &p_files) override;
+	virtual bool _paste(const String &p_dir) override;
+
+	virtual Error _rename(String p_path, String p_new_path) override;
+	virtual Error _remove(String p_path) override;
+
+	virtual bool _new_file(const String &p_dir, const String &p_filename) override;
+
 public:
 	static bool is_path_invalid(const String &p_path);
 
