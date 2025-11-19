@@ -339,7 +339,7 @@ bool FileSystemAccessWindows::_cut(const Vector<String> &p_files) {
 	for (const auto &path : p_files) {
 		// print_line("cut: " + path);
 
-		Char16String tmpfile_utf16 = path.utf16();
+		Char16String tmpfile_utf16 = path.replace("/", "\\").utf16();
 		files.push_back(tmpfile_utf16);
 
 		totalSize += (tmpfile_utf16.size() + 1) * sizeof(wchar_t); // 包括 null 分隔符
@@ -443,7 +443,7 @@ bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
 	for (const auto &path : p_files) {
 		// print_line("copy: " + path);
 
-		Char16String tmpfile_utf16 = path.utf16();
+		Char16String tmpfile_utf16 = path.replace("/", "\\").utf16();
 		files.push_back(tmpfile_utf16);
 
 		totalSize += (tmpfile_utf16.size() + 1) * sizeof(wchar_t); // 包括 null 分隔符
@@ -502,8 +502,6 @@ bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
 }
 
 bool FileSystemAccessWindows::_paste(const String &p_dir) {
-	bool success = false;
-
 	// 确保目标目录存在
 	if (!_dir_exists(p_dir)) {
 		return false;
@@ -516,6 +514,37 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 
 	// 检查是否有 CF_HDROP 数据
 	if (!IsClipboardFormatAvailable(CF_HDROP)) {
+		return false;
+	}
+
+	// IFileOperation
+	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+	if (FAILED(hr)) {
+		return false;
+	}
+
+	bool success = false;
+	IFileOperation *pfo = nullptr;
+	IShellItem *pTargetFolder = nullptr;
+	Vector<IShellItem *> sourceItems;
+
+	// 1. 创建 IFileOperation
+	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL,
+			IID_PPV_ARGS(&pfo));
+	if (FAILED(hr)) {
+		print_line("COM init failed: " + itos(hr));
+		return false;
+	}
+
+	// 2. 设置不显示 UI（设为 TRUE 可显示进度、冲突对话框）
+	// pfo->SetOperationFlags(FOF_NO_UI); // 默认是 FOF_NO_UI = 0，即显示 UI
+	// 若希望静默操作，取消注释下一行：
+	// pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
+
+	// 3. 获取目标文件夹 IShellItem
+	String dir = p_dir.replace("/", "\\");
+	hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
+	if (FAILED(hr)) {
 		return false;
 	}
 
@@ -554,6 +583,24 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 
 		// 构造目标路径（保留原文件名）
 		String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
+		print_line("paste: " + src_path + " to: " + dir);
+
+#if 1
+		IShellItem *pItem = nullptr;
+		hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
+		if (SUCCEEDED(hr)) {
+			sourceItems.push_back(pItem);
+			if (dropEffect & DROPEFFECT_MOVE) {
+				hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
+			} else {
+				hr = pfo->CopyItem(pItem, pTargetFolder, nullptr, nullptr);
+			}
+		}
+
+		if (FAILED(hr)) {
+			break;
+		}
+#else
 		String filename = src_path.get_file();
 		String dest_path = p_dir + "\\" + filename;
 
@@ -575,7 +622,35 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 		} else {
 			success = true;
 		}
+#endif
 	}
+
+	if (SUCCEEDED(hr)) {
+		// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
+		hr = pfo->PerformOperations();
+		if (FAILED(hr)) {
+			print_line("perform operations failed: " + itos(hr));
+		}
+
+		// 8. 检查是否成功完成
+		BOOL anyOperationsAborted = FALSE;
+		hr = pfo->GetAnyOperationsAborted(&anyOperationsAborted);
+		if (SUCCEEDED(hr) && !anyOperationsAborted) {
+			success = true;
+		}
+	}
+
+	// 清理资源
+	for (IShellItem *item : sourceItems) {
+		item->Release();
+	}
+	if (pTargetFolder) {
+		pTargetFolder->Release();
+	}
+	if (pfo) {
+		pfo->Release();
+	}
+	CoUninitialize();
 
 	CloseClipboard();
 	return success;
