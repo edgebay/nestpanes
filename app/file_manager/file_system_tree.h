@@ -72,6 +72,8 @@ private:
 	void _tree_rmb_select(const Vector2 &p_pos, MouseButton p_button);
 	void _tree_item_collapsed(TreeItem *p_item);
 
+	virtual Vector<String> _get_selected() const override;
+
 	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 	void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
 
@@ -86,11 +88,15 @@ protected:
 	virtual void _set_file_menu_item(PopupMenu *p_popup) override;
 	virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
 
+	void _item_edited();
+
 	void _notification(int p_what);
 
 	static void _bind_methods();
 
 public:
+	virtual bool edit_selected(const FileOrFolder &p_selected) override;
+
 	Vector<String> get_selected_paths() const;
 	Vector<String> get_uncollapsed_paths() const;
 

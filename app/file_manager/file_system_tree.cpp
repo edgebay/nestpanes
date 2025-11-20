@@ -48,6 +48,24 @@ FileSystemTreeDirectory::~FileSystemTreeDirectory() {
 	}
 }
 
+void FileSystemTree::_item_edited() {
+	TreeItem *ti = tree->get_edited();
+	int col_index = tree->get_edited_column();
+	String new_name = ti->get_text(col_index).strip_edges();
+
+	Dictionary d = ti->get_metadata(0);
+	if (_rename_operation_confirm(new_name)) {
+		String new_path = ((String)d["path"]).get_base_dir().path_join(new_name);
+		d["name"] = new_name;
+		d["path"] = new_path;
+		ti->set_metadata(0, d);
+
+		ti->set_icon(0, FileSystemAccess::get_icon(new_path, d["is_dir"]));
+	} else {
+		ti->set_text(0, d["name"]);
+	}
+}
+
 void FileSystemTree::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
@@ -131,6 +149,7 @@ void FileSystemTree::_create_tree(TreeItem *p_parent, const FileSystemTreeDirect
 	subdirectory_item->set_selectable(0, true);
 
 	Dictionary d;
+	d["name"] = dname;
 	d["path"] = lpath;
 	d["is_dir"] = true;
 	d["data"] = p_dir;
@@ -183,6 +202,7 @@ void FileSystemTree::_create_tree_item(TreeItem *p_parent, const FileInfo *p_fil
 	// }
 	file_item->set_selectable(0, true);
 	Dictionary d;
+	d["name"] = p_file_info->name;
 	d["path"] = file_metadata;
 	d["is_dir"] = false;
 	file_item->set_metadata(0, d);
@@ -359,11 +379,35 @@ void FileSystemTree::_tree_item_collapsed(TreeItem *p_item) {
 	}
 }
 
+Vector<String> FileSystemTree::_get_selected() const {
+	// Build a list of selected items with the active one at the first position.
+	Vector<String> selected_strings;
+
+	TreeItem *cursor_item = tree->get_selected();
+	if (cursor_item && cursor_item->is_selected(0)) {
+		Dictionary d = cursor_item->get_metadata(0);
+		selected_strings.push_back(d["path"]);
+	}
+
+	TreeItem *selected = tree->get_root();
+	selected = tree->get_next_selected(selected);
+	while (selected) {
+		if (selected != cursor_item && selected->is_visible_in_tree()) {
+			Dictionary d = selected->get_metadata(0);
+			selected_strings.push_back(d["path"]);
+		}
+		selected = tree->get_next_selected(selected);
+	}
+
+	return selected_strings;
+}
+
 void FileSystemTree::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
 	if (p_button != MouseButton::RIGHT) {
 		return;
 	}
 
+	tree->deselect_all();
 	popup_menu(p_pos, MENU_MODE_EMPTY);
 }
 
@@ -493,6 +537,20 @@ void FileSystemTree::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
 }
 
+bool FileSystemTree::edit_selected(const FileOrFolder &p_selected) {
+	bool result = tree->edit_selected(true);
+
+	if (p_selected.is_file) {
+		String name = p_selected.path.get_file();
+		tree->set_editor_selection(0, name.rfind_char('.'));
+	} else {
+		String name = p_selected.path.get_file();
+		tree->set_editor_selection(0, name.length());
+	}
+
+	return result;
+}
+
 Vector<String> FileSystemTree::get_selected_paths() const {
 	// Build a list of selected items with the active one at the first position.
 	Vector<String> selected_strings;
@@ -609,7 +667,7 @@ FileSystemTree::FileSystemTree() {
 	// tree->connect("nothing_selected", callable_mp(this, &FileSystemTree::_tree_empty_selected));
 	// tree->connect(SceneStringName(gui_input), callable_mp(this, &FileSystemTree::_tree_gui_input));
 	// tree->connect(SceneStringName(mouse_exited), callable_mp(this, &FileSystemTree::_tree_mouse_exited));
-	// tree->connect("item_edited", callable_mp(this, &FileSystemTree::_rename_operation_confirm));
+	tree->connect("item_edited", callable_mp(this, &FileSystemTree::_item_edited));
 
 	home_path = COMPUTER_PATH;
 

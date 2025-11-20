@@ -43,8 +43,8 @@ protected:
 	virtual bool _copy(const Vector<String> &p_files) = 0;
 	virtual bool _paste(const String &p_dir) = 0;
 
-	virtual Error _rename(String p_path, String p_new_path) = 0;
-	virtual Error _remove(String p_path) = 0;
+	virtual Error _rename(const String &p_path, const String &p_new_path) = 0;
+	virtual Error _remove(const String &p_path) = 0;
 
 	virtual bool _new_file(const String &p_dir, const String &p_filename) = 0;
 
@@ -84,8 +84,8 @@ public:
 	// TODO: static bool can_paste();?
 	static bool paste(const String &p_dir);
 
-	static Error rename(String p_path, String p_new_path);
-	static Error remove(String p_path);
+	static Error rename(const String &p_path, const String &p_new_path);
+	static Error remove(const String &p_path);
 
 	static bool new_file(const String &p_dir, const String &p_filename);
 

@@ -85,6 +85,9 @@ void FileSystemControl::_item_menu_id_pressed(int p_option) {
 			String path;
 			if (!p_selected.is_empty()) {
 				path = p_selected[0];
+				if (FileSystemAccess::file_exists(path)) {
+					path = path.get_base_dir();
+				}
 			} else {
 				path = _get_path();
 			}
@@ -94,6 +97,18 @@ void FileSystemControl::_item_menu_id_pressed(int p_option) {
 			}
 		} break;
 
+		case FILE_MENU_RENAME: {
+			if (!p_selected.is_empty()) {
+				print_line(p_selected[0]);
+
+				// Set to_rename variable for callback execution.
+				to_rename.path = p_selected[0];
+				to_rename.is_file = FileSystemAccess::file_exists(to_rename.path);
+				edit_selected(to_rename);
+			}
+		} break;
+
+		// FILE_MENU_DELETE
 		case FILE_MENU_REMOVE: {
 			// Remove the selected files.
 			for (const auto &path : p_selected) {
@@ -118,6 +133,40 @@ void FileSystemControl::_set_menu_item(PopupMenu *p_popup, MenuMode p_mode) {
 			_set_folder_menu_item(p_popup);
 			break;
 	}
+}
+
+bool FileSystemControl::_rename_operation_confirm(const String &p_new_name) {
+	String new_name = p_new_name;
+	String old_name = to_rename.path.get_file();
+
+	bool rename_error = false;
+	if (new_name.length() == 0) {
+		print_line(TTRC("No name provided."));
+		rename_error = true;
+	} else if (new_name.contains_char('/') || new_name.contains_char('\\') || new_name.contains_char(':')) {
+		print_line(TTRC("Name contains invalid characters."));
+		rename_error = true;
+	} else if (new_name[0] == '.') {
+		print_line(TTRC("This filename begins with a dot rendering the file invisible to the editor.\nIf you want to rename it anyway, use your operating system's file manager."));
+		rename_error = true;
+	}
+
+	// TODO
+	// // Restore original name.
+	// if (rename_error) {
+	// 	if (ti) {
+	// 		ti->set_text(col_index, old_name);
+	// 	}
+	// 	return rename_error;
+	// }
+
+	String old_path = to_rename.path;
+	String new_path = old_path.get_base_dir().path_join(new_name);
+	if (old_path == new_path) {
+		return false;
+	}
+
+	return FileSystemAccess::rename(old_path, new_path) == OK; // TODO: error handle
 }
 
 void FileSystemControl::set_current_path(const String &p_path) {

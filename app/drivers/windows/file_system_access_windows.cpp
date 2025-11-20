@@ -652,56 +652,78 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 	}
 	CoUninitialize();
 
-	CloseClipboard();
+	CloseClipboard(); // TODO: error handle
 	return success;
 }
 
-Error FileSystemAccessWindows::_rename(String p_path, String p_new_path) {
-	String path = p_path;
-	String new_path = p_new_path;
+Error FileSystemAccessWindows::_rename(const String &p_path, const String &p_new_path) {
+	bool success = false;
+	String old_path = p_path.replace("/", "\\");
+	String new_path = p_new_path.replace("/", "\\");
+	print_line("rename: " + old_path + " to: " + new_path);
 
-	// If we're only changing file name case we need to do a little juggling
-	if (path.to_lower() == new_path.to_lower()) {
-		if (_dir_exists(path)) {
-			// The path is a dir; just rename
-			return MoveFileW((LPCWSTR)(path.utf16().get_data()), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
-		}
-		// The path is a file; juggle
-		// Note: do not use GetTempFileNameW, it's not long path aware!
-		Char16String tmpfile_utf16;
-		uint64_t id = OS::get_singleton()->get_ticks_usec();
-		while (true) {
-			tmpfile_utf16 = (path + itos(id++) + ".tmp").utf16();
-			HANDLE handle = CreateFileW((LPCWSTR)tmpfile_utf16.get_data(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
-			if (handle != INVALID_HANDLE_VALUE) {
-				CloseHandle(handle);
-				break;
-			}
-			if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_SHARING_VIOLATION) {
-				return FAILED;
-			}
-		}
-
-		if (!::ReplaceFileW((LPCWSTR)tmpfile_utf16.get_data(), (LPCWSTR)(path.utf16().get_data()), nullptr, 0, nullptr, nullptr)) {
-			DeleteFileW((LPCWSTR)tmpfile_utf16.get_data());
-			return FAILED;
-		}
-
-		return MoveFileW((LPCWSTR)tmpfile_utf16.get_data(), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
-
-	} else {
-		// TODO: confirmation dialog
-		if (file_exists(new_path)) {
-			if (remove(new_path) != OK) {
-				return FAILED;
-			}
-		}
-
-		return MoveFileW((LPCWSTR)(path.utf16().get_data()), (LPCWSTR)(new_path.utf16().get_data())) != 0 ? OK : FAILED;
+	DWORD fileAttr;
+	fileAttr = GetFileAttributesW((LPCWSTR)(new_path.utf16().get_data()));
+	if (INVALID_FILE_ATTRIBUTES != fileAttr) {
+		return ERR_ALREADY_EXISTS; // TODO: dialog
 	}
+
+	// 初始化COM
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
+		return ERR_CANT_CREATE; // TODO: ERROR
+	}
+
+	IFileOperation *pFileOp = nullptr;
+	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pFileOp));
+	if (SUCCEEDED(hr) && pFileOp) {
+		// 设置操作标志
+		DWORD flags = FOFX_REQUIREELEVATION | // 需要权限时提示
+											  // FOF_NOCONFIRMATION | // 禁用所有确认对话框
+											  // FOF_SILENT | // 静默模式
+				FOFX_NOSKIPJUNCTIONS; // 正确处理符号链接
+		hr = pFileOp->SetOperationFlags(flags);
+		if (SUCCEEDED(hr)) {
+			IShellItem *pShellItem = nullptr;
+			hr = SHCreateItemFromParsingName(
+					(PCWSTR)(old_path.utf16().get_data()),
+					nullptr,
+					IID_PPV_ARGS(&pShellItem));
+			if (SUCCEEDED(hr) && pShellItem) {
+				// 执行重命名
+				hr = pFileOp->RenameItem(
+						pShellItem,
+						(LPCWSTR)(new_path.utf16().get_data()),
+						nullptr);
+
+				if (SUCCEEDED(hr)) {
+					hr = pFileOp->PerformOperations();
+					if (FAILED(hr)) {
+						print_line("perform operations failed: " + itos(hr));
+					}
+
+					// 8. 检查是否成功完成
+					BOOL anyOperationsAborted = FALSE;
+					hr = pFileOp->GetAnyOperationsAborted(&anyOperationsAborted);
+					if (SUCCEEDED(hr) && !anyOperationsAborted) {
+						print_line("rename success");
+						success = true;
+					}
+				}
+
+				pShellItem->Release();
+			}
+		}
+
+		pFileOp->Release();
+	}
+
+	CoUninitialize();
+
+	return success ? OK : FAILED;
 }
 
-Error FileSystemAccessWindows::_remove(String p_path) {
+Error FileSystemAccessWindows::_remove(const String &p_path) {
 	String path = p_path;
 	const Char16String &path_utf16 = path.utf16();
 

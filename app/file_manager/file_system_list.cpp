@@ -31,8 +31,7 @@ void FileSystemList::_add_item(const FileInfo &p_fi, bool p_is_dir) {
 	Dictionary d;
 	d["name"] = p_fi.name;
 	d["path"] = p_fi.path;
-	d["dir"] = p_is_dir;
-	d["bundle"] = false; // only macOS
+	d["is_dir"] = p_is_dir;
 	item_list->set_item_metadata(-1, d);
 }
 
@@ -102,6 +101,7 @@ void FileSystemList::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) 
 		return;
 	}
 
+	item_list->deselect_all();
 	popup_menu(p_pos, MENU_MODE_EMPTY);
 }
 
@@ -112,7 +112,7 @@ void FileSystemList::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton
 
 	Dictionary d = item_list->get_item_metadata(p_item);
 
-	if (d["dir"]) {
+	if (d["is_dir"]) {
 		popup_menu(p_pos, MENU_MODE_FOLDER);
 	} else {
 		popup_menu(p_pos, MENU_MODE_FILE);
@@ -127,7 +127,7 @@ void FileSystemList::_item_dc_selected(int p_item) {
 
 	Dictionary d = item_list->get_item_metadata(current);
 
-	if (d["dir"]) {
+	if (d["is_dir"]) {
 		change_path(d["path"]);
 	} else {
 		// TODO: open_file()/run_file()
@@ -424,6 +424,10 @@ void FileSystemList::_set_folder_menu_item(PopupMenu *p_popup) {
 
 	p_popup->add_item(RTR("Delete"), FILE_MENU_DELETE);
 	p_popup->add_item(RTR("Rename"), FILE_MENU_RENAME);
+}
+
+bool FileSystemList::edit_selected(const FileOrFolder &p_selected) {
+	return false;
 }
 
 FileSystemList::FileSystemList() {

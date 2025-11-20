@@ -72,7 +72,20 @@ public:
 		MENU_MODE_FOLDER,
 	};
 
+	class FileOrFolder {
+	public:
+		String path;
+		bool is_file = false;
+
+		FileOrFolder() {}
+		FileOrFolder(const String &p_path, bool p_is_file) :
+				path(p_path),
+				is_file(p_is_file) {}
+	};
+
 private:
+	FileOrFolder to_rename;
+
 	PopupMenu *item_menu = nullptr;
 
 	String current_path = "";
@@ -104,6 +117,8 @@ protected:
 	virtual void _set_folder_menu_item(PopupMenu *p_popup) {}
 	virtual void _set_menu_item(PopupMenu *p_popup, MenuMode p_mode);
 
+	bool _rename_operation_confirm(const String &p_new_name);
+
 	void _notification(int p_what);
 
 public:
@@ -115,6 +130,8 @@ public:
 	String get_current_path() const;
 	virtual String get_current_dir_name() const;
 	virtual Ref<Texture2D> get_current_dir_icon() const;
+
+	virtual bool edit_selected(const FileOrFolder &p_selected) { return false; }
 
 	void popup_menu(const Vector2 &p_pos, MenuMode p_mode);
 

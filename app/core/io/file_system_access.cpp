@@ -124,12 +124,12 @@ bool FileSystemAccess::paste(const String &p_dir) {
 	return FileSystemAccess::get_singleton()->_paste(p_dir);
 }
 
-Error FileSystemAccess::rename(String p_path, String p_new_path) {
+Error FileSystemAccess::rename(const String &p_path, const String &p_new_path) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
 	return FileSystemAccess::get_singleton()->_rename(p_path, p_new_path);
 }
 
-Error FileSystemAccess::remove(String p_path) {
+Error FileSystemAccess::remove(const String &p_path) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
 	return FileSystemAccess::get_singleton()->_remove(p_path);
 }

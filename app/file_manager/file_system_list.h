@@ -82,6 +82,8 @@ protected:
 	// void _notification(int p_what);
 
 public:
+	virtual bool edit_selected(const FileOrFolder &p_selected) override;
+
 	FileSystemList();
 	~FileSystemList();
 };

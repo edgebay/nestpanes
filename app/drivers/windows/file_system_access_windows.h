@@ -29,8 +29,8 @@ protected:
 	virtual bool _copy(const Vector<String> &p_files) override;
 	virtual bool _paste(const String &p_dir) override;
 
-	virtual Error _rename(String p_path, String p_new_path) override;
-	virtual Error _remove(String p_path) override;
+	virtual Error _rename(const String &p_path, const String &p_new_path) override;
+	virtual Error _remove(const String &p_path) override;
 
 	virtual bool _new_file(const String &p_dir, const String &p_filename) override;
 
