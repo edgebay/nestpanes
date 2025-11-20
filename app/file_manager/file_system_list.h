@@ -2,20 +2,44 @@
 
 #include "app/gui/file_system_control.h"
 
+#include "scene/gui/item_list.h"
+
 #define LOCAL_HISTORY_MAX 5 // TODO: config
 
 class Button;
 class ConfirmationDialog;
 class HSplitContainer;
 class HBoxContainer;
-class ItemList;
 class LineEdit;
 class MenuButton;
 class OptionButton;
+class Popup;
 class TextureRect;
 class VBoxContainer;
 
 struct FileInfo;
+
+class FileSystemItemList : public ItemList {
+	GDCLASS(FileSystemItemList, ItemList);
+
+	bool popup_edit_committed = true;
+	VBoxContainer *popup_editor_vb = nullptr;
+	Popup *popup_editor = nullptr;
+	LineEdit *line_editor = nullptr;
+
+	virtual Control *make_custom_tooltip(const String &p_text) const override;
+	void _line_editor_submit(const String &p_text);
+	void _text_editor_popup_modal_close();
+
+protected:
+	static void _bind_methods();
+
+public:
+	bool edit_selected();
+	String get_edit_text();
+
+	FileSystemItemList();
+};
 
 class FileSystemList : public FileSystemControl {
 	GDCLASS(FileSystemList, FileSystemControl);
@@ -33,7 +57,7 @@ private:
 	OptionButton *histories = nullptr;
 
 	HSplitContainer *body_hsplit = nullptr;
-	ItemList *item_list = nullptr;
+	FileSystemItemList *item_list = nullptr;
 	TextureRect *preview = nullptr;
 
 	// stat
@@ -78,6 +102,8 @@ protected:
 	virtual void _set_empty_menu_item(PopupMenu *p_popup) override;
 	virtual void _set_file_menu_item(PopupMenu *p_popup) override;
 	virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
+
+	void _item_edited();
 
 	// void _notification(int p_what);
 
