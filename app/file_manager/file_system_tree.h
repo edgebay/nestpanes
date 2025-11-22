@@ -52,7 +52,7 @@ private:
 	Tree *tree = nullptr;
 
 	bool updating_tree = false;
-	TreeItem *collapsed_changed_item = nullptr;
+	List<TreeItem *> collapsed_changed_items;
 
 	String home_path;
 	String selected_path;
@@ -78,6 +78,7 @@ private:
 	void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
 
 	void _scan_dir(FileSystemTreeDirectory *r_dir, const String &p_path, bool p_scan_subdirs = false);
+	void _scan_and_create_tree_items(TreeItem *p_parent);
 
 	void _initialize_filesystem();
 
@@ -99,6 +100,9 @@ public:
 
 	Vector<String> get_selected_paths() const;
 	Vector<String> get_uncollapsed_paths() const;
+
+	virtual void save_layout_to_config(Ref<ConfigFile> p_layout, const String &p_section) const override;
+	virtual void load_layout_from_config(Ref<ConfigFile> p_layout, const String &p_section) override;
 
 	FileSystemTree();
 	~FileSystemTree();

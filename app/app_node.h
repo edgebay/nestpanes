@@ -15,6 +15,8 @@ class VSplitContainer;
 class AppTabContainer;
 class FileSystemControl;
 
+class Timer;
+
 class AppNode : public Node {
 	GDCLASS(AppNode, Node);
 
@@ -36,6 +38,8 @@ private:
 	AppTabContainer *left_sidebar = nullptr;
 	AppTabContainer *main_screen = nullptr;
 
+	Vector<FileSystemControl *> file_system_controls;
+
 	Ref<Theme> theme;
 
 	// Timer *system_theme_timer = nullptr;
@@ -44,6 +48,10 @@ private:
 	bool last_dark_mode_state = false;
 	Color last_system_base_color = Color(0, 0, 0, 0);
 	Color last_system_accent_color = Color(0, 0, 0, 0);
+
+	Timer *layout_save_delay_timer = nullptr;
+
+	bool load_layout_done = false;
 
 	void _update_theme(bool p_skip_creation = false);
 
@@ -54,11 +62,17 @@ private:
 	// void _on_tree_item_selected(TreeItem *p_item);
 	void _on_tree_item_selected(const String &p_path, bool is_dir);
 
+	String _get_config_path() const;
+	void _save_layout();
+	void _load_layout();
+
 protected:
 	void _notification(int p_what);
 
 public:
 	static AppNode *get_singleton() { return singleton; }
+
+	void save_layout_delayed();
 
 	AppNode();
 	~AppNode();

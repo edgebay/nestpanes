@@ -1,5 +1,7 @@
 #include "file_system_tree.h"
 
+#include "core/io/config_file.h"
+
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/line_edit.h"
@@ -73,31 +75,10 @@ void FileSystemTree::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_PROCESS: {
-			if (collapsed_changed_item != nullptr) {
-				Dictionary d = collapsed_changed_item->get_metadata(0);
-				String dir_path = d["path"];
+			while (collapsed_changed_items.front()) {
+				_scan_and_create_tree_items(collapsed_changed_items.front()->get());
 
-				// create tree item for sub dir
-				FileSystemTreeDirectory *fs = Object::cast_to<FileSystemTreeDirectory>(d["data"]);
-				updating_tree = true;
-				for (int i = 0; i < collapsed_changed_item->get_child_count(); i++) {
-					TreeItem *item = collapsed_changed_item->get_child(i);
-					// TODO: record item index in FileSystemTreeDirectory? use get_index()
-					for (FileSystemTreeDirectory *sub_dir : fs->subdirs) {
-						if (!sub_dir->scanned && sub_dir->info.name == item->get_text(0)) {
-							_scan_dir(sub_dir, sub_dir->info.path);
-							for (FileSystemTreeDirectory *new_dir : sub_dir->subdirs) {
-								_create_tree(item, new_dir);
-							}
-							for (FileInfo *file : sub_dir->files) {
-								_create_tree_item(item, file);
-							}
-						}
-					}
-				}
-				updating_tree = false;
-
-				collapsed_changed_item = nullptr;
+				collapsed_changed_items.pop_front();
 			}
 		} break;
 
@@ -366,6 +347,7 @@ void FileSystemTree::_tree_item_collapsed(TreeItem *p_item) {
 	if (updating_tree) {
 		return;
 	}
+	emit_signal(SNAME("item_collapsed"));
 
 	print_line("item collapsed changed: " + String(p_item->get_metadata(0)));
 	if (!p_item->is_collapsed()) {
@@ -373,7 +355,7 @@ void FileSystemTree::_tree_item_collapsed(TreeItem *p_item) {
 		FileSystemTreeDirectory *fs = Object::cast_to<FileSystemTreeDirectory>(d["data"]);
 		for (FileSystemTreeDirectory *sub_dir : fs->subdirs) {
 			if (!sub_dir->scanned) {
-				collapsed_changed_item = p_item;
+				collapsed_changed_items.push_back(p_item);
 			}
 		}
 	}
@@ -452,6 +434,29 @@ void FileSystemTree::_scan_dir(FileSystemTreeDirectory *r_dir, const String &p_p
 		r_dir->files.push_back(fi);
 	}
 	r_dir->scanned = true;
+}
+
+void FileSystemTree::_scan_and_create_tree_items(TreeItem *p_parent) {
+	Dictionary d = p_parent->get_metadata(0);
+
+	// scan and create tree item for sub dir
+	FileSystemTreeDirectory *fs = Object::cast_to<FileSystemTreeDirectory>(d["data"]);
+	updating_tree = true;
+	for (int i = 0; i < p_parent->get_child_count(); i++) {
+		TreeItem *item = p_parent->get_child(i);
+		for (FileSystemTreeDirectory *sub_dir : fs->subdirs) {
+			if (!sub_dir->scanned && sub_dir->info.name == item->get_text(0)) {
+				_scan_dir(sub_dir, sub_dir->info.path);
+				for (FileSystemTreeDirectory *new_dir : sub_dir->subdirs) {
+					_create_tree(item, new_dir);
+				}
+				for (FileInfo *file : sub_dir->files) {
+					_create_tree_item(item, file);
+				}
+			}
+		}
+	}
+	updating_tree = false;
 }
 
 void FileSystemTree::_initialize_filesystem() {
@@ -535,6 +540,7 @@ void FileSystemTree::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_activated", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
 	// ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::OBJECT, "item", PROPERTY_HINT_RESOURCE_TYPE, "TreeItem")));
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
+	ADD_SIGNAL(MethodInfo("item_collapsed"));
 }
 
 bool FileSystemTree::edit_selected(const FileOrFolder &p_selected) {
@@ -574,30 +580,62 @@ Vector<String> FileSystemTree::get_selected_paths() const {
 
 Vector<String> FileSystemTree::get_uncollapsed_paths() const {
 	Vector<String> uncollapsed_paths;
-	// TreeItem *root = tree->get_root();
-	// if (root) {
-	// 	// BFS to find all uncollapsed paths of the resource directory.
-	// 	TreeItem *res_subtree = root->get_first_child()->get_next();
-	// 	if (res_subtree) {
-	// 		List<TreeItem *> queue;
-	// 		queue.push_back(res_subtree);
+	TreeItem *root = tree->get_root();
+	if (root) {
+		// BFS to find all uncollapsed paths of the file system directory.
+		TreeItem *filesystem_subtree = root->get_first_child();
+		if (filesystem_subtree) {
+			List<TreeItem *> queue;
+			queue.push_back(filesystem_subtree);
 
-	// 		while (!queue.is_empty()) {
-	// 			TreeItem *ti = queue.back()->get();
-	// 			queue.pop_back();
-	// 			if (!ti->is_collapsed() && ti->get_child_count() > 0) {
-	// 				Variant path = ti->get_metadata(0);
-	// 				if (path) {
-	// 					uncollapsed_paths.push_back(path);
-	// 				}
-	// 			}
-	// 			for (int i = 0; i < ti->get_child_count(); i++) {
-	// 				queue.push_back(ti->get_child(i));
-	// 			}
-	// 		}
-	// 	}
-	// }
+			while (!queue.is_empty()) {
+				TreeItem *ti = queue.back()->get();
+				queue.pop_back();
+				if (!ti->is_collapsed() && ti->get_child_count() > 0) {
+					Dictionary d = ti->get_metadata(0);
+					uncollapsed_paths.push_back(d["path"]);
+				}
+				for (int i = 0; i < ti->get_child_count(); i++) {
+					queue.push_back(ti->get_child(i));
+				}
+			}
+		}
+	}
 	return uncollapsed_paths;
+}
+
+void FileSystemTree::save_layout_to_config(Ref<ConfigFile> p_layout, const String &p_section) const {
+	Vector<String> uncollapsed_paths = get_uncollapsed_paths();
+	print_line("uncollapsed_paths: " + itos(uncollapsed_paths.size()));
+	p_layout->set_value(p_section, "dock_filesystem_uncollapsed_paths", uncollapsed_paths);
+}
+
+void FileSystemTree::load_layout_from_config(Ref<ConfigFile> p_layout, const String &p_section) {
+	// Restore collapsed state.
+	PackedStringArray uncollapsed_paths;
+	if (p_layout->has_section_key(p_section, "dock_filesystem_uncollapsed_paths")) {
+		uncollapsed_paths = p_layout->get_value(p_section, "dock_filesystem_uncollapsed_paths");
+	}
+
+	if (!uncollapsed_paths.is_empty()) {
+		for (int i = 0; i < uncollapsed_paths.size(); i++) {
+			String uncollapsed_path = String(uncollapsed_paths[i]);
+
+			// TODO: Scan all paths, including those with unexpanded parent directories.
+			for (TreeItem *current = tree->get_root(); current; current = current->get_next_in_tree()) {
+				Dictionary d = current->get_metadata(0);
+				if (uncollapsed_path == (String)d["path"]) {
+					_scan_and_create_tree_items(current);
+					updating_tree = true;
+					current->set_collapsed(false);
+					updating_tree = false;
+					break;
+				}
+			}
+		}
+		// // _update_tree(uncollapsed_paths);
+		// tree->queue_redraw();
+	}
 }
 
 FileSystemTree::FileSystemTree() {

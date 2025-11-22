@@ -4,6 +4,8 @@
 
 class PopupMenu;
 
+class ConfigFile;
+
 // class FileSystemMenu : public PopupMenu {
 // 	GDCLASS(FileSystemMenu, PopupMenu);
 
@@ -134,6 +136,9 @@ public:
 	virtual bool edit_selected(const FileOrFolder &p_selected) { return false; }
 
 	void popup_menu(const Vector2 &p_pos, MenuMode p_mode);
+
+	virtual void save_layout_to_config(Ref<ConfigFile> p_layout, const String &p_section) const {}
+	virtual void load_layout_from_config(Ref<ConfigFile> p_layout, const String &p_section) {}
 
 	FileSystemControl();
 	virtual ~FileSystemControl();
