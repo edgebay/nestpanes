@@ -70,9 +70,9 @@ void FileSystemAccess::destroy() {
 	singleton = Ref<FileSystemAccess>();
 }
 
-Ref<Texture2D> FileSystemAccess::get_icon(const String &p_file_path, bool p_is_dir) {
+Ref<Texture2D> FileSystemAccess::get_icon(const String &p_file_path, bool p_is_dir, bool p_is_hidden) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), Ref<Texture2D>(), "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_get_icon(p_file_path, p_is_dir);
+	return FileSystemAccess::get_singleton()->_get_icon(p_file_path, p_is_dir, p_is_hidden);
 }
 
 Error FileSystemAccess::list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort) {

@@ -10,7 +10,7 @@
 #include <shlobj.h> // for DROPFILES
 
 // 将 HICON 转换为 Image（RGBA8 格式）
-Ref<Image> _icon_to_image(HICON hIcon) {
+Ref<Image> _icon_to_image(HICON hIcon, float p_alpha_multiplier = 1) {
 	if (!hIcon) {
 		return Ref<Image>();
 	}
@@ -72,6 +72,12 @@ Ref<Image> _icon_to_image(HICON hIcon) {
 		uint8_t r = data[i + 2];
 		uint8_t a = data[i + 3];
 
+		if (a != 0 && p_alpha_multiplier < 1) {
+			// 调整 alpha 值
+			float new_alpha = a * p_alpha_multiplier;
+			a = CLAMP((int)new_alpha, 0, 255);
+		}
+
 		// 转换为 RGBA8
 		data[i + 0] = r;
 		data[i + 1] = g;
@@ -123,7 +129,7 @@ Ref<Texture2D> FileSystemAccessWindows::_get_this_pc_icon() const {
 	return ImageTexture::create_from_image(img);
 }
 
-Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, bool p_is_dir) const {
+Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, bool p_is_dir, bool p_is_hidden) const {
 	if (p_file_path == COMPUTER_PATH) {
 		return _get_this_pc_icon();
 	}
@@ -134,7 +140,7 @@ Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, boo
 
 	// 请求获取图标（大图标）
 	DWORD res = SHGetFileInfo(
-			p_file_path.utf8().get_data(),
+			(p_file_path.utf8().get_data()),
 			file_attributes,
 			&sfi,
 			sizeof(sfi),
@@ -150,7 +156,11 @@ Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, boo
 	}
 
 	// 转换为 Image
-	Ref<Image> img = _icon_to_image(sfi.hIcon);
+	float alpha_multiplier = 1;
+	if (p_is_hidden) {
+		alpha_multiplier = 0.6;
+	}
+	Ref<Image> img = _icon_to_image(sfi.hIcon, alpha_multiplier);
 
 	// 销毁 HICON（必须）
 	DestroyIcon(sfi.hIcon);
@@ -180,7 +190,12 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 		return FAILED;
 	}
 	while (FindNextFileW(h, &fu)) {
+		if (fu.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) {
+			continue;
+		}
+
 		bool is_dir = (fu.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+		bool is_hidden = (fu.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
 
 		String name = String::utf16((const char16_t *)(fu.cFileName));
 		if (name == "." || name == "..") {
@@ -191,7 +206,7 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 		file_info.name = name;
 		file_info.path = p_dir.path_join(name);
 
-		file_info.icon = _get_icon(file_info.path, is_dir);
+		file_info.icon = _get_icon(file_info.path, is_dir, is_hidden);
 
 		// FILETIME ft_create, ft_write;
 		// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);

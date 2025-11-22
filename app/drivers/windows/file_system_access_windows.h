@@ -14,7 +14,7 @@ private:
 protected:
 	virtual Ref<Texture2D> _get_this_pc_icon() const;
 
-	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false) const override;
+	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false) const override;
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const override;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
 
