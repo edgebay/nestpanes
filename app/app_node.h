@@ -14,6 +14,8 @@ class VSplitContainer;
 
 class AppTabContainer;
 class FileSystemControl;
+class FileSystemTree;
+class FileSystemList;
 
 class Timer;
 
@@ -24,21 +26,27 @@ private:
 	static AppNode *singleton;
 
 	Control *gui_base = nullptr;
+	Node *gui_main = nullptr;
 	VBoxContainer *main_vbox = nullptr;
 
 	HBoxContainer *title_bar = nullptr;
 
-	// Split containers.
-	HSplitContainer *left_hsplit = nullptr;
-	HSplitContainer *right_hsplit = nullptr;
+	// // Split containers.
+	// HSplitContainer *left_hsplit = nullptr;
+	// HSplitContainer *right_hsplit = nullptr;
 
-	SplitContainer *left_split = nullptr;
-	SplitContainer *center_split = nullptr;
+	// SplitContainer *left_split = nullptr;
+	// SplitContainer *center_split = nullptr;
+	// SplitContainer *right_split = nullptr;
 
 	AppTabContainer *left_sidebar = nullptr;
 	AppTabContainer *main_screen = nullptr;
 
-	Vector<FileSystemControl *> file_system_controls;
+	List<AppTabContainer *> tab_containers;
+
+	// List<FileSystemControl *> file_system_controls;
+	List<FileSystemTree *> file_system_trees;
+	List<FileSystemList *> file_system_lists;
 
 	Ref<Theme> theme;
 
@@ -65,6 +73,10 @@ private:
 	String _get_config_path() const;
 	void _save_layout();
 	void _load_layout();
+
+	String _get_main_scene_path() const;
+	Error _parse_node(Node *p_node);
+	bool _load_main_scene();
 
 protected:
 	void _notification(int p_what);

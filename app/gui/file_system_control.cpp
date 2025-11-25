@@ -25,6 +25,11 @@ bool FileSystemControl::change_path(const String &p_path) {
 }
 
 void FileSystemControl::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_current_path", "current_path"), &FileSystemControl::set_current_path);
+	ClassDB::bind_method(D_METHOD("get_current_path"), &FileSystemControl::get_current_path);
+
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "current_path"), "set_current_path", "get_current_path");
+
 	// ADD_SIGNAL(MethodInfo("path_changed", PropertyInfo(Variant::STRING, "path")));
 	ADD_SIGNAL(MethodInfo("path_changed", PropertyInfo(Variant::OBJECT, "fs")));
 }
@@ -58,6 +63,7 @@ void FileSystemControl::_update_file_ui_method() {
 }
 
 void FileSystemControl::update_file_ui() {
+	// TODO: update ui when visible
 	if (!is_visible() || updating_file_ui) {
 		return;
 	}

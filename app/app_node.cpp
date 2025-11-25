@@ -14,6 +14,8 @@
 
 #include "scene/main/scene_tree.h"
 
+#include "scene/resources/packed_scene.h"
+
 #include "scene/theme/theme_db.h"
 
 #include "servers/display_server.h"
@@ -69,7 +71,9 @@ int AppNode::_new_tab(AppTabContainer *p_parent) {
 	FileSystemList *file_system_list = memnew(FileSystemList);
 	file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
 	p_parent->add_child(file_system_list);
-	file_system_controls.push_back(file_system_list);
+	// file_system_list->set_name("file_system_list");
+	file_system_list->set_owner(gui_main);
+	file_system_lists.push_back(file_system_list);
 
 	String path = file_system_list->get_current_path();
 	String title = path.get_file();
@@ -98,6 +102,8 @@ void AppNode::_on_tab_path_changed(FileSystemControl *p_fs) {
 	int tab_index = main_screen->get_current_tab();
 	main_screen->set_tab_icon(tab_index, p_fs->get_current_dir_icon());
 	main_screen->set_tab_title(tab_index, title);
+
+	_save_layout();
 }
 
 void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
@@ -127,16 +133,46 @@ void AppNode::_save_layout() {
 	if (!load_layout_done) {
 		return;
 	}
+
+	Ref<PackedScene> sdata;
+	sdata.instantiate();
+	Error err = sdata->pack(gui_main);
+	if (err != OK) {
+		// show_accept(TTR("Couldn't save scene. Likely dependencies (instances or inheritance) couldn't be satisfied."), TTR("OK"));
+		return;
+	}
+
+	int flg = 0;
+	flg |= ResourceSaver::FLAG_REPLACE_SUBRESOURCE_PATHS;
+
+	String scene_path = _get_main_scene_path();
+	err = ResourceSaver::save(sdata, scene_path, flg);
+	// if (err == OK) {
+	// 	scene->set_scene_file_path(ProjectSettings::get_singleton()->localize_path(p_file));
+	// 	editor_data.set_scene_as_saved(idx);
+	// 	editor_data.set_scene_modified_time(idx, FileAccess::get_modified_time(p_file));
+
+	// 	editor_folding.save_scene_folding(scene, p_file);
+
+	// 	_update_title();
+	// 	scene_tabs->update_scene_tabs();
+	// } else {
+	// 	_dialog_display_save_error(p_file, err);
+	// }
+
 	Ref<ConfigFile> config;
 	String config_path = _get_config_path();
 	config.instantiate();
 	// Load and amend existing config if it exists.
 	config->load(config_path);
 
-	for (auto control : file_system_controls) {
-		print_line(control);
+	for (auto control : file_system_trees) { // TODO: file_system_lists
 		control->save_layout_to_config(config, "docks");
 	}
+	// for (int i = 0; i < file_system_controls.size(); i++) {
+	// 	FileSystemControl *control = file_system_controls[i];
+	// 	control->save_layout_to_config(config, "file_system_" + itos(i));
+	// }
 
 	// _save_open_scenes_to_config(config);
 	// _save_central_editor_layout_to_config(config);
@@ -171,7 +207,7 @@ void AppNode::_load_layout() {
 	} else {
 		// ep.step(TTR("Loading docks..."), 1, true);
 		// editor_dock_manager->load_docks_from_config(config, "docks", true);
-		for (auto control : file_system_controls) {
+		for (auto control : file_system_trees) {
 			control->load_layout_from_config(config, "docks");
 		}
 
@@ -189,14 +225,95 @@ void AppNode::_load_layout() {
 	load_layout_done = true;
 }
 
+String AppNode::_get_main_scene_path() const {
+	return AppPaths::get_singleton()->get_config_dir().path_join("app_scene.tscn");
+}
+
+Error AppNode::_parse_node(Node *p_node) {
+	if (Object::cast_to<AppTabContainer>(p_node)) {
+		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
+		tab_containers.push_back(container);
+	} else if (Object::cast_to<FileSystemTree>(p_node)) {
+		FileSystemTree *control = Object::cast_to<FileSystemTree>(p_node);
+		file_system_trees.push_back(control);
+	} else if (Object::cast_to<FileSystemList>(p_node)) {
+		FileSystemList *control = Object::cast_to<FileSystemList>(p_node);
+		file_system_lists.push_back(control);
+	}
+
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		Node *c = p_node->get_child(i);
+		Error err = _parse_node(c);
+		if (err) {
+			tab_containers.clear();
+			file_system_trees.clear();
+			file_system_lists.clear();
+			return err;
+		}
+	}
+
+	return OK;
+}
+
+bool AppNode::_load_main_scene() {
+	String scene_path = _get_main_scene_path();
+	Ref<PackedScene> sdata = ResourceLoader::load(scene_path, "", ResourceFormatLoader::CACHE_MODE_REPLACE_DEEP);
+	if (sdata.is_null()) {
+		return false;
+	}
+
+	sdata->set_path(scene_path, true); // Take over path.
+
+	Node *new_scene = sdata->instantiate(PackedScene::GEN_EDIT_STATE_DISABLED);
+	if (!new_scene) {
+		return false;
+	}
+	new_scene->set_scene_instance_state(Ref<SceneState>());
+
+	Error err = _parse_node(new_scene);
+	if (err == OK && !tab_containers.is_empty()) {
+		main_screen = tab_containers.front()->get();
+
+		for (auto container : tab_containers) {
+			container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
+
+			// Update tab icon and text
+			for (int i = 0; i < container->get_child_count(); i++) {
+				Node *control = container->get_child(i);
+				if (Object::cast_to<FileSystemList>(control)) {
+					FileSystemList *file_system_list = Object::cast_to<FileSystemList>(control);
+					int tab_index = container->get_tab_idx_from_control(file_system_list);
+					String path = file_system_list->get_current_path();
+					String title = path.get_file();
+					if (title.is_empty()) {
+						title = path;
+					}
+					container->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
+					container->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
+					container->set_tab_title(tab_index, title);
+				}
+			}
+		}
+		for (auto control : file_system_trees) {
+			control->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+			control->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
+			control->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
+		}
+		for (auto control : file_system_lists) {
+			control->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
+		}
+
+		gui_main = new_scene;
+		return true;
+	}
+
+	return false;
+}
+
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
 			_load_layout();
-
-			// TODO: file_system_tree
-			// Connect item_collapsed signal after loading the layout
-			file_system_controls[0]->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
 		} break;
 
 		case NOTIFICATION_ENTER_TREE: {
@@ -246,6 +363,7 @@ AppNode::AppNode() {
 	gui_base = memnew(Panel);
 	add_child(gui_base);
 
+	// Take up all screen.
 	gui_base->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 	gui_base->set_anchor(SIDE_RIGHT, Control::ANCHOR_END);
 	gui_base->set_anchor(SIDE_BOTTOM, Control::ANCHOR_END);
@@ -258,33 +376,65 @@ AppNode::AppNode() {
 	title_bar = memnew(HBoxContainer);
 	main_vbox->add_child(title_bar);
 
-	left_hsplit = memnew(HSplitContainer);
-	main_vbox->add_child(left_hsplit);
-	left_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	if (_load_main_scene()) {
+		main_vbox->add_child(gui_main);
+	} else {
+		HSplitContainer *left_hsplit = memnew(HSplitContainer);
+		main_vbox->add_child(left_hsplit);
+		left_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	left_split = memnew(SplitContainer);
-	left_hsplit->add_child(left_split);
+		SplitContainer *left_split = memnew(SplitContainer);
+		left_hsplit->add_child(left_split);
 
-	right_hsplit = memnew(HSplitContainer);
-	left_hsplit->add_child(right_hsplit);
+		HSplitContainer *right_hsplit = memnew(HSplitContainer);
+		left_hsplit->add_child(right_hsplit);
+		right_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		right_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	center_split = memnew(SplitContainer);
-	right_hsplit->add_child(center_split);
-	center_split->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	center_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		// gui_main = memnew(Container);
+		// gui_main->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		// gui_main->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		// right_hsplit->add_child(gui_main);
+		// gui_main->set_name("gui_main");
 
-	main_screen = memnew(AppTabContainer);
-	main_screen->set_new_tab_enabled(true);
-	main_screen->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(main_screen));
-	center_split->add_child(main_screen);
+		gui_main = left_hsplit;
 
-	FileSystemTree *file_system_tree = memnew(FileSystemTree);
-	file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-	file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-	left_split->add_child(file_system_tree);
-	file_system_controls.push_back(file_system_tree);
+		SplitContainer *center_split = memnew(SplitContainer);
+		right_hsplit->add_child(center_split);
+		center_split->set_name("gui_main");
+		// gui_main->add_child(center_split);
+		// center_split->set_name("center_split");
+		// center_split->set_owner(gui_main);
+		center_split->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		center_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	_new_tab(main_screen);
+		left_split->set_owner(gui_main);
+		right_hsplit->set_owner(gui_main);
+		center_split->set_owner(gui_main);
+
+		main_screen = memnew(AppTabContainer);
+		main_screen->set_new_tab_enabled(true);
+		main_screen->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(main_screen));
+		center_split->add_child(main_screen);
+		main_screen->set_name("tab0");
+		main_screen->set_owner(gui_main);
+		tab_containers.push_back(main_screen);
+
+		SplitContainer *right_split = memnew(SplitContainer);
+		right_hsplit->add_child(right_split);
+
+		// Controls
+		FileSystemTree *file_system_tree = memnew(FileSystemTree);
+		file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
+		file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
+		left_split->add_child(file_system_tree);
+		// file_system_tree->set_name("file_system_tree");
+		file_system_tree->set_owner(gui_main);
+		file_system_trees.push_back(file_system_tree);
+
+		_new_tab(main_screen);
+	}
 
 	layout_save_delay_timer = memnew(Timer);
 	add_child(layout_save_delay_timer);

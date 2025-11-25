@@ -96,7 +96,14 @@ void AppTabContainer::_reposition_active_tab(int p_to_index) {
 }
 
 void AppTabContainer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_new_tab_enabled", "new_tab_enabled"), &AppTabContainer::set_new_tab_enabled);
+	ClassDB::bind_method(D_METHOD("get_new_tab_enabled"), &AppTabContainer::get_new_tab_enabled);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "new_tab_enabled"), "set_new_tab_enabled", "get_new_tab_enabled");
+
 	ADD_SIGNAL(MethodInfo("new_tab"));
+
+	ADD_CLASS_DEPENDENCY("Button");
 }
 
 void AppTabContainer::set_new_tab_enabled(bool p_enabled) {
@@ -149,7 +156,7 @@ AppTabContainer::AppTabContainer() {
 	// _tab_bar->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_ALWAYS);
 	_tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	_tab_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	_tab_bar->add_child(tab_add);
+	_tab_bar->add_child(tab_add, false, INTERNAL_MODE_FRONT);
 
 	_tab_bar->connect("tab_close_pressed", callable_mp(this, &AppTabContainer::_on_tab_closed));
 	// _tab_bar->connect("active_tab_rearranged", callable_mp(this, &AppTabContainer::_reposition_active_tab));
