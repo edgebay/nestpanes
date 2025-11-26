@@ -6,6 +6,12 @@
 
 void FileSystemControl::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_VISIBILITY_CHANGED: {
+			if (is_visible() && ui_changed) {
+				update_file_ui();
+			}
+		} break;
+
 		case NOTIFICATION_THEME_CHANGED:
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_TRANSLATION_CHANGED: {
@@ -60,11 +66,12 @@ void FileSystemControl::_update_file_ui_method() {
 	_update_file_ui();
 
 	updating_file_ui = false;
+	ui_changed = false;
 }
 
 void FileSystemControl::update_file_ui() {
-	// TODO: update ui when visible
 	if (!is_visible() || updating_file_ui) {
+		ui_changed = true;
 		return;
 	}
 

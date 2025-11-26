@@ -93,6 +93,7 @@ private:
 	String current_path = "";
 
 	bool updating_file_ui = false;
+	bool ui_changed = false;
 
 protected:
 	virtual void _update_icons() {}
