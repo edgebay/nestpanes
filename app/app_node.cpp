@@ -30,6 +30,7 @@
 #include "app/file_manager/file_system_list.h"
 #include "app/file_manager/file_system_tree.h"
 #include "app/gui/app_tab_container.h"
+#include "app/gui/multi_split_container.h"
 
 AppNode *AppNode::singleton = nullptr;
 
@@ -66,15 +67,66 @@ void AppNode::_update_theme(bool p_skip_creation) {
 	}
 }
 
+void AppNode::_split_menu_id_pressed(int p_option) {
+	if (!selected_tab_container) {
+		return;
+	}
+
+	MultiSplitContainer::SplitDirection direction = MultiSplitContainer::SPLIT_RIGHT;
+	switch (p_option) {
+		case SPLIT_MENU_UP: {
+			direction = MultiSplitContainer::SPLIT_UP;
+		} break;
+
+		case SPLIT_MENU_DOWN: {
+			direction = MultiSplitContainer::SPLIT_DOWN;
+		} break;
+
+		case SPLIT_MENU_LEFT: {
+			direction = MultiSplitContainer::SPLIT_LEFT;
+		} break;
+
+		case SPLIT_MENU_RIGHT: {
+			direction = MultiSplitContainer::SPLIT_RIGHT;
+		} break;
+
+		default:
+			return;
+	}
+
+	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(selected_tab_container->get_parent());
+	AppTabContainer *tab_container = _create_tab_container();
+	split_container->split(tab_container, selected_tab_container, direction);
+	tab_container->set_owner(gui_main); // Note: after add to scene tree
+	_new_tab(tab_container);
+
+	selected_tab_container = nullptr;
+}
+
+void AppNode::_select_tab_container(AppTabContainer *p_tab_container) {
+	selected_tab_container = p_tab_container;
+}
+
+AppTabContainer *AppNode::_create_tab_container() {
+	AppTabContainer *tab_container = memnew(AppTabContainer);
+	tab_container->set_new_tab_enabled(true);
+	tab_container->set_popup(split_menu);
+	tab_container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(tab_container));
+	tab_container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(tab_container));
+	tab_container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(tab_container));
+	tab_containers.push_back(tab_container);
+	return tab_container;
+}
+
 int AppNode::_new_tab(AppTabContainer *p_parent) {
 	int tab_index = p_parent->get_tab_count();
 	FileSystemList *file_system_list = memnew(FileSystemList);
 	file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
 	p_parent->add_child(file_system_list);
-	// file_system_list->set_name("file_system_list");
 	file_system_list->set_owner(gui_main);
 	file_system_lists.push_back(file_system_list);
 
+	// Update tab.
 	String path = file_system_list->get_current_path();
 	String title = path.get_file();
 	if (title.is_empty()) {
@@ -85,31 +137,60 @@ int AppNode::_new_tab(AppTabContainer *p_parent) {
 	p_parent->set_tab_title(tab_index, title);
 	p_parent->set_current_tab(tab_index);
 
+	current_tab_container = p_parent;
+
 	return tab_index;
 }
 
+void AppNode::_tab_container_emptied(AppTabContainer *p_tab_container) {
+	if (tab_containers.size() == 1) {
+		// Last tab container.
+		return;
+	}
+	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_tab_container->get_parent());
+	if (split_container) {
+		split_container->remove(p_tab_container);
+		tab_containers.erase(p_tab_container);
+		p_tab_container->queue_free();
+
+		if (current_tab_container == p_tab_container) {
+			current_tab_container = nullptr;
+		}
+	}
+}
+
 // void AppNode::_on_tab_path_changed(const String &p_path) {
-// 	String title = p_path.get_file();
-// 	if (title.is_empty()) {
-// 		title = p_path;
+// 	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_fs->get_parent());
+// 	if (tab_container) {
+// 		String title = p_path.get_file();
+// 		if (title.is_empty()) {
+// 			title = p_path;
+// 		}
+// 		int tab_index = tab_container->get_current_tab();
+// 		tab_container->set_tab_title(tab_index, title);
 // 	}
-// 	int tab_index = main_screen->get_current_tab();
-// 	main_screen->set_tab_title(tab_index, title);
 // }
 
 void AppNode::_on_tab_path_changed(FileSystemControl *p_fs) {
-	String title = p_fs->get_current_dir_name();
-	int tab_index = main_screen->get_current_tab();
-	main_screen->set_tab_icon(tab_index, p_fs->get_current_dir_icon());
-	main_screen->set_tab_title(tab_index, title);
+	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_fs->get_parent());
+	if (tab_container) {
+		String title = p_fs->get_current_dir_name();
+		int tab_index = tab_container->get_current_tab();
+		tab_container->set_tab_icon(tab_index, p_fs->get_current_dir_icon());
+		tab_container->set_tab_title(tab_index, title);
 
+		current_tab_container = tab_container;
+	}
 	_save_layout();
 }
 
 void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 	if (is_dir) {
-		int tab_index = _new_tab(main_screen);
-		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(main_screen->get_tab_control(tab_index));
+		if (current_tab_container == nullptr) {
+			return;
+		}
+		int tab_index = _new_tab(current_tab_container);
+		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_tab_control(tab_index));
 		file_system_list->set_current_path(p_path);
 	} else {
 		// TODO: FileSystemList::_item_dc_selected
@@ -119,7 +200,10 @@ void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 // void AppNode::_on_tree_item_selected(TreeItem *p_item) {
 void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 	if (is_dir) {
-		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(main_screen->get_current_tab_control());
+		if (current_tab_container == nullptr) {
+			return;
+		}
+		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_current_tab_control());
 		// TODO: handle file item
 		file_system_list->set_current_path(p_path);
 	}
@@ -272,10 +356,11 @@ bool AppNode::_load_main_scene() {
 
 	Error err = _parse_node(new_scene);
 	if (err == OK && !tab_containers.is_empty()) {
-		main_screen = tab_containers.front()->get();
-
 		for (auto container : tab_containers) {
+			container->set_popup(split_menu);
+			container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(container));
 			container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
+			container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
 
 			// Update tab icon and text
 			for (int i = 0; i < container->get_child_count(); i++) {
@@ -376,6 +461,14 @@ AppNode::AppNode() {
 	title_bar = memnew(HBoxContainer);
 	main_vbox->add_child(title_bar);
 
+	split_menu = memnew(PopupMenu);
+	split_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
+	split_menu->add_item(RTR("Split Down"), SPLIT_MENU_DOWN);
+	split_menu->add_item(RTR("Split Left"), SPLIT_MENU_LEFT);
+	split_menu->add_item(RTR("Split Right"), SPLIT_MENU_RIGHT);
+	split_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_split_menu_id_pressed));
+	gui_base->add_child(split_menu);
+
 	if (_load_main_scene()) {
 		main_vbox->add_child(gui_main);
 	} else {
@@ -391,20 +484,10 @@ AppNode::AppNode() {
 		right_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		right_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-		// gui_main = memnew(Container);
-		// gui_main->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		// gui_main->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		// right_hsplit->add_child(gui_main);
-		// gui_main->set_name("gui_main");
-
 		gui_main = left_hsplit;
 
-		SplitContainer *center_split = memnew(SplitContainer);
+		MultiSplitContainer *center_split = memnew(MultiSplitContainer);
 		right_hsplit->add_child(center_split);
-		center_split->set_name("gui_main");
-		// gui_main->add_child(center_split);
-		// center_split->set_name("center_split");
-		// center_split->set_owner(gui_main);
 		center_split->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		center_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
@@ -412,13 +495,10 @@ AppNode::AppNode() {
 		right_hsplit->set_owner(gui_main);
 		center_split->set_owner(gui_main);
 
-		main_screen = memnew(AppTabContainer);
-		main_screen->set_new_tab_enabled(true);
-		main_screen->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(main_screen));
-		center_split->add_child(main_screen);
-		main_screen->set_name("tab0");
-		main_screen->set_owner(gui_main);
-		tab_containers.push_back(main_screen);
+		AppTabContainer *tab_container = _create_tab_container();
+		center_split->split(tab_container);
+		tab_container->set_owner(gui_main);
+		_new_tab(tab_container);
 
 		SplitContainer *right_split = memnew(SplitContainer);
 		right_hsplit->add_child(right_split);
@@ -429,11 +509,8 @@ AppNode::AppNode() {
 		file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
 		file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
 		left_split->add_child(file_system_tree);
-		// file_system_tree->set_name("file_system_tree");
 		file_system_tree->set_owner(gui_main);
 		file_system_trees.push_back(file_system_tree);
-
-		_new_tab(main_screen);
 	}
 
 	layout_save_delay_timer = memnew(Timer);

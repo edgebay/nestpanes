@@ -1203,6 +1203,12 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_constant("strikethrough_alpha", "RichTextLabel", 50);
 
 	// Containers
+	theme->set_icon("h_grabber", "MultiSplitContainer", icons["hsplitter"]);
+	theme->set_icon("v_grabber", "MultiSplitContainer", icons["vsplitter"]);
+	theme->set_constant("separation", "MultiSplitContainer", Math::round(12 * scale));
+	theme->set_constant("minimum_grab_thickness", "MultiSplitContainer", Math::round(6 * scale));
+	theme->set_constant("autohide", "MultiSplitContainer", 1);
+	theme->set_stylebox("split_bar_background", "MultiSplitContainer", make_empty_stylebox(0, 0, 0, 0));
 
 	theme->set_color("touch_dragger_color", "SplitContainer", Color(1, 1, 1, 0.3));
 	theme->set_color("touch_dragger_pressed_color", "SplitContainer", Color(1, 1, 1, 1));

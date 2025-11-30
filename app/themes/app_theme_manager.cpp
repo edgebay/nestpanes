@@ -1238,6 +1238,10 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_constant("v_separation", "VFlowContainer", p_config.separation_margin);
 
 		// SplitContainer.
+		p_theme->set_icon("h_grabber", "MultiSplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), AppStringName(AppIcons)));
+		p_theme->set_icon("v_grabber", "MultiSplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), AppStringName(AppIcons)));
+		p_theme->set_constant("separation", "MultiSplitContainer", p_config.separation_margin);
+		p_theme->set_constant("minimum_grab_thickness", "MultiSplitContainer", p_config.increased_margin * APP_SCALE);
 
 		p_theme->set_icon("h_grabber", "SplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), AppStringName(AppIcons)));
 		p_theme->set_icon("v_grabber", "SplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), AppStringName(AppIcons)));

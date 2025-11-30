@@ -54,6 +54,9 @@ void AppTabContainer::_on_tab_closed(int p_tab) {
 		remove_child(control);
 		control->queue_free();
 	}
+	if (get_child_count(false) == 0) {
+		emit_signal(SNAME("emptied"));
+	}
 }
 
 void AppTabContainer::_on_resized() {
@@ -102,6 +105,7 @@ void AppTabContainer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "new_tab_enabled"), "set_new_tab_enabled", "get_new_tab_enabled");
 
 	ADD_SIGNAL(MethodInfo("new_tab"));
+	ADD_SIGNAL(MethodInfo("emptied"));
 
 	ADD_CLASS_DEPENDENCY("Button");
 }

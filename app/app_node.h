@@ -8,14 +8,12 @@
 class Control;
 class HBoxContainer;
 class VBoxContainer;
-class SplitContainer;
-class HSplitContainer;
-class VSplitContainer;
 
 class AppTabContainer;
 class FileSystemControl;
 class FileSystemTree;
 class FileSystemList;
+class PopupMenu;
 
 class Timer;
 
@@ -23,6 +21,13 @@ class AppNode : public Node {
 	GDCLASS(AppNode, Node);
 
 private:
+	enum SplitMenu {
+		SPLIT_MENU_UP,
+		SPLIT_MENU_DOWN,
+		SPLIT_MENU_LEFT,
+		SPLIT_MENU_RIGHT
+	};
+
 	static AppNode *singleton;
 
 	Control *gui_base = nullptr;
@@ -31,20 +36,12 @@ private:
 
 	HBoxContainer *title_bar = nullptr;
 
-	// // Split containers.
-	// HSplitContainer *left_hsplit = nullptr;
-	// HSplitContainer *right_hsplit = nullptr;
-
-	// SplitContainer *left_split = nullptr;
-	// SplitContainer *center_split = nullptr;
-	// SplitContainer *right_split = nullptr;
-
-	AppTabContainer *left_sidebar = nullptr;
-	AppTabContainer *main_screen = nullptr;
+	PopupMenu *split_menu = nullptr;
 
 	List<AppTabContainer *> tab_containers;
+	AppTabContainer *current_tab_container = nullptr;
+	AppTabContainer *selected_tab_container = nullptr;
 
-	// List<FileSystemControl *> file_system_controls;
 	List<FileSystemTree *> file_system_trees;
 	List<FileSystemList *> file_system_lists;
 
@@ -63,7 +60,13 @@ private:
 
 	void _update_theme(bool p_skip_creation = false);
 
+	void _split_menu_id_pressed(int p_option);
+	void _select_tab_container(AppTabContainer *p_tab_container);
+
+	AppTabContainer *_create_tab_container();
 	int _new_tab(AppTabContainer *p_parent);
+	void _tab_container_emptied(AppTabContainer *p_tab_container);
+
 	// void _on_tab_path_changed(const String &p_path);
 	void _on_tab_path_changed(FileSystemControl *p_fs);
 	void _on_tree_item_activated(const String &p_path, bool is_dir);
