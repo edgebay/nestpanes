@@ -73,6 +73,7 @@ private:
 	void _compute_split_offset();
 	int _get_separation() const;
 	void _resort();
+	void _create_sub_split(Control *p_control, Control *p_from, SplitDirection p_direction);
 
 protected:
 	void _notification(int p_what);

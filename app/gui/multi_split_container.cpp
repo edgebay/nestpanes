@@ -159,6 +159,25 @@ void MultiSplitContainer::_resort() {
 	queue_redraw();
 }
 
+void MultiSplitContainer::_create_sub_split(Control *p_control, Control *p_from, SplitDirection p_direction) {
+	// Create a child split container to replace the target child node.
+	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
+	split_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	split_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+	int control_index = p_from->get_index(false);
+	remove_child(p_from);
+	add_child(split_container);
+	move_child(split_container, control_index);
+	Node *owner = get_owner();
+	if (owner) {
+		split_container->set_owner(owner);
+	}
+	print_line("- sub split ", control_index, p_from, p_control);
+
+	split_container->split(p_control, p_from, p_direction);
+}
+
 void MultiSplitContainer::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_SORT_CHILDREN: {
@@ -258,7 +277,12 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 
 	// No child.
 	if (prev_child_count == 0) {
-		add_child(p_control);
+		if (p_from) {
+			add_child(p_from);
+			split(p_control, p_from, p_direction);
+		} else {
+			add_child(p_control);
+		}
 		return;
 	} else if (prev_child_count == 1) {
 		// Set vertical.
@@ -297,7 +321,8 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 						first = p_from;
 						second = p_control;
 					} else {
-						// TODO: new split
+						_create_sub_split(p_control, p_from, p_direction);
+						return;
 					}
 				} else {
 					if (p_direction == SPLIT_LEFT) {
@@ -313,7 +338,8 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 						first = p_from;
 						second = p_control;
 					} else {
-						// TODO: new split
+						_create_sub_split(p_control, p_from, p_direction);
+						return;
 					}
 				}
 			}
@@ -348,8 +374,27 @@ void MultiSplitContainer::remove(Control *p_control) {
 		remove_child(p_control);
 		print_line("remove last child ", this);
 
+		// TODO: use child_order_changed
 		emit_signal(SNAME("emptied"));
 		return;
+	} else if (child_count == 2) {
+		// Replace itself with its last child in the parent split container.
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(get_parent());
+		if (split_container) {
+			remove_child(p_control);
+
+			Control *c = as_sortable_control(get_child(0, false), SortableVisibilityMode::VISIBLE);
+			remove_child(c);
+
+			int index_in_parent = get_index(false);
+			split_container->remove_child(this);
+			split_container->add_child(c);
+			split_container->move_child(c, index_in_parent);
+			queue_free();
+
+			print_line("- sub child ", index_in_parent, this, c);
+			return;
+		}
 	}
 
 	for (int i = 0; i < child_count; i++) {
