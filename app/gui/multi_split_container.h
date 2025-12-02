@@ -26,7 +26,8 @@ private:
 public:
 	virtual CursorShape get_cursor_shape(const Point2 &p_pos = Point2i()) const override;
 
-	int get_offset() const { return split_offset; }
+	void set_split_offset(int p_offset) { split_offset = p_offset; }
+	int get_split_offset() const { return split_offset; }
 
 	MultiSplitContainerDragger();
 };
@@ -58,7 +59,7 @@ private:
 
 	struct DraggerComparator {
 		bool operator()(const MultiSplitContainerDragger *p_a, const MultiSplitContainerDragger *p_b) const {
-			return p_a->get_offset() < p_b->get_offset();
+			return p_a->get_split_offset() < p_b->get_split_offset();
 		}
 	};
 
@@ -78,14 +79,18 @@ private:
 	void _resort();
 	void _create_sub_split(Control *p_control, Control *p_from, SplitDirection p_direction);
 
+	void _clear_draggers();
+
 protected:
 	void _notification(int p_what);
-	void _validate_property(PropertyInfo &p_property) const;
 	static void _bind_methods();
 
 public:
 	void set_vertical(bool p_vertical);
 	bool is_vertical() const;
+
+	void set_split_offsets(TypedArray<int> p_offsets);
+	TypedArray<int> get_split_offsets() const;
 
 	virtual Size2 get_minimum_size() const override;
 

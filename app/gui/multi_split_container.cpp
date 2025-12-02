@@ -154,16 +154,13 @@ int MultiSplitContainer::_get_separation() const {
 }
 
 void MultiSplitContainer::_resort() {
+	// TODO: check child_count and draggers.size()
+
 	int child_count = get_child_count(false); // TODO: sortable
 	print_line("child count: ", itos(child_count), get_size());
 
 	if (child_count == 0) {
-		if (!draggers.is_empty()) {
-			for (auto dragger : draggers) {
-				dragger->queue_free();
-			}
-			draggers.clear();
-		}
+		_clear_draggers();
 		return;
 	} else if (child_count == 1) {
 		Control *control = as_sortable_control(get_child(0, false), SortableVisibilityMode::VISIBLE);
@@ -241,13 +238,30 @@ void MultiSplitContainer::_create_sub_split(Control *p_control, Control *p_from,
 	remove_child(p_from);
 	add_child(split_container);
 	move_child(split_container, control_index);
-	Node *owner = get_owner();
-	if (owner) {
-		split_container->set_owner(owner);
-	}
 	print_line("- sub split ", control_index, p_from, p_control);
 
+	Node *owner = get_owner();
+	split_container->set_owner(owner);
 	split_container->split(p_control, p_from, p_direction);
+
+	// Reset owner.
+	p_from->set_owner(owner);
+	// TODO: check child type?
+	for (int i = 0; i < p_from->get_child_count(false); i++) {
+		Node *child = p_from->get_child(i, false);
+		child->set_owner(owner);
+	}
+}
+
+void MultiSplitContainer::_clear_draggers() {
+	if (draggers.is_empty()) {
+		return;
+	}
+
+	for (auto dragger : draggers) {
+		dragger->queue_free();
+	}
+	draggers.clear();
 }
 
 void MultiSplitContainer::_notification(int p_what) {
@@ -267,23 +281,38 @@ void MultiSplitContainer::_notification(int p_what) {
 	}
 }
 
-void MultiSplitContainer::_validate_property(PropertyInfo &p_property) const {
-	if (p_property.name == "vertical") {
-		p_property.usage = PROPERTY_USAGE_NONE;
-	}
-}
-
 void MultiSplitContainer::set_vertical(bool p_vertical) {
-	if (vertical == p_vertical) {
-		return;
-	}
+	// if (vertical == p_vertical) {
+	// 	return;
+	// }
 	vertical = p_vertical;
-	update_minimum_size();
-	_resort();
+	// update_minimum_size();
+	// _resort();
 }
 
 bool MultiSplitContainer::is_vertical() const {
 	return vertical;
+}
+
+void MultiSplitContainer::set_split_offsets(TypedArray<int> p_offsets) {
+	_clear_draggers();
+
+	for (int i = 0; i < p_offsets.size(); i++) {
+		MultiSplitContainerDragger *dragging_area_control = memnew(MultiSplitContainerDragger);
+		add_child(dragging_area_control, false, Node::INTERNAL_MODE_BACK);
+		draggers.push_back(dragging_area_control);
+
+		dragging_area_control->set_split_offset(p_offsets[i]);
+	}
+	queue_redraw();
+}
+
+TypedArray<int> MultiSplitContainer::get_split_offsets() const {
+	TypedArray<int> offsets;
+	for (auto dragger : draggers) {
+		offsets.push_back(dragger->get_split_offset());
+	}
+	return offsets;
 }
 
 Size2 MultiSplitContainer::get_minimum_size() const {
@@ -439,6 +468,15 @@ void MultiSplitContainer::remove(Control *p_control) {
 			split_container->remove_child(this);
 			split_container->add_child(c);
 			split_container->move_child(c, index_in_parent);
+
+			// Reset owner.
+			Node *owner = split_container->get_owner();
+			c->set_owner(owner);
+			// TODO: check child type?
+			for (int i = 0; i < c->get_child_count(false); i++) {
+				Node *child = c->get_child(i, false);
+				child->set_owner(owner);
+			}
 			queue_free();
 
 			print_line("- sub child ", index_in_parent, this, c);
@@ -465,10 +503,24 @@ void MultiSplitContainer::remove(Control *p_control) {
 }
 
 void MultiSplitContainer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_vertical", "vertical"), &MultiSplitContainer::set_vertical);
+	ClassDB::bind_method(D_METHOD("is_vertical"), &MultiSplitContainer::is_vertical);
+
+	ClassDB::bind_method(D_METHOD("set_split_offsets", "offsets"), &MultiSplitContainer::set_split_offsets);
+	ClassDB::bind_method(D_METHOD("get_split_offsets"), &MultiSplitContainer::get_split_offsets);
+
 	ADD_SIGNAL(MethodInfo("dragged", PropertyInfo(Variant::INT, "offset")));
 	ADD_SIGNAL(MethodInfo("drag_started"));
 	ADD_SIGNAL(MethodInfo("drag_ended"));
 	ADD_SIGNAL(MethodInfo("emptied"));
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "vertical"), "set_vertical", "is_vertical");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "offsets"), "set_split_offsets", "get_split_offsets");
+
+	// ADD_GROUP("Drag Area", "drag_area_");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "drag_area_margin_begin", PROPERTY_HINT_NONE, "suffix:px"), "set_drag_area_margin_begin", "get_drag_area_margin_begin");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "drag_area_margin_end", PROPERTY_HINT_NONE, "suffix:px"), "set_drag_area_margin_end", "get_drag_area_margin_end");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "drag_area_offset", PROPERTY_HINT_NONE, "suffix:px"), "set_drag_area_offset", "get_drag_area_offset");
 
 	BIND_THEME_ITEM(Theme::DATA_TYPE_CONSTANT, MultiSplitContainer, separation);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_CONSTANT, MultiSplitContainer, minimum_grab_thickness);
