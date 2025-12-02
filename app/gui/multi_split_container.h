@@ -10,6 +10,9 @@ class MultiSplitContainerDragger : public Control {
 	Rect2 split_bar_rect;
 	int split_offset = -1;
 
+	int prev_offset = -1;
+	int next_offset = -1;
+
 protected:
 	void _notification(int p_what);
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
@@ -41,14 +44,14 @@ public:
 	};
 
 private:
+	int min_spacing = 10;
+
 	int show_drag_area = false;
 	int drag_area_margin_begin = 0;
 	int drag_area_margin_end = 0;
 	int drag_area_offset = 0;
 	bool vertical = false;
 	bool dragging_enabled = true;
-
-	bool splitting = false;
 
 	Vector<MultiSplitContainerDragger *> draggers;
 	HashMap<Control *, MultiSplitContainerDragger *> split_map;

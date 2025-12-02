@@ -12,6 +12,51 @@ void MultiSplitContainerDragger::gui_input(const Ref<InputEvent> &p_event) {
 	if (sc->get_child_count(false) <= 0 || !sc->dragging_enabled) {
 		return;
 	}
+
+	Ref<InputEventMouseButton> mb = p_event;
+
+	if (mb.is_valid()) {
+		if (mb->get_button_index() == MouseButton::LEFT) {
+			if (mb->is_pressed()) {
+				dragging = true;
+				sc->emit_signal(SNAME("drag_started"));
+				drag_ofs = split_offset;
+				if (sc->vertical) {
+					drag_from = get_transform().xform(mb->get_position()).y;
+				} else {
+					drag_from = get_transform().xform(mb->get_position()).x;
+				}
+			} else {
+				dragging = false;
+				queue_redraw();
+				sc->emit_signal(SNAME("drag_ended"));
+			}
+		}
+	}
+
+	Ref<InputEventMouseMotion> mm = p_event;
+
+	if (mm.is_valid()) {
+		if (!dragging) {
+			return;
+		}
+
+		if (prev_offset < 0 || next_offset <= prev_offset) {
+			return;
+		}
+
+		int min_offset = prev_offset + sc->min_spacing;
+		int max_offset = next_offset - sc->min_spacing;
+		if (max_offset <= min_offset) {
+			return;
+		}
+
+		Vector2i in_parent_pos = get_transform().xform(mm->get_position());
+		split_offset = drag_ofs + ((sc->vertical ? in_parent_pos.y : in_parent_pos.x) - drag_from);
+		split_offset = CLAMP(split_offset, min_offset, max_offset);
+		sc->queue_sort();
+		sc->emit_signal(SNAME("dragged"), split_offset);
+	}
 }
 
 Control::CursorShape MultiSplitContainerDragger::get_cursor_shape(const Point2 &p_pos) const {
@@ -68,14 +113,39 @@ void MultiSplitContainer::_compute_split_offset() {
 	int axis_index = vertical ? 1 : 0;
 	int sep = _get_separation();
 
-	for (KeyValue<Control *, MultiSplitContainerDragger *> &E : split_map) {
-		int split_offset = (E.key->get_size()[axis_index] - sep) * 0.5;
-		E.value->split_offset = E.key->get_position()[axis_index] + split_offset;
-		print_line("compute: ", E.key->get_rect(), E.value->split_offset);
-	}
-	split_map.clear();
+	if (!split_map.is_empty()) {
+		for (KeyValue<Control *, MultiSplitContainerDragger *> &E : split_map) {
+			int split_offset = (E.key->get_size()[axis_index] - sep) * 0.5;
+			E.value->split_offset = E.key->get_position()[axis_index] + split_offset;
+			print_line("compute: ", E.key->get_rect(), E.value->split_offset);
+		}
+		split_map.clear();
 
-	draggers.sort_custom<DraggerComparator>();
+		draggers.sort_custom<DraggerComparator>();
+	}
+
+	int prev_offset = 0;
+	int next_offset = get_size()[axis_index];
+	int dragger_count = draggers.size();
+	if (dragger_count == 0) {
+		return;
+	} else if (dragger_count == 1) {
+		MultiSplitContainerDragger *dragger = draggers[0];
+		dragger->prev_offset = prev_offset;
+		dragger->next_offset = next_offset;
+	} else {
+		MultiSplitContainerDragger *dragger = nullptr;
+		for (int i = 1; i < dragger_count; i++) {
+			MultiSplitContainerDragger *prev_dragger = draggers[i - 1];
+			dragger = draggers[i];
+			prev_dragger->prev_offset = prev_offset;
+			prev_dragger->next_offset = dragger->split_offset;
+
+			prev_offset = prev_dragger->split_offset;
+		}
+		dragger->prev_offset = prev_offset;
+		dragger->next_offset = next_offset;
+	}
 }
 
 int MultiSplitContainer::_get_separation() const {
@@ -88,10 +158,12 @@ void MultiSplitContainer::_resort() {
 	print_line("child count: ", itos(child_count), get_size());
 
 	if (child_count == 0) {
-		for (auto dragger : draggers) {
-			dragger->queue_free();
+		if (!draggers.is_empty()) {
+			for (auto dragger : draggers) {
+				dragger->queue_free();
+			}
+			draggers.clear();
 		}
-		draggers.clear();
 		return;
 	} else if (child_count == 1) {
 		Control *control = as_sortable_control(get_child(0, false), SortableVisibilityMode::VISIBLE);
@@ -292,64 +364,40 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 			vertical = false;
 		}
 	}
+	ERR_FAIL_COND_MSG(p_from == nullptr, vformat("Split failed, from 0x%08X, new 0x%08X.", p_from, p_control));
 
 	// Add control and dragger.
 	int control_index = -1;
-	int from_index = -1;
 	Rect2 rect = Rect2(Vector2(0, 0), get_size());
-	Control *first = nullptr;
-	Control *second = nullptr;
-	if (p_from) {
-		for (int i = 0; i < get_child_count(false); i++) {
-			Control *c = as_sortable_control(get_child(i, false), SortableVisibilityMode::VISIBLE);
-			if (!c) {
-				continue;
-			}
-			if (c == p_from) {
-				rect = p_from->get_rect();
-				if (vertical) {
-					if (p_direction == SPLIT_UP) {
-						control_index = i;
-						from_index = i + 1;
-
-						first = p_control;
-						second = p_from;
-					} else if (p_direction == SPLIT_DOWN) {
-						from_index = i;
-						control_index = i + 1;
-
-						first = p_from;
-						second = p_control;
-					} else {
-						_create_sub_split(p_control, p_from, p_direction);
-						return;
-					}
+	for (int i = 0; i < get_child_count(false); i++) {
+		Control *c = as_sortable_control(get_child(i, false), SortableVisibilityMode::VISIBLE);
+		if (!c) {
+			continue;
+		}
+		if (c == p_from) {
+			rect = p_from->get_rect();
+			if (vertical) {
+				if (p_direction == SPLIT_UP) {
+					control_index = i;
+				} else if (p_direction == SPLIT_DOWN) {
+					control_index = i + 1;
 				} else {
-					if (p_direction == SPLIT_LEFT) {
-						control_index = i;
-						from_index = i + 1;
-
-						first = p_control;
-						second = p_from;
-					} else if (p_direction == SPLIT_RIGHT) {
-						from_index = i;
-						control_index = i + 1;
-
-						first = p_from;
-						second = p_control;
-					} else {
-						_create_sub_split(p_control, p_from, p_direction);
-						return;
-					}
+					_create_sub_split(p_control, p_from, p_direction);
+					return;
+				}
+			} else {
+				if (p_direction == SPLIT_LEFT) {
+					control_index = i;
+				} else if (p_direction == SPLIT_RIGHT) {
+					control_index = i + 1;
+				} else {
+					_create_sub_split(p_control, p_from, p_direction);
+					return;
 				}
 			}
 		}
-	} else {
-		// last child
-		first = Object::cast_to<Control>(get_child(-1, false));
-		second = p_control;
 	}
-	ERR_FAIL_COND_MSG(first == nullptr || second == nullptr, vformat("Split failed, from 0x%08X, new 0x%08X.", p_from, p_control));
+	ERR_FAIL_COND_MSG(control_index < 0, vformat("Split failed, from 0x%08X, new 0x%08X.", p_from, p_control));
 
 	add_child(p_control);
 	// p_control->connect();	// TODO: handle free signal
@@ -371,6 +419,7 @@ void MultiSplitContainer::remove(Control *p_control) {
 	int child_count = get_child_count(false); // TODO: sortable
 	print_line("remove child, count ", child_count, p_control);
 	if (child_count == 1) {
+		// No dragger
 		remove_child(p_control);
 		print_line("remove last child ", this);
 
