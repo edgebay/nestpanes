@@ -64,7 +64,8 @@ private:
 	void _select_tab_container(AppTabContainer *p_tab_container);
 
 	AppTabContainer *_create_tab_container();
-	int _new_tab(AppTabContainer *p_parent);
+	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?
+	int _new_editor(AppTabContainer *p_parent, const String &p_path);
 	void _tab_container_emptied(AppTabContainer *p_tab_container);
 
 	// void _on_tab_path_changed(const String &p_path);

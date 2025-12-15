@@ -9,6 +9,7 @@ env.add_source_files(env.app_sources, "*.cpp")
 
 SConscript("core/SCsub")
 SConscript("drivers/SCsub")
+SConscript("text_editor/SCsub")
 SConscript("file_manager/SCsub")
 SConscript("gui/SCsub")
 SConscript("icons/SCsub")

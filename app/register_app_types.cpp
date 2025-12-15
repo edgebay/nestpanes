@@ -11,6 +11,7 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/file_system_control.h"
 #include "app/gui/multi_split_container.h"
+#include "app/text_editor/text_editor.h"
 
 void register_app_types() {
 	OS::get_singleton()->benchmark_begin_measure("App", "Register Types");
@@ -21,10 +22,13 @@ void register_app_types() {
 	GDREGISTER_CLASS(AppSettings);
 
 	GDREGISTER_CLASS(AppTabContainer);
+	GDREGISTER_CLASS(MultiSplitContainer);
+
+	GDREGISTER_CLASS(TextEditor);
+
 	GDREGISTER_CLASS(FileSystemControl);
 	GDREGISTER_CLASS(FileSystemList);
 	GDREGISTER_CLASS(FileSystemTree);
-	GDREGISTER_CLASS(MultiSplitContainer);
 
 	OS::get_singleton()->benchmark_end_measure("App", "Register Types");
 }

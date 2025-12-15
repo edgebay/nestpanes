@@ -31,6 +31,7 @@
 #include "app/file_manager/file_system_tree.h"
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
+#include "app/text_editor/text_editor.h"
 
 AppNode *AppNode::singleton = nullptr;
 
@@ -120,6 +121,7 @@ AppTabContainer *AppNode::_create_tab_container() {
 
 int AppNode::_new_tab(AppTabContainer *p_parent) {
 	int tab_index = p_parent->get_tab_count();
+
 	FileSystemList *file_system_list = memnew(FileSystemList);
 	file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
 	p_parent->add_child(file_system_list);
@@ -134,6 +136,35 @@ int AppNode::_new_tab(AppTabContainer *p_parent) {
 	}
 	p_parent->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
 	p_parent->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
+	p_parent->set_tab_title(tab_index, title);
+	p_parent->set_current_tab(tab_index);
+
+	current_tab_container = p_parent;
+
+	return tab_index;
+}
+
+int AppNode::_new_editor(AppTabContainer *p_parent, const String &p_path) {
+	int tab_index = p_parent->get_tab_count();
+
+	TextEditor *editor = memnew(TextEditor);
+	// editor->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
+	p_parent->add_child(editor);
+	editor->set_owner(gui_main);
+	// editors.push_back(editor);
+
+	// Ref<TextFile> text_file = edited_res;
+	// editor->get_text_editor()->set_text(text_file->get_text());
+	editor->open_file(p_path);
+
+	// Update tab.
+	String path = p_path;
+	String title = path.get_file();
+	if (title.is_empty()) {
+		title = path;
+	}
+	p_parent->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
+	p_parent->set_tab_icon(tab_index, editor->get_app_theme_icon(SNAME("File")));
 	p_parent->set_tab_title(tab_index, title);
 	p_parent->set_current_tab(tab_index);
 
@@ -193,7 +224,11 @@ void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_tab_control(tab_index));
 		file_system_list->set_current_path(p_path);
 	} else {
+		if (current_tab_container == nullptr) {
+			return;
+		}
 		// TODO: FileSystemList::_item_dc_selected
+		_new_editor(current_tab_container, p_path);
 	}
 }
 
