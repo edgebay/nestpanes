@@ -11,7 +11,7 @@
 
 #include "scene/scene_string_names.h"
 
-#include "app/core/io/file_system_access.h"
+#include "app/app_core/io/file_system_access.h"
 
 Control *FileSystemItemList::make_custom_tooltip(const String &p_text) const {
 	int idx = get_item_at_position(get_local_mouse_position());

@@ -1,7 +1,7 @@
 #include "app_settings.h"
 
-#include "app/core/io/file_system_access.h"
-#include "app/paths/app_paths.h"
+#include "app/app_core/app_paths.h"
+#include "app/app_core/io/file_system_access.h"
 
 #include "core/input/input_event.h"
 #include "core/input/input_map.h"

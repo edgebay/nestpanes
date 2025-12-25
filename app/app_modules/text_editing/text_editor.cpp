@@ -2,7 +2,7 @@
 
 #include "scene/gui/box_container.h"
 
-#include "app/settings/app_settings.h"
+#include "app/app_modules/settings/app_settings.h"
 
 #include "core/io/file_access.h"
 

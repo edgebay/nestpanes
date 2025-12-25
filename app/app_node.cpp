@@ -20,18 +20,18 @@
 
 #include "servers/display_server.h"
 
+#include "app/app_core/app_paths.h"
+#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
-#include "app/paths/app_paths.h"
-#include "app/settings/app_settings.h"
 #include "app/themes/app_theme_manager.h"
 
-#include "app/core/io/file_system_access.h"
+#include "app/app_core/io/file_system_access.h"
 
-#include "app/file_manager/file_system_list.h"
-#include "app/file_manager/file_system_tree.h"
+#include "app/app_modules/file_management/file_system_list.h"
+#include "app/app_modules/file_management/file_system_tree.h"
+#include "app/app_modules/text_editing/text_editor.h"
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
-#include "app/text_editor/text_editor.h"
 
 AppNode *AppNode::singleton = nullptr;
 

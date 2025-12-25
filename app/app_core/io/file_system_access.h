@@ -4,7 +4,7 @@
 
 #include "scene/resources/texture.h"
 
-#include "app/core/io/file_info.h"
+#include "app/app_core/types/file_info.h"
 
 #define COMPUTER_PATH "Computer"
 

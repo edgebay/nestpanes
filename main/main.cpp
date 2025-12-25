@@ -111,8 +111,8 @@
 #endif
 
 #ifdef APP_ENABLED
+#include "app/app_core/app_paths.h"
 #include "app/app_node.h"
-#include "app/paths/app_paths.h"
 #include "app/register_app_types.h"
 #endif
 

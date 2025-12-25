@@ -5,6 +5,9 @@ Import("env")
 
 import app_theme_builders
 
+# Icons
+SConscript("icons/SCsub")
+
 # Fonts
 flist = Glob("#thirdparty/fonts/*.ttf")
 flist.extend(Glob("#thirdparty/fonts/*.otf"))

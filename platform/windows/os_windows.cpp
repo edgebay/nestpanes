@@ -51,7 +51,7 @@
 #include "servers/text_server.h"
 
 #ifdef APP_ENABLED
-#include "app/drivers/windows/file_system_access_windows.h"
+#include "app/app_core/platform/windows/file_system_access_windows.h"
 #endif
 
 #include <avrt.h>

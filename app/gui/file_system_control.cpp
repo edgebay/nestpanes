@@ -2,7 +2,7 @@
 
 #include "scene/gui/popup_menu.h"
 
-#include "app/core/io/file_system_access.h"
+#include "app/app_core/io/file_system_access.h"
 
 void FileSystemControl::_notification(int p_what) {
 	switch (p_what) {
