@@ -7,6 +7,8 @@
 
 class Control;
 class HBoxContainer;
+class MenuBar;
+class MenuButton;
 class VBoxContainer;
 
 class AppTabContainer;
@@ -17,17 +19,101 @@ class PopupMenu;
 
 class Timer;
 
+class AppAbout;
+
 class AppNode : public Node {
 	GDCLASS(AppNode, Node);
 
-private:
-	enum SplitMenu {
+public:
+	enum MenuOptions {
+		// Scene menu.
+		SCENE_NEW_SCENE,
+		SCENE_NEW_INHERITED_SCENE,
+		SCENE_OPEN_SCENE,
+		SCENE_OPEN_PREV,
+		SCENE_OPEN_RECENT,
+		SCENE_SAVE_SCENE,
+		SCENE_SAVE_AS_SCENE,
+		SCENE_SAVE_ALL_SCENES,
+		SCENE_MULTI_SAVE_AS_SCENE,
+		SCENE_QUICK_OPEN,
+		SCENE_QUICK_OPEN_SCENE,
+		SCENE_QUICK_OPEN_SCRIPT,
+		SCENE_UNDO,
+		SCENE_REDO,
+		SCENE_RELOAD_SAVED_SCENE,
+		SCENE_CLOSE,
+		SCENE_QUIT,
+
+		FILE_EXPORT_MESH_LIBRARY,
+
+		// // Project menu.
+		// PROJECT_OPEN_SETTINGS,
+		// PROJECT_FIND_IN_FILES,
+		// PROJECT_VERSION_CONTROL,
+		// PROJECT_EXPORT,
+		// PROJECT_PACK_AS_ZIP,
+		// PROJECT_INSTALL_ANDROID_SOURCE,
+		// PROJECT_OPEN_USER_DATA_FOLDER,
+		// PROJECT_RELOAD_CURRENT_PROJECT,
+		// PROJECT_QUIT_TO_PROJECT_MANAGER,
+
+		// TOOLS_ORPHAN_RESOURCES,
+		// TOOLS_BUILD_PROFILE_MANAGER,
+		// TOOLS_PROJECT_UPGRADE,
+		// TOOLS_CUSTOM,
+
+		// VCS_METADATA,
+		// VCS_SETTINGS,
+
+		// // Editor menu.
+		// EDITOR_OPEN_SETTINGS,
+		// EDITOR_COMMAND_PALETTE,
+		// EDITOR_TAKE_SCREENSHOT,
+		// EDITOR_TOGGLE_FULLSCREEN,
+		// EDITOR_OPEN_DATA_FOLDER,
+		// EDITOR_OPEN_CONFIG_FOLDER,
+		// EDITOR_MANAGE_FEATURE_PROFILES,
+		// EDITOR_MANAGE_EXPORT_TEMPLATES,
+		// EDITOR_CONFIGURE_FBX_IMPORTER,
+
+		// LAYOUT_SAVE,
+		// LAYOUT_DELETE,
+		// LAYOUT_DEFAULT,
+
+		// Help menu.
+		HELP_SEARCH,
+		HELP_DOCS,
+		HELP_FORUM,
+		HELP_COMMUNITY,
+		HELP_COPY_SYSTEM_INFO,
+		HELP_REPORT_A_BUG,
+		HELP_SUGGEST_A_FEATURE,
+		HELP_SEND_DOCS_FEEDBACK,
+		HELP_ABOUT,
+		HELP_SUPPORT_GODOT_DEVELOPMENT,
+
+		// // Update spinner menu.
+		// SPINNER_UPDATE_CONTINUOUSLY,
+		// SPINNER_UPDATE_WHEN_CHANGED,
+		// SPINNER_UPDATE_SPINNER_HIDE,
+
+		// // Non-menu options.
+		// SCENE_TAB_CLOSE,
+		// SAVE_AND_RUN,
+		// SAVE_AND_RUN_MAIN_SCENE,
+		// RESOURCE_SAVE,
+		// RESOURCE_SAVE_AS,
+		// SETTINGS_PICK_MAIN_SCENE,
+
+		// Split menu.
 		SPLIT_MENU_UP,
 		SPLIT_MENU_DOWN,
 		SPLIT_MENU_LEFT,
 		SPLIT_MENU_RIGHT
 	};
 
+private:
 	static AppNode *singleton;
 
 	Control *gui_base = nullptr;
@@ -36,7 +122,25 @@ private:
 
 	HBoxContainer *title_bar = nullptr;
 
+	Control *menu_btn_spacer = nullptr;
+	MenuButton *main_menu_button = nullptr; // TODO: Remove?
+	MenuBar *main_menu_bar = nullptr;
+
+	PopupMenu *file_menu = nullptr;
+	PopupMenu *view_menu = nullptr;
+	// PopupMenu *settings_menu = nullptr;
+	PopupMenu *help_menu = nullptr;
+	// PopupMenu *tool_menu = nullptr;
+
+	// PopupMenu *recent_scenes = nullptr;
+	// String _recent_scene;
+	// List<String> prev_closed_scenes;
+	// String defer_load_scene;
+	// Node *_last_instantiated_scene = nullptr;
+
 	PopupMenu *split_menu = nullptr;
+
+	AppAbout *about = nullptr;
 
 	List<AppTabContainer *> tab_containers;
 	AppTabContainer *current_tab_container = nullptr;
@@ -59,6 +163,13 @@ private:
 	bool load_layout_done = false;
 
 	void _update_theme(bool p_skip_creation = false);
+	Ref<Texture2D> _get_app_theme_native_menu_icon(const StringName &p_name, bool p_global_menu, bool p_dark_mode) const;
+
+	void _check_system_theme_changed();
+
+	void _menu_option(int p_option);
+	void _menu_confirm_current();
+	void _menu_option_confirm(int p_option, bool p_confirmed);
 
 	void _split_menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
@@ -81,6 +192,10 @@ private:
 	String _get_main_scene_path() const;
 	Error _parse_node(Node *p_node);
 	bool _load_main_scene();
+
+	void _update_main_menu_type();
+	void _add_to_main_menu(const String &p_name, PopupMenu *p_menu);
+	void _init_main_menu();
 
 protected:
 	void _notification(int p_what);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/input/shortcut.h"
 #include "core/io/config_file.h"
 #include "core/io/resource.h"
 #include "core/os/thread_safe.h"
@@ -36,6 +37,10 @@ private:
 	HashMap<String, PropertyInfo> hints;
 	HashMap<String, VariantContainer> props;
 	int last_order;
+
+	// Shortcuts
+	mutable HashMap<String, Ref<Shortcut>> shortcuts;
+	HashMap<String, List<Ref<InputEvent>>> builtin_action_overrides;
 
 	bool save_changed_setting = true;
 	bool optimize_save = true; //do not save stuff that came from config but was not set from engine
@@ -90,13 +95,23 @@ public:
 	bool check_changed_settings_in_group(const String &p_setting_prefix) const;
 	void mark_setting_changed(const String &p_setting);
 
+	// Shortcuts
+	void _add_shortcut_default(const String &p_name, const Ref<Shortcut> &p_shortcut);
+	void add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut);
+	bool is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const;
+	Ref<Shortcut> get_shortcut(const String &p_name) const;
+	void get_shortcut_list(List<String> *r_shortcuts);
+
+	void set_builtin_action_override(const String &p_name, const TypedArray<InputEvent> &p_events);
+	const Array get_builtin_action_overrides(const String &p_name) const;
+
 	void notify_changes();
 
 	AppSettings();
 	~AppSettings();
 };
 
-#define APP_SCALE 1.0 // TODO: EDSCALE, APP_SCALE move to AppSettings
+#define APP_SCALE 1.0 // TODO: EDSCALE, APP_SCALE
 
 //not a macro any longer
 
@@ -107,3 +122,31 @@ Variant _APP_DEF(const String &p_setting, const Variant &p_default, bool p_resta
 
 #define APP_GET(m_var) _APP_GET(m_var)
 Variant _APP_GET(const String &p_setting);
+
+#define APP_IS_SHORTCUT(p_name, p_ev) (AppSettings::get_singleton()->is_shortcut(p_name, p_ev))
+Ref<Shortcut> APP_SHORTCUT(const String &p_path, const String &p_name, Key p_keycode = Key::NONE, bool p_physical = false);
+Ref<Shortcut> APP_SHORTCUT_ARRAY(const String &p_path, const String &p_name, const PackedInt32Array &p_keycodes, bool p_physical = false);
+void APP_SHORTCUT_OVERRIDE(const String &p_path, const String &p_feature, Key p_keycode = Key::NONE, bool p_physical = false);
+void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, const PackedInt32Array &p_keycodes, bool p_physical = false);
+Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path);
+
+// TODO: Remove
+#define EDSCALE APP_SCALE
+#define EDITOR_DEF APP_DEF
+
+#define EDITOR_GET APP_GET
+
+#define ED_IS_SHORTCUT APP_IS_SHORTCUT
+#define ED_SHORTCUT APP_SHORTCUT
+#define ED_SHORTCUT_ARRAY APP_SHORTCUT_ARRAY
+#define ED_SHORTCUT_OVERRIDE APP_SHORTCUT_OVERRIDE
+#define ED_SHORTCUT_OVERRIDE_ARRAY APP_SHORTCUT_OVERRIDE_ARRAY
+#define ED_GET_SHORTCUT APP_GET_SHORTCUT
+
+#define EditorStringName AppStringName
+#define EditorIcons AppIcons
+#define EditorStyles AppStyles
+#define EditorFonts AppFonts
+
+Ref<Shortcut> ED_SHORTCUT_AND_COMMAND(const String &p_path, const String &p_name, Key p_keycode = Key::NONE, String p_command = "");
+Ref<Shortcut> ED_SHORTCUT_ARRAY_AND_COMMAND(const String &p_path, const String &p_name, const PackedInt32Array &p_keycodes, String p_command = "");

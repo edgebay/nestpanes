@@ -32,40 +32,40 @@ bool AppSettings::_set(const StringName &p_name, const Variant &p_value) {
 bool AppSettings::_set_only(const StringName &p_name, const Variant &p_value) {
 	_THREAD_SAFE_METHOD_
 
-	// if (p_name == "shortcuts") {
-	// 	Array arr = p_value;
-	// 	for (int i = 0; i < arr.size(); i++) {
-	// 		Dictionary dict = arr[i];
-	// 		String shortcut_name = dict["name"];
+	if (p_name == "shortcuts") {
+		Array arr = p_value;
+		for (int i = 0; i < arr.size(); i++) {
+			Dictionary dict = arr[i];
+			String shortcut_name = dict["name"];
 
-	// 		Array shortcut_events = dict["shortcuts"];
+			Array shortcut_events = dict["shortcuts"];
 
-	// 		Ref<Shortcut> sc;
-	// 		sc.instantiate();
-	// 		sc->set_events(shortcut_events);
-	// 		add_shortcut(shortcut_name, sc);
-	// 	}
+			Ref<Shortcut> sc;
+			sc.instantiate();
+			sc->set_events(shortcut_events);
+			add_shortcut(shortcut_name, sc);
+		}
 
-	// 	return false;
-	// } else if (p_name == "builtin_action_overrides") {
-	// 	Array actions_arr = p_value;
-	// 	for (int i = 0; i < actions_arr.size(); i++) {
-	// 		Dictionary action_dict = actions_arr[i];
+		return false;
+	} else if (p_name == "builtin_action_overrides") {
+		Array actions_arr = p_value;
+		for (int i = 0; i < actions_arr.size(); i++) {
+			Dictionary action_dict = actions_arr[i];
 
-	// 		String action_name = action_dict["name"];
-	// 		Array events = action_dict["events"];
+			String action_name = action_dict["name"];
+			Array events = action_dict["events"];
 
-	// 		InputMap *im = InputMap::get_singleton();
-	// 		im->action_erase_events(action_name);
+			InputMap *im = InputMap::get_singleton();
+			im->action_erase_events(action_name);
 
-	// 		builtin_action_overrides[action_name].clear();
-	// 		for (int ev_idx = 0; ev_idx < events.size(); ev_idx++) {
-	// 			im->action_add_event(action_name, events[ev_idx]);
-	// 			builtin_action_overrides[action_name].push_back(events[ev_idx]);
-	// 		}
-	// 	}
-	// 	return false;
-	// }
+			builtin_action_overrides[action_name].clear();
+			for (int ev_idx = 0; ev_idx < events.size(); ev_idx++) {
+				im->action_add_event(action_name, events[ev_idx]);
+				builtin_action_overrides[action_name].push_back(events[ev_idx]);
+			}
+		}
+		return false;
+	}
 
 	bool changed = false;
 
@@ -99,86 +99,86 @@ bool AppSettings::_set_only(const StringName &p_name, const Variant &p_value) {
 bool AppSettings::_get(const StringName &p_name, Variant &r_ret) const {
 	_THREAD_SAFE_METHOD_
 
-	// if (p_name == "shortcuts") {
-	// 	Array save_array;
-	// 	const HashMap<String, List<Ref<InputEvent>>> &builtin_list = InputMap::get_singleton()->get_builtins();
-	// 	for (const KeyValue<String, Ref<Shortcut>> &shortcut_definition : shortcuts) {
-	// 		Ref<Shortcut> sc = shortcut_definition.value;
+	if (p_name == "shortcuts") {
+		Array save_array;
+		const HashMap<String, List<Ref<InputEvent>>> &builtin_list = InputMap::get_singleton()->get_builtins();
+		for (const KeyValue<String, Ref<Shortcut>> &shortcut_definition : shortcuts) {
+			Ref<Shortcut> sc = shortcut_definition.value;
 
-	// 		if (builtin_list.has(shortcut_definition.key)) {
-	// 			// This shortcut was auto-generated from built in actions: don't save.
-	// 			// If the builtin is overridden, it will be saved in the "builtin_action_overrides" section below.
-	// 			continue;
-	// 		}
+			if (builtin_list.has(shortcut_definition.key)) {
+				// This shortcut was auto-generated from built in actions: don't save.
+				// If the builtin is overridden, it will be saved in the "builtin_action_overrides" section below.
+				continue;
+			}
 
-	// 		Array shortcut_events = sc->get_events();
+			Array shortcut_events = sc->get_events();
 
-	// 		Dictionary dict;
-	// 		dict["name"] = shortcut_definition.key;
-	// 		dict["shortcuts"] = shortcut_events;
+			Dictionary dict;
+			dict["name"] = shortcut_definition.key;
+			dict["shortcuts"] = shortcut_events;
 
-	// 		if (!sc->has_meta("original")) {
-	// 			// Getting the meta when it doesn't exist will return an empty array. If the 'shortcut_events' have been cleared,
-	// 			// we still want save the shortcut in this case so that shortcuts that the user has customized are not reset,
-	// 			// even if the 'original' has not been populated yet. This can happen when calling save() from the Project Manager.
-	// 			save_array.push_back(dict);
-	// 			continue;
-	// 		}
+			if (!sc->has_meta("original")) {
+				// Getting the meta when it doesn't exist will return an empty array. If the 'shortcut_events' have been cleared,
+				// we still want save the shortcut in this case so that shortcuts that the user has customized are not reset,
+				// even if the 'original' has not been populated yet. This can happen when calling save() from the Project Manager.
+				save_array.push_back(dict);
+				continue;
+			}
 
-	// 		Array original_events = sc->get_meta("original");
+			Array original_events = sc->get_meta("original");
 
-	// 		bool is_same = Shortcut::is_event_array_equal(original_events, shortcut_events);
-	// 		if (is_same) {
-	// 			continue; // Not changed from default; don't save.
-	// 		}
+			bool is_same = Shortcut::is_event_array_equal(original_events, shortcut_events);
+			if (is_same) {
+				continue; // Not changed from default; don't save.
+			}
 
-	// 		save_array.push_back(dict);
-	// 	}
-	// 	r_ret = save_array;
-	// 	return true;
-	// } else if (p_name == "builtin_action_overrides") {
-	// 	Array actions_arr;
-	// 	for (const KeyValue<String, List<Ref<InputEvent>>> &action_override : builtin_action_overrides) {
-	// 		const List<Ref<InputEvent>> *defaults = InputMap::get_singleton()->get_builtins().getptr(action_override.key);
-	// 		if (!defaults) {
-	// 			continue;
-	// 		}
+			save_array.push_back(dict);
+		}
+		r_ret = save_array;
+		return true;
+	} else if (p_name == "builtin_action_overrides") {
+		Array actions_arr;
+		for (const KeyValue<String, List<Ref<InputEvent>>> &action_override : builtin_action_overrides) {
+			const List<Ref<InputEvent>> *defaults = InputMap::get_singleton()->get_builtins().getptr(action_override.key);
+			if (!defaults) {
+				continue;
+			}
 
-	// 		List<Ref<InputEvent>> events = action_override.value;
+			List<Ref<InputEvent>> events = action_override.value;
 
-	// 		Dictionary action_dict;
-	// 		action_dict["name"] = action_override.key;
+			Dictionary action_dict;
+			action_dict["name"] = action_override.key;
 
-	// 		// Convert the list to an array, and only keep key events as this is for the app.
-	// 		Array events_arr;
-	// 		for (const Ref<InputEvent> &ie : events) {
-	// 			Ref<InputEventKey> iek = ie;
-	// 			if (iek.is_valid()) {
-	// 				events_arr.append(iek);
-	// 			}
-	// 		}
+			// Convert the list to an array, and only keep key events as this is for the app.
+			Array events_arr;
+			for (const Ref<InputEvent> &ie : events) {
+				Ref<InputEventKey> iek = ie;
+				if (iek.is_valid()) {
+					events_arr.append(iek);
+				}
+			}
 
-	// 		Array defaults_arr;
-	// 		for (const Ref<InputEvent> &default_input_event : *defaults) {
-	// 			if (default_input_event.is_valid()) {
-	// 				defaults_arr.append(default_input_event);
-	// 			}
-	// 		}
+			Array defaults_arr;
+			for (const Ref<InputEvent> &default_input_event : *defaults) {
+				if (default_input_event.is_valid()) {
+					defaults_arr.append(default_input_event);
+				}
+			}
 
-	// 		bool same = Shortcut::is_event_array_equal(events_arr, defaults_arr);
+			bool same = Shortcut::is_event_array_equal(events_arr, defaults_arr);
 
-	// 		// Don't save if same as default.
-	// 		if (same) {
-	// 			continue;
-	// 		}
+			// Don't save if same as default.
+			if (same) {
+				continue;
+			}
 
-	// 		action_dict["events"] = events_arr;
-	// 		actions_arr.push_back(action_dict);
-	// 	}
+			action_dict["events"] = events_arr;
+			actions_arr.push_back(action_dict);
+		}
 
-	// 	r_ret = actions_arr;
-	// 	return true;
-	// }
+		r_ret = actions_arr;
+		return true;
+	}
 
 	const VariantContainer *v = props.getptr(p_name);
 	if (!v) {
@@ -263,8 +263,8 @@ void AppSettings::_get_property_list(List<PropertyInfo> *p_list) const {
 		p_list->push_back(pi);
 	}
 
-	// p_list->push_back(PropertyInfo(Variant::ARRAY, "shortcuts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL)); //do not edit
-	// p_list->push_back(PropertyInfo(Variant::ARRAY, "builtin_action_overrides", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
+	p_list->push_back(PropertyInfo(Variant::ARRAY, "shortcuts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL)); //do not edit
+	p_list->push_back(PropertyInfo(Variant::ARRAY, "builtin_action_overrides", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
 }
 
 void AppSettings::_add_property_info_bind(const Dictionary &p_info) {
@@ -780,6 +780,251 @@ void AppSettings::add_property_hint(const PropertyInfo &p_hint) {
 	hints[p_hint.name] = p_hint;
 }
 
+// Shortcuts
+
+void AppSettings::_add_shortcut_default(const String &p_name, const Ref<Shortcut> &p_shortcut) {
+	shortcuts[p_name] = p_shortcut;
+}
+
+void AppSettings::add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut) {
+	shortcuts[p_name] = p_shortcut;
+	shortcuts[p_name]->set_meta("customized", true);
+}
+
+bool AppSettings::is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const {
+	HashMap<String, Ref<Shortcut>>::ConstIterator E = shortcuts.find(p_name);
+	ERR_FAIL_COND_V_MSG(!E, false, "Unknown Shortcut: " + p_name + ".");
+
+	return E->value->matches_event(p_event);
+}
+
+Ref<Shortcut> AppSettings::get_shortcut(const String &p_name) const {
+	HashMap<String, Ref<Shortcut>>::ConstIterator SC = shortcuts.find(p_name);
+	if (SC) {
+		return SC->value;
+	}
+
+	// If no shortcut with the provided name is found in the list, check the built-in shortcuts.
+	// Use the first item in the action list for the shortcut event, since a shortcut can only have 1 linked event.
+
+	Ref<Shortcut> sc;
+	HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_override = builtin_action_overrides.find(p_name);
+	if (builtin_override) {
+		sc.instantiate();
+		sc->set_events_list(&builtin_override->value);
+		sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
+	}
+
+	// If there was no override, check the default builtins to see if it has an InputEvent for the provided name.
+	if (sc.is_null()) {
+		HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_default = InputMap::get_singleton()->get_builtins_with_feature_overrides_applied().find(p_name);
+		if (builtin_default) {
+			sc.instantiate();
+			sc->set_events_list(&builtin_default->value);
+			sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
+		}
+	}
+
+	if (sc.is_valid()) {
+		// Add the shortcut to the list.
+		shortcuts[p_name] = sc;
+		return sc;
+	}
+
+	return Ref<Shortcut>();
+}
+
+void AppSettings::get_shortcut_list(List<String> *r_shortcuts) {
+	for (const KeyValue<String, Ref<Shortcut>> &E : shortcuts) {
+		r_shortcuts->push_back(E.key);
+	}
+}
+
+Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path) {
+	ERR_FAIL_NULL_V_MSG(AppSettings::get_singleton(), nullptr, "AppSettings not instantiated yet.");
+
+	Ref<Shortcut> sc = AppSettings::get_singleton()->get_shortcut(p_path);
+
+	ERR_FAIL_COND_V_MSG(sc.is_null(), sc, "Used APP_GET_SHORTCUT with invalid shortcut: " + p_path);
+
+	return sc;
+}
+
+void APP_SHORTCUT_OVERRIDE(const String &p_path, const String &p_feature, Key p_keycode, bool p_physical) {
+	if (!AppSettings::get_singleton()) {
+		return;
+	}
+
+	Ref<Shortcut> sc = AppSettings::get_singleton()->get_shortcut(p_path);
+	ERR_FAIL_COND_MSG(sc.is_null(), "Used APP_SHORTCUT_OVERRIDE with invalid shortcut: " + p_path);
+
+	PackedInt32Array arr;
+	arr.push_back((int32_t)p_keycode);
+
+	APP_SHORTCUT_OVERRIDE_ARRAY(p_path, p_feature, arr, p_physical);
+}
+
+void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, const PackedInt32Array &p_keycodes, bool p_physical) {
+	if (!AppSettings::get_singleton()) {
+		return;
+	}
+
+	Ref<Shortcut> sc = AppSettings::get_singleton()->get_shortcut(p_path);
+	ERR_FAIL_COND_MSG(sc.is_null(), "Used APP_SHORTCUT_OVERRIDE_ARRAY with invalid shortcut: " + p_path);
+
+	// Only add the override if the OS supports the provided feature.
+	if (!OS::get_singleton()->has_feature(p_feature)) {
+		if (!(p_feature == "macos" && (OS::get_singleton()->has_feature("web_macos") || OS::get_singleton()->has_feature("web_ios")))) {
+			return;
+		}
+	}
+
+	Array events;
+
+	for (int i = 0; i < p_keycodes.size(); i++) {
+		Key keycode = (Key)p_keycodes[i];
+
+		if (OS::get_singleton()->has_feature("macos") || OS::get_singleton()->has_feature("web_macos") || OS::get_singleton()->has_feature("web_ios")) {
+			// Use Cmd+Backspace as a general replacement for Delete shortcuts on macOS
+			if (keycode == Key::KEY_DELETE) {
+				keycode = KeyModifierMask::META | Key::BACKSPACE;
+			}
+		}
+
+		Ref<InputEventKey> ie;
+		if (keycode != Key::NONE) {
+			ie = InputEventKey::create_reference(keycode, p_physical);
+			events.push_back(ie);
+		}
+	}
+
+	// Override the existing shortcut only if it wasn't customized by the user.
+	if (!sc->has_meta("customized")) {
+		sc->set_events(events);
+	}
+
+	sc->set_meta("original", events.duplicate(true));
+}
+
+Ref<Shortcut> APP_SHORTCUT(const String &p_path, const String &p_name, Key p_keycode, bool p_physical) {
+	PackedInt32Array arr;
+	arr.push_back((int32_t)p_keycode);
+	return APP_SHORTCUT_ARRAY(p_path, p_name, arr, p_physical);
+}
+
+Ref<Shortcut> APP_SHORTCUT_ARRAY(const String &p_path, const String &p_name, const PackedInt32Array &p_keycodes, bool p_physical) {
+	Array events;
+
+	for (int i = 0; i < p_keycodes.size(); i++) {
+		Key keycode = (Key)p_keycodes[i];
+
+		if (OS::get_singleton()->has_feature("macos") || OS::get_singleton()->has_feature("web_macos") || OS::get_singleton()->has_feature("web_ios")) {
+			// Use Cmd+Backspace as a general replacement for Delete shortcuts on macOS
+			if (keycode == Key::KEY_DELETE) {
+				keycode = KeyModifierMask::META | Key::BACKSPACE;
+			}
+		}
+
+		Ref<InputEventKey> ie;
+		if (keycode != Key::NONE) {
+			ie = InputEventKey::create_reference(keycode, p_physical);
+			events.push_back(ie);
+		}
+	}
+
+	if (!AppSettings::get_singleton()) {
+		Ref<Shortcut> sc;
+		sc.instantiate();
+		sc->set_name(p_name);
+		sc->set_events(events);
+		sc->set_meta("original", events.duplicate(true));
+		return sc;
+	}
+
+	Ref<Shortcut> sc = AppSettings::get_singleton()->get_shortcut(p_path);
+	if (sc.is_valid()) {
+		sc->set_name(p_name); //keep name (the ones that come from disk have no name)
+		sc->set_meta("original", events.duplicate(true)); //to compare against changes
+		return sc;
+	}
+
+	sc.instantiate();
+	sc->set_name(p_name);
+	sc->set_events(events);
+	sc->set_meta("original", events.duplicate(true)); //to compare against changes
+	AppSettings::get_singleton()->_add_shortcut_default(p_path, sc);
+
+	return sc;
+}
+
+void AppSettings::set_builtin_action_override(const String &p_name, const TypedArray<InputEvent> &p_events) {
+	List<Ref<InputEvent>> event_list;
+
+	// Override the whole list, since events may have their order changed or be added, removed or edited.
+	InputMap::get_singleton()->action_erase_events(p_name);
+	for (int i = 0; i < p_events.size(); i++) {
+		event_list.push_back(p_events[i]);
+		InputMap::get_singleton()->action_add_event(p_name, p_events[i]);
+	}
+
+	// Check if the provided event array is same as built-in. If it is, it does not need to be added to the overrides.
+	// Note that event order must also be the same.
+	bool same_as_builtin = true;
+	HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_default = InputMap::get_singleton()->get_builtins_with_feature_overrides_applied().find(p_name);
+	if (builtin_default) {
+		const List<Ref<InputEvent>> &builtin_events = builtin_default->value;
+
+		// In the editor we only care about key events.
+		List<Ref<InputEventKey>> builtin_key_events;
+		for (Ref<InputEventKey> iek : builtin_events) {
+			if (iek.is_valid()) {
+				builtin_key_events.push_back(iek);
+			}
+		}
+
+		if (p_events.size() == builtin_key_events.size()) {
+			int event_idx = 0;
+
+			// Check equality of each event.
+			for (const Ref<InputEventKey> &E : builtin_key_events) {
+				if (!E->is_match(p_events[event_idx])) {
+					same_as_builtin = false;
+					break;
+				}
+				event_idx++;
+			}
+		} else {
+			same_as_builtin = false;
+		}
+	}
+
+	if (same_as_builtin && builtin_action_overrides.has(p_name)) {
+		builtin_action_overrides.erase(p_name);
+	} else {
+		builtin_action_overrides[p_name] = event_list;
+	}
+
+	// Update the shortcut (if it is used somewhere in the editor) to be the first event of the new list.
+	if (shortcuts.has(p_name)) {
+		shortcuts[p_name]->set_events_list(&event_list);
+	}
+}
+
+const Array AppSettings::get_builtin_action_overrides(const String &p_name) const {
+	HashMap<String, List<Ref<InputEvent>>>::ConstIterator AO = builtin_action_overrides.find(p_name);
+	if (AO) {
+		Array event_array;
+
+		List<Ref<InputEvent>> events_list = AO->value;
+		for (const Ref<InputEvent> &E : events_list) {
+			event_array.push_back(E);
+		}
+		return event_array;
+	}
+
+	return Array();
+}
+
 void AppSettings::notify_changes() {
 	_THREAD_SAFE_METHOD_
 
@@ -805,6 +1050,8 @@ void AppSettings::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_initial_value", "name", "value", "update_current"), &AppSettings::set_initial_value);
 	ClassDB::bind_method(D_METHOD("add_property_info", "info"), &AppSettings::_add_property_info_bind);
 
+	ClassDB::bind_method(D_METHOD("set_builtin_action_override", "name", "actions_list"), &AppSettings::set_builtin_action_override);
+
 	ClassDB::bind_method(D_METHOD("check_changed_settings_in_group", "setting_prefix"), &AppSettings::check_changed_settings_in_group);
 	ClassDB::bind_method(D_METHOD("get_changed_settings"), &AppSettings::get_changed_settings);
 	ClassDB::bind_method(D_METHOD("mark_setting_changed", "setting"), &AppSettings::mark_setting_changed);
@@ -822,4 +1069,12 @@ AppSettings::AppSettings() {
 }
 
 AppSettings::~AppSettings() {
+}
+
+// TODO: Remove
+Ref<Shortcut> ED_SHORTCUT_AND_COMMAND(const String &p_path, const String &p_name, Key p_keycode, String p_command) {
+	return ED_SHORTCUT(p_path, p_name, p_keycode);
+}
+Ref<Shortcut> ED_SHORTCUT_ARRAY_AND_COMMAND(const String &p_path, const String &p_name, const PackedInt32Array &p_keycodes, String p_command) {
+	return ED_SHORTCUT_ARRAY(p_path, p_name, p_keycodes);
 }

@@ -213,7 +213,7 @@ env.CommandNoCache("#core/donors.gen.h", "#misc/gd_about/DONORS.md", env.Run(cor
 
 # License
 env.CommandNoCache(
-    "#core/license.gen.h", ["#misc/gd_about/COPYRIGHT.txt", "#misc/gd_about/LICENSE.txt"], env.Run(core_builders.make_license_header)
+    "#core/license.gen.h", ["#COPYRIGHT", "#LICENSE", "#misc/gd_about/COPYRIGHT.txt", "#misc/gd_about/LICENSE.txt"], env.Run(core_builders.make_license_header)
 )
 
 # Chain load SCsubs

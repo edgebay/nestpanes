@@ -7,6 +7,8 @@
 #include "scene/gui/box_container.h"
 #include "scene/gui/container.h"
 #include "scene/gui/label.h"
+#include "scene/gui/menu_bar.h"
+#include "scene/gui/menu_button.h"
 #include "scene/gui/panel.h"
 #include "scene/gui/popup_menu.h"
 #include "scene/gui/split_container.h"
@@ -30,6 +32,7 @@
 #include "app/app_modules/file_management/file_system_list.h"
 #include "app/app_modules/file_management/file_system_tree.h"
 #include "app/app_modules/text_editing/text_editor.h"
+#include "app/gui/app_about.h"
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
 
@@ -64,7 +67,130 @@ void AppNode::_update_theme(bool p_skip_creation) {
 
 	// Update styles.
 	{
+		bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+		bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
+
 		gui_base->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("Background"), AppStringName(AppStyles)));
+		main_vbox->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT, Control::PRESET_MODE_MINSIZE, theme->get_constant(SNAME("window_border_margin"), EditorStringName(App)));
+		main_vbox->add_theme_constant_override("separation", theme->get_constant(SNAME("top_bar_separation"), EditorStringName(App)));
+
+		if (main_menu_button != nullptr) {
+			main_menu_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), EditorStringName(EditorIcons)));
+		}
+
+		// editor_main_screen->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("Content"), EditorStringName(EditorStyles)));
+		// bottom_panel->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("BottomPanel"), EditorStringName(EditorStyles)));
+		// distraction_free->set_button_icon(theme->get_icon(SNAME("DistractionFree"), EditorStringName(EditorIcons)));
+		// distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
+
+		// // Do not set icon.
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), _get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), _get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), _get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), _get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
+
+		// _update_renderer_color();
+	}
+}
+
+Ref<Texture2D> AppNode::_get_app_theme_native_menu_icon(const StringName &p_name, bool p_global_menu, bool p_dark_mode) const {
+	if (!p_global_menu) {
+		return theme->get_icon(p_name, SNAME("AppIcons"));
+	}
+	if (p_dark_mode && theme->has_icon(String(p_name) + "Dark", SNAME("AppIcons"))) {
+		return theme->get_icon(String(p_name) + "Dark", SNAME("AppIcons"));
+	} else if (!p_dark_mode && theme->has_icon(String(p_name) + "Light", SNAME("AppIcons"))) {
+		return theme->get_icon(String(p_name) + "Light", SNAME("AppIcons"));
+	}
+	return theme->get_icon(p_name, SNAME("AppIcons"));
+}
+
+void AppNode::_check_system_theme_changed() {
+	DisplayServer *display_server = DisplayServer::get_singleton();
+
+	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+	bool system_theme_changed = false;
+
+	if (follow_system_theme) {
+		if (display_server->get_base_color() != last_system_base_color) {
+			system_theme_changed = true;
+			last_system_base_color = display_server->get_base_color();
+		}
+
+		if (display_server->is_dark_mode_supported() && display_server->is_dark_mode() != last_dark_mode_state) {
+			system_theme_changed = true;
+			last_dark_mode_state = display_server->is_dark_mode();
+		}
+	}
+
+	if (use_system_accent_color) {
+		if (display_server->get_accent_color() != last_system_accent_color) {
+			system_theme_changed = true;
+			last_system_accent_color = display_server->get_accent_color();
+		}
+	}
+
+	if (system_theme_changed) {
+		_update_theme();
+	} else if (global_menu && display_server->is_dark_mode_supported() && display_server->is_dark_mode() != last_dark_mode_state) {
+		last_dark_mode_state = display_server->is_dark_mode();
+
+		// Update system menus.
+		bool dark_mode = DisplayServer::get_singleton()->is_dark_mode();
+
+		// // Do not set icon.
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), _get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), _get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), _get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), _get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
+		// editor_dock_manager->update_docks_menu();
+	}
+}
+
+void AppNode::_menu_option(int p_option) {
+	_menu_option_confirm(p_option, false);
+}
+
+void AppNode::_menu_confirm_current() {
+	// _menu_option_confirm(current_menu_option, true);
+}
+
+void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
+	switch (p_option) {
+		// case EDITOR_COMMAND_PALETTE: {
+		// 	command_palette->open_popup();
+		// } break;
+		// case HELP_SEARCH: {
+		// 	emit_signal(SNAME("request_help_search"), "");
+		// } break;
+		// case HELP_DOCS: {
+		// 	OS::get_singleton()->shell_open(GODOT_VERSION_DOCS_URL "/");
+		// } break;
+		// case HELP_FORUM: {
+		// 	OS::get_singleton()->shell_open("https://forum.godotengine.org/");
+		// } break;
+		case HELP_REPORT_A_BUG: {
+			OS::get_singleton()->shell_open("https://github.com/edgebay/daily-engine/issues");
+		} break;
+		// case HELP_COPY_SYSTEM_INFO: {
+		// 	String info = _get_system_info();
+		// 	DisplayServer::get_singleton()->clipboard_set(info);
+		// } break;
+		// case HELP_SUGGEST_A_FEATURE: {
+		// 	OS::get_singleton()->shell_open("https://github.com/godotengine/godot-proposals#readme");
+		// } break;
+		// case HELP_SEND_DOCS_FEEDBACK: {
+		// 	OS::get_singleton()->shell_open("https://github.com/godotengine/godot-docs/issues");
+		// } break;
+		// case HELP_COMMUNITY: {
+		// 	OS::get_singleton()->shell_open("https://godotengine.org/community");
+		// } break;
+		case HELP_ABOUT: {
+			about->popup_centered(Size2(780, 500) * EDSCALE);
+		} break;
+			// case HELP_SUPPORT_GODOT_DEVELOPMENT: {
+			// 	OS::get_singleton()->shell_open("https://fund.godotengine.org");
+			// } break;
 	}
 }
 
@@ -110,6 +236,7 @@ void AppNode::_select_tab_container(AppTabContainer *p_tab_container) {
 
 AppTabContainer *AppNode::_create_tab_container() {
 	AppTabContainer *tab_container = memnew(AppTabContainer);
+	// tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
 	tab_container->set_new_tab_enabled(true);
 	tab_container->set_popup(split_menu);
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(tab_container));
@@ -430,6 +557,153 @@ bool AppNode::_load_main_scene() {
 	return false;
 }
 
+void AppNode::_update_main_menu_type() {
+	bool use_menu_button = EDITOR_GET("interface/editor/collapse_main_menu");
+	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+
+	bool already_using_button = main_menu_button != nullptr;
+	bool already_using_bar = main_menu_bar != nullptr;
+	if ((use_menu_button && already_using_button) || (!use_menu_button && already_using_bar)) {
+		return; // Already correctly configured.
+	}
+
+	if (use_menu_button && !global_menu) {
+		main_menu_button = memnew(MenuButton);
+		main_menu_button->set_text(TTRC("Main Menu"));
+		main_menu_button->set_theme_type_variation("MainScreenButton");
+		main_menu_button->set_focus_mode(Control::FOCUS_NONE);
+		if (is_inside_tree()) {
+			main_menu_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), EditorStringName(EditorIcons)));
+		}
+		main_menu_button->set_switch_on_hover(true);
+
+		if (main_menu_bar != nullptr) {
+			Vector<PopupMenu *> menus_to_move;
+			for (int i = 0; i < main_menu_bar->get_child_count(); i++) {
+				PopupMenu *menu = Object::cast_to<PopupMenu>(main_menu_bar->get_child(i));
+				if (menu != nullptr) {
+					menus_to_move.push_back(menu);
+				}
+			}
+			for (PopupMenu *menu : menus_to_move) {
+				main_menu_bar->remove_child(menu);
+				main_menu_button->get_popup()->add_submenu_node_item(menu->get_name(), menu);
+			}
+		}
+
+		title_bar->add_child(main_menu_button);
+		if (menu_btn_spacer == nullptr) {
+			title_bar->move_child(main_menu_button, 0);
+		} else {
+			title_bar->move_child(main_menu_button, menu_btn_spacer->get_index() + 1);
+		}
+		memdelete_notnull(main_menu_bar);
+		main_menu_bar = nullptr;
+	} else {
+		main_menu_bar = memnew(MenuBar);
+		main_menu_bar->set_mouse_filter(Control::MOUSE_FILTER_STOP);
+		main_menu_bar->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+		main_menu_bar->set_theme_type_variation("MainMenuBar");
+		main_menu_bar->set_start_index(0); // Main menu, add to the start of global menu.
+		main_menu_bar->set_prefer_global_menu(global_menu);
+		main_menu_bar->set_switch_on_hover(true);
+
+		if (main_menu_button != nullptr) {
+			Vector<PopupMenu *> menus_to_move;
+			for (int i = 0; i < main_menu_button->get_item_count(); i++) {
+				PopupMenu *menu = main_menu_button->get_popup()->get_item_submenu_node(i);
+				if (menu != nullptr) {
+					menus_to_move.push_back(menu);
+				}
+			}
+			for (PopupMenu *menu : menus_to_move) {
+				menu->get_parent()->remove_child(menu);
+				main_menu_bar->add_child(menu);
+			}
+		}
+
+		title_bar->add_child(main_menu_bar);
+		title_bar->move_child(main_menu_bar, 0);
+
+		memdelete_notnull(menu_btn_spacer);
+		memdelete_notnull(main_menu_button);
+		menu_btn_spacer = nullptr;
+		main_menu_button = nullptr;
+	}
+}
+
+void AppNode::_add_to_main_menu(const String &p_name, PopupMenu *p_menu) {
+	p_menu->set_name(p_name);
+	if (main_menu_button != nullptr) {
+		main_menu_button->get_popup()->add_submenu_node_item(p_name, p_menu);
+	} else {
+		main_menu_bar->add_child(p_menu);
+	}
+}
+
+void AppNode::_init_main_menu() {
+	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+	bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
+	// bool can_expand = bool(EDITOR_GET("interface/editor/expand_to_title")) && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_EXTEND_TO_TITLE);
+	bool can_expand = false; // Windows is not supported.
+
+	_update_main_menu_type();
+
+	file_menu = memnew(PopupMenu);
+	_add_to_main_menu(TTRC("File"), file_menu);
+
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/new_scene", TTRC("New Scene"), KeyModifierMask::CMD_OR_CTRL + Key::N), SCENE_NEW_SCENE);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/new_inherited_scene", TTRC("New Inherited Scene..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::N), SCENE_NEW_INHERITED_SCENE);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/open_scene", TTRC("Open Scene..."), KeyModifierMask::CMD_OR_CTRL + Key::O), SCENE_OPEN_SCENE);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/reopen_closed_scene", TTRC("Reopen Closed Scene"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::T), SCENE_OPEN_PREV);
+
+	// recent_scenes = memnew(PopupMenu);
+	// recent_scenes->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+	// file_menu->add_submenu_node_item(TTRC("Open Recent"), recent_scenes, SCENE_OPEN_RECENT);
+	// recent_scenes->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_open_recent_scene));
+
+	// file_menu->add_separator();
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_scene", TTRC("Save Scene"), KeyModifierMask::CMD_OR_CTRL + Key::S), SCENE_SAVE_SCENE);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_scene_as", TTRC("Save Scene As..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::S), SCENE_SAVE_AS_SCENE);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_all_scenes", TTRC("Save All Scenes"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + KeyModifierMask::ALT + Key::S), SCENE_SAVE_ALL_SCENES);
+
+	view_menu = memnew(PopupMenu);
+	_add_to_main_menu(TTRC("View"), view_menu);
+
+	// tool_menu = memnew(PopupMenu);
+	// tool_menu->connect("index_pressed", callable_mp(this, &AppNode::_tool_menu_option));
+	// project_menu->add_submenu_node_item(TTRC("Tools"), tool_menu);
+	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/orphan_resource_explorer", TTRC("Orphan Resource Explorer...")), TOOLS_ORPHAN_RESOURCES);
+	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/engine_compilation_configuration_editor", TTRC("Engine Compilation Configuration Editor...")), TOOLS_BUILD_PROFILE_MANAGER);
+	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/upgrade_project", TTRC("Upgrade Project Files...")), TOOLS_PROJECT_UPGRADE);
+
+	help_menu = memnew(PopupMenu);
+	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
+		help_menu->set_system_menu(NativeMenu::HELP_MENU_ID);
+	}
+	_add_to_main_menu(TTRC("Help"), help_menu);
+
+	help_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
+
+	// TODO: "app/
+	// TODO: SHORTCUT_AND_COMMAND
+	ED_SHORTCUT_AND_COMMAND("editor/editor_help", TTRC("Search Help..."), Key::F1);
+	ED_SHORTCUT_OVERRIDE("editor/editor_help", "macos", KeyModifierMask::ALT | Key::SPACE);
+	// help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode), ED_GET_SHORTCUT("editor/editor_help"), HELP_SEARCH);
+	// help_menu->add_separator();
+	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/online_docs", TTRC("Online Documentation")), HELP_DOCS);
+	// help_menu->add_separator();
+	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/report_a_bug", TTRC("Report a Bug")), HELP_REPORT_A_BUG);
+	help_menu->add_separator();
+	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/about", TTRC("About")), HELP_ABOUT);
+	// // Do not set icon.
+	// if (!global_menu || !OS::get_singleton()->has_feature("macos")) {
+	// 	// On macOS  "Quit" and "About" options are in the "app" menu.
+	// 	help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/about", TTRC("About")), HELP_ABOUT);
+	// }
+	// help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
+}
+
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
@@ -496,6 +770,10 @@ AppNode::AppNode() {
 	title_bar = memnew(HBoxContainer);
 	main_vbox->add_child(title_bar);
 
+	about = memnew(AppAbout);
+	gui_base->add_child(about);
+	_init_main_menu();
+
 	split_menu = memnew(PopupMenu);
 	split_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
 	split_menu->add_item(RTR("Split Down"), SPLIT_MENU_DOWN);
@@ -557,6 +835,15 @@ AppNode::AppNode() {
 	set_process(true);
 
 	set_process_shortcut_input(true);
+
+	// follow_system_theme = EDITOR_GET("interface/theme/follow_system_theme");
+	// use_system_accent_color = EDITOR_GET("interface/theme/use_system_accent_color");
+	// system_theme_timer = memnew(Timer);
+	// system_theme_timer->set_wait_time(1.0);
+	// system_theme_timer->connect("timeout", callable_mp(this, &AppNode::_check_system_theme_changed));
+	// add_child(system_theme_timer);
+	// system_theme_timer->set_owner(get_owner());
+	// system_theme_timer->set_autostart(true);
 }
 
 AppNode::~AppNode() {

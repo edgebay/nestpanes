@@ -52,6 +52,9 @@ def version_hash_builder(target, source, env):
 
 const char *const GODOT_VERSION_HASH = "{git_hash}";
 const uint64_t GODOT_VERSION_TIMESTAMP = {git_timestamp};
+
+const char *const APP_VERSION_HASH = "{git_hash}";
+const uint64_t APP_VERSION_TIMESTAMP = {git_timestamp};
 """.format(**source[0].read())
         )
 
@@ -171,6 +174,8 @@ def make_donors_header(target, source, env):
 def make_license_header(target, source, env):
     src_copyright = str(source[0])
     src_license = str(source[1])
+    gd_copyright = str(source[2])
+    gd_license = str(source[3])
 
     class LicenseReader:
         def __init__(self, license_file: TextIOWrapper):
@@ -218,6 +223,25 @@ def make_license_header(target, source, env):
                 part = {}
                 reader.next_line()
 
+    with open(gd_copyright, "r", encoding="utf-8") as copyright_file:
+        reader = LicenseReader(copyright_file)
+        part = {}
+        while reader.current:
+            tag, content = reader.next_tag()
+            if tag in ("Files", "Copyright", "License"):
+                part[tag] = content[:]
+            elif tag == "Comment" and part:
+                # attach non-empty part to named project
+                projects[content[0]] = projects.get(content[0], []) + [part]
+
+            if not tag or not reader.current:
+                # end of a paragraph start a new part
+                if "License" in part and "Files" not in part:
+                    # no Files tag in this one, so assume standalone license
+                    license_list.append(part["License"])
+                part = {}
+                reader.next_line()
+
     data_list = []
     for project in iter(projects.values()):
         for part in project:
@@ -229,10 +253,17 @@ def make_license_header(target, source, env):
     with open(src_license, "r", encoding="utf-8") as file:
         license_text = file.read()
 
+    with open(gd_license, "r", encoding="utf-8") as file:
+        gd_license_text = file.read()
+
     with methods.generated_wrapper(str(target[0])) as file:
         file.write(f"""\
-inline constexpr const char *GODOT_LICENSE_TEXT = {{
+inline constexpr const char *LICENSE_TEXT = {{
 {methods.to_raw_cstring(license_text)}
+}};
+
+inline constexpr const char *GODOT_LICENSE_TEXT = {{
+{methods.to_raw_cstring(gd_license_text)}
 }};
 
 struct ComponentCopyrightPart {{

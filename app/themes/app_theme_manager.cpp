@@ -1776,6 +1776,30 @@ void AppThemeManager::_populate_app_styles(const Ref<AppTheme> &p_theme, ThemeCo
 
 		// App focus.
 		p_theme->set_stylebox("Focus", AppStringName(AppStyles), p_config.button_style_focus);
+
+		// Main menu.
+		Ref<StyleBoxFlat> menu_transparent_style = p_config.button_style->duplicate();
+		menu_transparent_style->set_bg_color(Color(1, 1, 1, 0));
+		menu_transparent_style->set_border_width_all(0);
+		Ref<StyleBoxFlat> main_screen_button_hover = p_config.button_style_hover->duplicate();
+		for (int i = 0; i < 4; i++) {
+			menu_transparent_style->set_content_margin((Side)i, p_config.button_style->get_content_margin((Side)i));
+			main_screen_button_hover->set_content_margin((Side)i, p_config.button_style_hover->get_content_margin((Side)i));
+		}
+		p_theme->set_stylebox(CoreStringName(normal), "MainScreenButton", menu_transparent_style);
+		p_theme->set_stylebox("normal_mirrored", "MainScreenButton", menu_transparent_style);
+		p_theme->set_stylebox(SceneStringName(pressed), "MainScreenButton", menu_transparent_style);
+		p_theme->set_stylebox("pressed_mirrored", "MainScreenButton", menu_transparent_style);
+		p_theme->set_stylebox(SceneStringName(hover), "MainScreenButton", main_screen_button_hover);
+		p_theme->set_stylebox("hover_mirrored", "MainScreenButton", main_screen_button_hover);
+		p_theme->set_stylebox("hover_pressed", "MainScreenButton", main_screen_button_hover);
+		p_theme->set_stylebox("hover_pressed_mirrored", "MainScreenButton", main_screen_button_hover);
+
+		p_theme->set_type_variation("MainMenuBar", "FlatMenuButton");
+		p_theme->set_stylebox(CoreStringName(normal), "MainMenuBar", menu_transparent_style);
+		p_theme->set_stylebox(SceneStringName(pressed), "MainMenuBar", main_screen_button_hover);
+		p_theme->set_stylebox(SceneStringName(hover), "MainMenuBar", main_screen_button_hover);
+		p_theme->set_stylebox("hover_pressed", "MainMenuBar", main_screen_button_hover);
 	}
 
 	// Standard GUI variations.
@@ -1818,6 +1842,16 @@ void AppThemeManager::_populate_app_styles(const Ref<AppTheme> &p_theme, ThemeCo
 			p_theme->set_stylebox(SceneStringName(hover), "FlatMenuButton", style_flat_button_hover);
 			p_theme->set_stylebox(SceneStringName(pressed), "FlatMenuButton", style_flat_button_pressed);
 			p_theme->set_stylebox("disabled", "FlatMenuButton", style_flat_button);
+		}
+
+		// Complex app windows.
+		{
+			Ref<StyleBoxFlat> style_complex_window = p_config.window_style->duplicate();
+			style_complex_window->set_bg_color(p_config.dark_color_2);
+			style_complex_window->set_border_color(p_config.dark_color_2);
+			// p_theme->set_stylebox(SceneStringName(panel), "SettingsDialog", style_complex_window);	// TODO
+			// p_theme->set_stylebox(SceneStringName(panel), "ProjectSettingsEditor", style_complex_window);
+			p_theme->set_stylebox(SceneStringName(panel), "AppAbout", style_complex_window);
 		}
 
 		// TabContainerOdd variation.

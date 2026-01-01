@@ -44,6 +44,9 @@
 #define APP_VERSION_NUMBER APP_VERSION_BRANCH
 #define APP_VERSION_FULL_CONFIG APP_VERSION_NUMBER "." APP_VERSION_STATUS APP_VERSION_MODULE_CONFIG
 #define APP_VERSION_FULL_BUILD APP_VERSION_FULL_CONFIG "." APP_VERSION_BUILD
+#define APP_VERSION_FULL_NAME APP_VERSION_NAME " v" APP_VERSION_FULL_BUILD
+extern const char *const APP_VERSION_HASH;
+extern const uint64_t APP_VERSION_TIMESTAMP;
 
 // Godot versions are of the form <major>.<minor> for the initial release,
 // and then <major>.<minor>.<patch> for subsequent bugfix releases where <patch> != 0
