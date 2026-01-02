@@ -16,6 +16,7 @@
 #include "app/app_string_names.h"
 #include "app/themes/app_fonts.h"
 #include "app/themes/app_icons.h"
+#include "app/themes/app_scale.h"
 
 // Theme configuration.
 

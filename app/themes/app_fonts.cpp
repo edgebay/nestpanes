@@ -2,6 +2,7 @@
 
 #include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
+#include "app/themes/app_scale.h"
 #include "app/themes/builtin_fonts.gen.h"
 #include "core/io/dir_access.h"
 #include "scene/resources/font.h"

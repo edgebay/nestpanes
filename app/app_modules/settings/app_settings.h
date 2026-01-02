@@ -95,6 +95,8 @@ public:
 	bool check_changed_settings_in_group(const String &p_setting_prefix) const;
 	void mark_setting_changed(const String &p_setting);
 
+	static float get_auto_display_scale();
+
 	// Shortcuts
 	void _add_shortcut_default(const String &p_name, const Ref<Shortcut> &p_shortcut);
 	void add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut);
@@ -110,8 +112,6 @@ public:
 	AppSettings();
 	~AppSettings();
 };
-
-#define APP_SCALE 1.0 // TODO: EDSCALE, APP_SCALE
 
 //not a macro any longer
 
@@ -131,7 +131,6 @@ void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, 
 Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path);
 
 // TODO: Remove
-#define EDSCALE APP_SCALE
 #define EDITOR_DEF APP_DEF
 
 #define EDITOR_GET APP_GET

@@ -1,8 +1,8 @@
 #include "app_about.h"
 
-#include "app/app_modules/settings/app_settings.h" // TODO: #include "app/themes/app_scale.h"
 #include "app/app_string_names.h"
 #include "app/gui/version_button.h"
+#include "app/themes/app_scale.h"
 // #include "core/authors.gen.h"
 // #include "core/donors.gen.h"
 #include "core/license.gen.h"
@@ -24,19 +24,19 @@ void AppAbout::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
-			const Ref<Font> font = get_theme_font(SNAME("source"), EditorStringName(EditorFonts));
-			const int font_size = get_theme_font_size(SNAME("source_size"), EditorStringName(EditorFonts));
+			const Ref<Font> font = get_theme_font(SNAME("source"), AppStringName(AppFonts));
+			const int font_size = get_theme_font_size(SNAME("source_size"), AppStringName(AppFonts));
 
 			_tpl_text->begin_bulk_theme_override();
 			_tpl_text->add_theme_font_override("normal_font", font);
 			_tpl_text->add_theme_font_size_override("normal_font_size", font_size);
-			_tpl_text->add_theme_constant_override(SceneStringName(line_separation), 4 * EDSCALE);
+			_tpl_text->add_theme_constant_override(SceneStringName(line_separation), 4 * APP_SCALE);
 			_tpl_text->end_bulk_theme_override();
 
 			license_text_label->begin_bulk_theme_override();
 			license_text_label->add_theme_font_override("normal_font", font);
 			license_text_label->add_theme_font_size_override("normal_font_size", font_size);
-			license_text_label->add_theme_constant_override(SceneStringName(line_separation), 4 * EDSCALE);
+			license_text_label->add_theme_constant_override(SceneStringName(line_separation), 4 * APP_SCALE);
 			license_text_label->end_bulk_theme_override();
 
 			_logo->set_texture(get_theme_icon(SNAME("Logo"), SNAME("AppIcons"))); // TODO: Logo
@@ -60,7 +60,7 @@ AppAbout::AppAbout() {
 	HBoxContainer *hbc = memnew(HBoxContainer);
 	hbc->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	hbc->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-	hbc->add_theme_constant_override("separation", 30 * EDSCALE);
+	hbc->add_theme_constant_override("separation", 30 * APP_SCALE);
 	vbc->add_child(hbc);
 
 	_logo = memnew(TextureRect);
@@ -85,7 +85,7 @@ AppAbout::AppAbout() {
 
 	TabContainer *tc = memnew(TabContainer);
 	// tc->set_tab_alignment(TabBar::ALIGNMENT_CENTER);
-	tc->set_custom_minimum_size(Size2(400, 200) * EDSCALE);
+	tc->set_custom_minimum_size(Size2(400, 200) * APP_SCALE);
 	tc->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	tc->set_theme_type_variation("TabContainerOdd");
 	vbc->add_child(tc);
@@ -114,14 +114,14 @@ AppAbout::AppAbout() {
 	tpl_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	tpl_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tpl_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-	tpl_label->set_size(Size2(630, 1) * EDSCALE);
+	tpl_label->set_size(Size2(630, 1) * APP_SCALE);
 	license_thirdparty->add_child(tpl_label);
 
 	HSplitContainer *tpl_hbc = memnew(HSplitContainer);
 	tpl_hbc->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	tpl_hbc->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tpl_hbc->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-	tpl_hbc->set_split_offset(240 * EDSCALE);
+	tpl_hbc->set_split_offset(240 * APP_SCALE);
 	license_thirdparty->add_child(tpl_hbc);
 
 	_tpl_tree = memnew(Tree);

@@ -25,6 +25,7 @@
 #include "app/app_core/app_paths.h"
 #include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
+#include "app/themes/app_scale.h"
 #include "app/themes/app_theme_manager.h"
 
 #include "app/app_core/io/file_system_access.h"
@@ -186,7 +187,7 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		// 	OS::get_singleton()->shell_open("https://godotengine.org/community");
 		// } break;
 		case HELP_ABOUT: {
-			about->popup_centered(Size2(780, 500) * EDSCALE);
+			about->popup_centered(Size2(780, 500) * APP_SCALE);
 		} break;
 			// case HELP_SUPPORT_GODOT_DEVELOPMENT: {
 			// 	OS::get_singleton()->shell_open("https://fund.godotengine.org");
@@ -739,6 +740,38 @@ AppNode::AppNode() {
 	// Load settings.
 	if (!AppSettings::get_singleton()) {
 		AppSettings::create();
+	}
+
+	{
+		int display_scale = EDITOR_GET("interface/app/display_scale");
+
+		switch (display_scale) {
+			case 0:
+				// Try applying a suitable display scale automatically.
+				AppScale::set_scale(AppSettings::get_auto_display_scale());
+				break;
+			case 1:
+				AppScale::set_scale(0.75);
+				break;
+			case 2:
+				AppScale::set_scale(1.0);
+				break;
+			case 3:
+				AppScale::set_scale(1.25);
+				break;
+			case 4:
+				AppScale::set_scale(1.5);
+				break;
+			case 5:
+				AppScale::set_scale(1.75);
+				break;
+			case 6:
+				AppScale::set_scale(2.0);
+				break;
+			default:
+				AppScale::set_scale(EDITOR_GET("interface/app/custom_display_scale"));
+				break;
+		}
 	}
 
 	// Define a minimum window size to prevent UI elements from overlapping or being cut off.

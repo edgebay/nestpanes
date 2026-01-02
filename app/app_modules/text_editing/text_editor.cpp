@@ -3,6 +3,7 @@
 #include "scene/gui/box_container.h"
 
 #include "app/app_modules/settings/app_settings.h"
+#include "app/themes/app_scale.h"
 
 #include "core/io/file_access.h"
 

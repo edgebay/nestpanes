@@ -322,6 +322,11 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
 
+	// Display what the Auto display scale setting effectively corresponds to.
+	const String display_scale_hint_string = vformat("Auto (%d%%),75%%,100%%,125%%,150%%,175%%,200%%,Custom", Math::round(get_auto_display_scale() * 100));
+	APP_SETTING_USAGE(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/display_scale", 0, display_scale_hint_string, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+	APP_SETTING_USAGE(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/app/custom_display_scale", 1.0, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+
 	// Font
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/main_font_size", 14, "8,48,1")
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/code_font_size", 14, "8,48,1")
@@ -656,6 +661,31 @@ bool AppSettings::check_changed_settings_in_group(const String &p_setting_prefix
 
 void AppSettings::mark_setting_changed(const String &p_setting) {
 	changed_settings.insert(p_setting);
+}
+
+float AppSettings::get_auto_display_scale() {
+	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
+
+	if (DisplayServer::get_singleton()->screen_get_size(screen) == Vector2i()) {
+		// Invalid screen size, skip.
+		return 1.0;
+	}
+
+	// Use the smallest dimension to use a correct display scale on portrait displays.
+	const int smallest_dimension = MIN(DisplayServer::get_singleton()->screen_get_size(screen).x, DisplayServer::get_singleton()->screen_get_size(screen).y);
+	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && smallest_dimension >= 1400) {
+		// hiDPI display.
+		return 2.0;
+	} else if (smallest_dimension >= 1700) {
+		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+		// Use an intermediate scale to handle this situation.
+		return 1.5;
+	} else if (smallest_dimension <= 800) {
+		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+		// Icons won't look great, but this is better than having editor elements overflow from its window.
+		return 0.75;
+	}
+	return 1.0;
 }
 
 void AppSettings::destroy() {

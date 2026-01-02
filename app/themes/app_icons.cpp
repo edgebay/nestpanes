@@ -1,8 +1,8 @@
 #include "app_icons.h"
 
-#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
 #include "app/themes/app_icons.gen.h"
+#include "app/themes/app_scale.h"
 #include "scene/resources/dpi_texture.h"
 #include "scene/resources/image_texture.h"
 

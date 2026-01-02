@@ -10,6 +10,8 @@
 
 #include "scene/scene_string_names.h"
 
+#include "app/themes/app_scale.h"
+
 const FileInfo *FileSystemTreeDirectory::get_info() const {
 	return &info;
 }
@@ -689,7 +691,7 @@ FileSystemTree::FileSystemTree() {
 	tree->set_allow_rmb_select(true);
 	tree->set_allow_reselect(true);
 	tree->set_select_mode(Tree::SELECT_MULTI);
-	// tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
+	tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
 	tree->set_column_clip_content(0, true);
 
 	tree->connect("item_collapsed", callable_mp(this, &FileSystemTree::_tree_item_collapsed));
