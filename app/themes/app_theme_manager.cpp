@@ -1904,9 +1904,9 @@ Ref<AppTheme> AppThemeManager::generate_theme(const Ref<AppTheme> &p_old_theme) 
 // 	if (outdated_cache_dirty) {
 // 		// TODO: We can use this information more intelligently to do partial theme updates and speed things up.
 // 		outdated_cache = AppSettings::get_singleton()->check_changed_settings_in_group("interface/theme") ||
-// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/editor/font") ||
-// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/editor/main_font") ||
-// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/editor/code_font") ||
+// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/app/font") ||
+// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/app/main_font") ||
+// 				AppSettings::get_singleton()->check_changed_settings_in_group("interface/app/code_font") ||
 // 				AppSettings::get_singleton()->check_changed_settings_in_group("editors/visual_editors") ||
 // 				AppSettings::get_singleton()->check_changed_settings_in_group("text_editor/theme") ||
 // 				AppSettings::get_singleton()->check_changed_settings_in_group("text_editor/help/help") ||

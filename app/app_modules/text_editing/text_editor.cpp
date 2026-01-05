@@ -279,7 +279,7 @@ Error TextEditor::_save_text_file(Ref<TextFile> p_text_file, const String &p_pat
 
 void TextEditor::set_zoom_factor(float p_zoom_factor) {
 	zoom_factor = CLAMP(p_zoom_factor, 0.25f, 3.0f);
-	int neutral_font_size = int(APP_GET("interface/editor/code_font_size")) * APP_SCALE;
+	int neutral_font_size = int(APP_GET("interface/app/code_font_size")) * APP_SCALE;
 	int new_font_size = Math::round(zoom_factor * neutral_font_size);
 
 	// zoom_button->set_text(itos(Math::round(zoom_factor * 100)) + " %");

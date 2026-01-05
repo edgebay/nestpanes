@@ -282,6 +282,7 @@ void MultiSplitContainer::_notification(int p_what) {
 }
 
 void MultiSplitContainer::set_vertical(bool p_vertical) {
+	ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
 	// if (vertical == p_vertical) {
 	// 	return;
 	// }
@@ -388,8 +389,11 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 	} else if (prev_child_count == 1) {
 		// Set vertical.
 		if (p_direction == SPLIT_UP || p_direction == SPLIT_DOWN) {
+			// TODO: is_fixed
+			ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
 			vertical = true;
 		} else if (p_direction == SPLIT_LEFT || p_direction == SPLIT_RIGHT) {
+			ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
 			vertical = false;
 		}
 	}

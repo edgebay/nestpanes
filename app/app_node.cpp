@@ -5,6 +5,7 @@
 #include "core/version.h"
 
 #include "scene/gui/box_container.h"
+#include "scene/gui/button.h"
 #include "scene/gui/container.h"
 #include "scene/gui/label.h"
 #include "scene/gui/menu_bar.h"
@@ -68,7 +69,7 @@ void AppNode::_update_theme(bool p_skip_creation) {
 
 	// Update styles.
 	{
-		bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+		bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 		bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
 
 		gui_base->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("Background"), AppStringName(AppStyles)));
@@ -109,7 +110,7 @@ Ref<Texture2D> AppNode::_get_app_theme_native_menu_icon(const StringName &p_name
 void AppNode::_check_system_theme_changed() {
 	DisplayServer *display_server = DisplayServer::get_singleton();
 
-	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+	bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 	bool system_theme_changed = false;
 
 	if (follow_system_theme) {
@@ -187,7 +188,7 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			// 		break;
 			// 	}
 
-			// 	bool save_each = EDITOR_GET("interface/editor/save_each_scene_on_quit");
+			// 	bool save_each = EDITOR_GET("interface/app/save_each_scene_on_quit");
 			// 	if (_next_unsaved_scene(!save_each) == -1) {
 			// 		if (EditorUndoRedoManager::get_singleton()->is_history_unsaved(EditorUndoRedoManager::GLOBAL_HISTORY)) {
 			// 			if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
@@ -595,6 +596,7 @@ String AppNode::_get_main_scene_path() const {
 
 Error AppNode::_parse_node(Node *p_node) {
 	if (Object::cast_to<AppTabContainer>(p_node)) {
+		// TODO: handle left_tab_container, right_tab_container
 		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
 		tab_containers.push_back(container);
 	} else if (Object::cast_to<FileSystemTree>(p_node)) {
@@ -676,8 +678,8 @@ bool AppNode::_load_main_scene() {
 }
 
 void AppNode::_update_main_menu_type() {
-	bool use_menu_button = EDITOR_GET("interface/editor/collapse_main_menu");
-	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+	bool use_menu_button = EDITOR_GET("interface/app/collapse_main_menu");
+	bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 
 	bool already_using_button = main_menu_button != nullptr;
 	bool already_using_bar = main_menu_bar != nullptr;
@@ -760,9 +762,9 @@ void AppNode::_add_to_main_menu(const String &p_name, PopupMenu *p_menu) {
 }
 
 void AppNode::_init_main_menu() {
-	bool global_menu = !bool(EDITOR_GET("interface/editor/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
+	bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 	bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
-	// bool can_expand = bool(EDITOR_GET("interface/editor/expand_to_title")) && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_EXTEND_TO_TITLE);
+	// bool can_expand = bool(EDITOR_GET("interface/app/expand_to_title")) && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_EXTEND_TO_TITLE);
 	bool can_expand = false; // Windows is not supported.
 
 	_update_main_menu_type();
@@ -936,30 +938,82 @@ AppNode::AppNode() {
 	split_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_split_menu_id_pressed));
 	gui_base->add_child(split_menu);
 
-	if (_load_main_scene()) {
+#define LOAD_SCENE 1
+	if (LOAD_SCENE && _load_main_scene()) {
 		main_vbox->add_child(gui_main);
 	} else {
+		HBoxContainer *hbox = memnew(HBoxContainer);
+		hbox->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		hbox->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		main_vbox->add_child(hbox);
+		gui_main = hbox;
+
+		// Ribbon
+		ribbon = memnew(VBoxContainer);
+		hbox->add_child(ribbon);
+		// ribbon->set_custom_minimum_size(Size2(20, 20));
+		// ribbon->hide();
+		ribbon->set_owner(gui_main);
+
+		// TODO: VTabBar
+		TabBar *actions = memnew(TabBar);
+		ribbon->add_child(actions);
+		actions->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		actions->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		actions->set_owner(gui_main);
+
+		actions->add_tab("1");
+		actions->add_tab("2");
+
+		Button *settings_button = memnew(Button);
+		ribbon->add_child(settings_button);
+		settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+		settings_button->set_owner(gui_main);
+
+		// Body
 		HSplitContainer *left_hsplit = memnew(HSplitContainer);
-		main_vbox->add_child(left_hsplit);
+		hbox->add_child(left_hsplit);
+		left_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		left_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		left_hsplit->set_owner(gui_main);
 
-		SplitContainer *left_split = memnew(SplitContainer);
-		left_hsplit->add_child(left_split);
+		// Left sidebar
+		left_sidebar = memnew(VMultiSplitContainer);
+		left_hsplit->add_child(left_sidebar);
+		left_sidebar->set_owner(gui_main);
 
+		AppTabContainer *left_tab_container = memnew(AppTabContainer);
+		// // left_tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
+		// left_tab_container->set_new_tab_enabled(true);
+		// left_tab_container->set_popup(split_menu);
+		// left_tab_container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(left_tab_container));
+		// left_tab_container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(left_tab_container));
+		// left_tab_container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(left_tab_container));
+		// tab_containers.push_back(left_tab_container);
+		// AppTabContainer *left_tab_container = _create_tab_container();
+		left_sidebar->split(left_tab_container);
+		left_tab_container->set_owner(gui_main);
+		// _new_tab(left_tab_container);
+
+		FileSystemTree *file_system_tree = memnew(FileSystemTree);
+		left_tab_container->add_child(file_system_tree);
+		file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
+		file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
+		file_system_tree->set_owner(gui_main);
+		file_system_trees.push_back(file_system_tree);
+
+		// Tabs
 		HSplitContainer *right_hsplit = memnew(HSplitContainer);
 		left_hsplit->add_child(right_hsplit);
 		right_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		right_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-
-		gui_main = left_hsplit;
+		right_hsplit->set_owner(gui_main);
 
 		MultiSplitContainer *center_split = memnew(MultiSplitContainer);
 		right_hsplit->add_child(center_split);
 		center_split->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		center_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-
-		left_split->set_owner(gui_main);
-		right_hsplit->set_owner(gui_main);
 		center_split->set_owner(gui_main);
 
 		AppTabContainer *tab_container = _create_tab_container();
@@ -967,17 +1021,14 @@ AppNode::AppNode() {
 		tab_container->set_owner(gui_main);
 		_new_tab(tab_container);
 
-		SplitContainer *right_split = memnew(SplitContainer);
-		right_hsplit->add_child(right_split);
+		// Right sidebar
+		right_sidebar = memnew(VMultiSplitContainer);
+		right_hsplit->add_child(right_sidebar);
+		right_sidebar->set_owner(gui_main);
 
-		// Controls
-		FileSystemTree *file_system_tree = memnew(FileSystemTree);
-		file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-		file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-		file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
-		left_split->add_child(file_system_tree);
-		file_system_tree->set_owner(gui_main);
-		file_system_trees.push_back(file_system_tree);
+		AppTabContainer *right_tab_container = memnew(AppTabContainer);
+		right_sidebar->split(right_tab_container);
+		right_tab_container->set_owner(gui_main);
 	}
 
 	layout_save_delay_timer = memnew(Timer);

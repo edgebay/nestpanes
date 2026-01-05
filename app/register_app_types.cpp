@@ -23,6 +23,8 @@ void register_app_types() {
 
 	GDREGISTER_CLASS(AppTabContainer);
 	GDREGISTER_CLASS(MultiSplitContainer);
+	GDREGISTER_CLASS(HMultiSplitContainer);
+	GDREGISTER_CLASS(VMultiSplitContainer);
 
 	GDREGISTER_CLASS(TextEditor);
 

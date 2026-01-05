@@ -82,6 +82,8 @@ private:
 	void _clear_draggers();
 
 protected:
+	bool is_fixed = false;
+
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -102,4 +104,20 @@ public:
 
 	MultiSplitContainer(bool p_vertical = false);
 	~MultiSplitContainer();
+};
+
+class HMultiSplitContainer : public MultiSplitContainer {
+	GDCLASS(HMultiSplitContainer, MultiSplitContainer);
+
+public:
+	HMultiSplitContainer() :
+			MultiSplitContainer(false) { is_fixed = true; }
+};
+
+class VMultiSplitContainer : public MultiSplitContainer {
+	GDCLASS(VMultiSplitContainer, MultiSplitContainer);
+
+public:
+	VMultiSplitContainer() :
+			MultiSplitContainer(true) { is_fixed = true; }
 };

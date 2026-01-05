@@ -327,6 +327,10 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING_USAGE(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/display_scale", 0, display_scale_hint_string, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	APP_SETTING_USAGE(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/app/custom_display_scale", 1.0, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 
+	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_embedded_menu", false, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_native_file_dialogs", false, "", PROPERTY_USAGE_DEFAULT)
+	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/expand_to_title", true, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+
 	// Font
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/main_font_size", 14, "8,48,1")
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/code_font_size", 14, "8,48,1")
@@ -342,6 +346,8 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font_bold", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/code_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
+
+	APP_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/collapse_main_menu", false, "")
 
 	// Theme
 	APP_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_ENUM, "interface/theme/follow_system_theme", false, "")

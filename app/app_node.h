@@ -7,6 +7,7 @@
 
 class Control;
 class HBoxContainer;
+class VMultiSplitContainer;
 class MenuBar;
 class MenuButton;
 class VBoxContainer;
@@ -121,6 +122,9 @@ private:
 	VBoxContainer *main_vbox = nullptr;
 
 	HBoxContainer *title_bar = nullptr;
+	VBoxContainer *ribbon = nullptr;
+	VMultiSplitContainer *left_sidebar = nullptr;
+	VMultiSplitContainer *right_sidebar = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
 	MenuButton *main_menu_button = nullptr; // TODO: Remove?
