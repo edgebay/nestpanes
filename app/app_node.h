@@ -151,6 +151,9 @@ private:
 
 	Ref<Theme> theme;
 
+	bool exiting = false;
+	bool dimmed = false;
+
 	// Timer *system_theme_timer = nullptr;
 	bool follow_system_theme = false;
 	bool use_system_accent_color = false;
@@ -184,6 +187,8 @@ private:
 	void _on_tree_item_activated(const String &p_path, bool is_dir);
 	// void _on_tree_item_selected(TreeItem *p_item);
 	void _on_tree_item_selected(const String &p_path, bool is_dir);
+
+	void _exit(int p_exit_code);
 
 	String _get_config_path() const;
 	void _save_layout();

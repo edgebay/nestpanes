@@ -158,6 +158,107 @@ void AppNode::_menu_confirm_current() {
 
 void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 	switch (p_option) {
+		case SCENE_QUIT: {
+			_exit(EXIT_SUCCESS);
+			// if (p_confirmed && plugin_to_save) {
+			// 	plugin_to_save->save_external_data();
+			// 	p_confirmed = false;
+			// }
+
+			// if (p_confirmed && stop_project_confirmation && project_run_bar->is_playing()) {
+			// 	project_run_bar->stop_playing();
+			// 	stop_project_confirmation = false;
+			// 	p_confirmed = false;
+			// }
+
+			// if (!p_confirmed) {
+			// 	if (!stop_project_confirmation && project_run_bar->is_playing()) {
+			// 		if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
+			// 			confirmation->set_text(TTR("Stop running project before reloading the current project?"));
+			// 			confirmation->set_ok_button_text(TTR("Stop & Reload"));
+			// 		} else {
+			// 			confirmation->set_text(TTR("Stop running project before exiting the editor?"));
+			// 			confirmation->set_ok_button_text(TTR("Stop & Quit"));
+			// 		}
+			// 		confirmation->reset_size();
+			// 		confirmation->popup_centered();
+			// 		confirmation_button->hide();
+			// 		stop_project_confirmation = true;
+			// 		break;
+			// 	}
+
+			// 	bool save_each = EDITOR_GET("interface/editor/save_each_scene_on_quit");
+			// 	if (_next_unsaved_scene(!save_each) == -1) {
+			// 		if (EditorUndoRedoManager::get_singleton()->is_history_unsaved(EditorUndoRedoManager::GLOBAL_HISTORY)) {
+			// 			if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
+			// 				save_confirmation->set_ok_button_text(TTR("Save & Reload"));
+			// 				save_confirmation->set_text(TTR("Save modified resources before reloading?"));
+			// 			} else {
+			// 				save_confirmation->set_ok_button_text(TTR("Save & Quit"));
+			// 				save_confirmation->set_text(TTR("Save modified resources before closing?"));
+			// 			}
+			// 			save_confirmation->reset_size();
+			// 			save_confirmation->popup_centered();
+			// 			break;
+			// 		}
+
+			// 		plugin_to_save = nullptr;
+			// 		for (int i = 0; i < editor_data.get_editor_plugin_count(); i++) {
+			// 			const String unsaved_status = editor_data.get_editor_plugin(i)->get_unsaved_status();
+			// 			if (!unsaved_status.is_empty()) {
+			// 				if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
+			// 					save_confirmation->set_ok_button_text(TTR("Save & Reload"));
+			// 					save_confirmation->set_text(unsaved_status);
+			// 				} else {
+			// 					save_confirmation->set_ok_button_text(TTR("Save & Quit"));
+			// 					save_confirmation->set_text(unsaved_status);
+			// 				}
+			// 				save_confirmation->reset_size();
+			// 				save_confirmation->popup_centered();
+			// 				plugin_to_save = editor_data.get_editor_plugin(i);
+			// 				break;
+			// 			}
+			// 		}
+
+			// 		if (plugin_to_save) {
+			// 			break;
+			// 		}
+
+			// 		_discard_changes();
+			// 		break;
+			// 	}
+
+			// 	if (save_each) {
+			// 		tab_closing_menu_option = current_menu_option;
+			// 		for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
+			// 			tabs_to_close.push_back(editor_data.get_scene_path(i));
+			// 		}
+			// 		_proceed_closing_scene_tabs();
+			// 	} else {
+			// 		String unsaved_scenes;
+			// 		int i = _next_unsaved_scene(true, 0);
+			// 		while (i != -1) {
+			// 			unsaved_scenes += "\n            " + editor_data.get_edited_scene_root(i)->get_scene_file_path();
+			// 			i = _next_unsaved_scene(true, ++i);
+			// 		}
+			// 		if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
+			// 			save_confirmation->set_ok_button_text(TTR("Save & Reload"));
+			// 			save_confirmation->set_text(TTR("Save changes to the following scene(s) before reloading?") + unsaved_scenes);
+			// 		} else {
+			// 			save_confirmation->set_ok_button_text(TTR("Save & Quit"));
+			// 			save_confirmation->set_text((p_option == SCENE_QUIT ? TTR("Save changes to the following scene(s) before quitting?") : TTR("Save changes to the following scene(s) before opening Project Manager?")) + unsaved_scenes);
+			// 		}
+			// 		save_confirmation->reset_size();
+			// 		save_confirmation->popup_centered();
+			// 	}
+
+			// 	DisplayServer::get_singleton()->window_request_attention();
+			// 	break;
+			// }
+			// _save_external_resources();
+			// _discard_changes();
+		} break;
+
 		// case EDITOR_COMMAND_PALETTE: {
 		// 	command_palette->open_popup();
 		// } break;
@@ -370,6 +471,22 @@ void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 		// TODO: handle file item
 		file_system_list->set_current_path(p_path);
 	}
+}
+
+void AppNode::_exit(int p_exit_code) {
+	exiting = true;
+	// waiting_for_first_scan = false;
+	// resource_preview->stop(); // Stop early to avoid crashes.
+	// _save_editor_layout();
+	_save_layout();
+
+	// // Dim the editor window while it's quitting to make it clearer that it's busy.
+	// dim_editor(true);
+
+	// // Unload addons before quitting to allow cleanup.
+	// unload_editor_addons();
+
+	get_tree()->quit(p_exit_code);
 }
 
 String AppNode::_get_config_path() const {
@@ -653,6 +770,8 @@ void AppNode::_init_main_menu() {
 	file_menu = memnew(PopupMenu);
 	_add_to_main_menu(TTRC("File"), file_menu);
 
+	file_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
+
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/new_scene", TTRC("New Scene"), KeyModifierMask::CMD_OR_CTRL + Key::N), SCENE_NEW_SCENE);
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/new_inherited_scene", TTRC("New Inherited Scene..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::N), SCENE_NEW_INHERITED_SCENE);
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/open_scene", TTRC("Open Scene..."), KeyModifierMask::CMD_OR_CTRL + Key::O), SCENE_OPEN_SCENE);
@@ -667,6 +786,8 @@ void AppNode::_init_main_menu() {
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_scene", TTRC("Save Scene"), KeyModifierMask::CMD_OR_CTRL + Key::S), SCENE_SAVE_SCENE);
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_scene_as", TTRC("Save Scene As..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::S), SCENE_SAVE_AS_SCENE);
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/save_all_scenes", TTRC("Save All Scenes"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + KeyModifierMask::ALT + Key::S), SCENE_SAVE_ALL_SCENES);
+
+	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/file_quit", TTRC("Quit"), KeyModifierMask::CMD_OR_CTRL + Key::Q), SCENE_QUIT, true);
 
 	view_menu = memnew(PopupMenu);
 	_add_to_main_menu(TTRC("View"), view_menu);
