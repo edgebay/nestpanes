@@ -38,6 +38,10 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
 
+#define LEFT_SIDEBAR_NAME "left_sidebar"
+#define CENTRAL_AREA_NAME "central_area"
+#define RIGHT_SIDEBAR_NAME "right_sidebar"
+
 AppNode *AppNode::singleton = nullptr;
 
 void AppNode::_update_theme(bool p_skip_creation) {
@@ -337,6 +341,24 @@ void AppNode::_select_tab_container(AppTabContainer *p_tab_container) {
 	selected_tab_container = p_tab_container;
 }
 
+void AppNode::_toggle_left_sidebar() {
+	bool is_visible = left_sidebar->is_visible();
+	if (is_visible) {
+		left_sidebar->hide();
+	} else {
+		left_sidebar->show();
+	}
+}
+
+void AppNode::_toggle_right_sidebar() {
+	bool is_visible = right_sidebar->is_visible();
+	if (is_visible) {
+		right_sidebar->hide();
+	} else {
+		right_sidebar->show();
+	}
+}
+
 AppTabContainer *AppNode::_create_tab_container() {
 	AppTabContainer *tab_container = memnew(AppTabContainer);
 	// tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
@@ -595,7 +617,16 @@ String AppNode::_get_main_scene_path() const {
 }
 
 Error AppNode::_parse_node(Node *p_node) {
-	if (Object::cast_to<AppTabContainer>(p_node)) {
+	if (Object::cast_to<MultiSplitContainer>(p_node)) {
+		String node_name = p_node->get_name();
+		if (node_name == LEFT_SIDEBAR_NAME) {
+			left_sidebar = Object::cast_to<VMultiSplitContainer>(p_node);
+		} else if (node_name == CENTRAL_AREA_NAME) {
+			central_area = Object::cast_to<MultiSplitContainer>(p_node);
+		} else if (node_name == RIGHT_SIDEBAR_NAME) {
+			right_sidebar = Object::cast_to<VMultiSplitContainer>(p_node);
+		}
+	} else if (Object::cast_to<AppTabContainer>(p_node)) {
 		// TODO: handle left_tab_container, right_tab_container
 		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
 		tab_containers.push_back(container);
@@ -611,6 +642,10 @@ Error AppNode::_parse_node(Node *p_node) {
 		Node *c = p_node->get_child(i);
 		Error err = _parse_node(c);
 		if (err) {
+			left_sidebar = nullptr;
+			central_area = nullptr;
+			right_sidebar = nullptr;
+
 			tab_containers.clear();
 			file_system_trees.clear();
 			file_system_lists.clear();
@@ -637,44 +672,44 @@ bool AppNode::_load_main_scene() {
 	new_scene->set_scene_instance_state(Ref<SceneState>());
 
 	Error err = _parse_node(new_scene);
-	if (err == OK && !tab_containers.is_empty()) {
-		for (auto container : tab_containers) {
-			container->set_popup(split_menu);
-			container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(container));
-			container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
-			container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
-
-			// Update tab icon and text
-			for (int i = 0; i < container->get_child_count(); i++) {
-				Node *control = container->get_child(i);
-				if (Object::cast_to<FileSystemList>(control)) {
-					FileSystemList *file_system_list = Object::cast_to<FileSystemList>(control);
-					int tab_index = container->get_tab_idx_from_control(file_system_list);
-					String path = file_system_list->get_current_path();
-					String title = path.get_file();
-					if (title.is_empty()) {
-						title = path;
-					}
-					container->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
-					container->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
-					container->set_tab_title(tab_index, title);
-				}
-			}
-		}
-		for (auto control : file_system_trees) {
-			control->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-			control->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-			control->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
-		}
-		for (auto control : file_system_lists) {
-			control->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
-		}
-
-		gui_main = new_scene;
-		return true;
+	if (err != OK || (left_sidebar == nullptr || central_area == nullptr || right_sidebar == nullptr) || tab_containers.is_empty()) {
+		return false;
 	}
 
-	return false;
+	for (auto container : tab_containers) {
+		container->set_popup(split_menu);
+		container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(container));
+		container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
+		container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
+
+		// Update tab icon and text
+		for (int i = 0; i < container->get_child_count(); i++) {
+			Node *control = container->get_child(i);
+			if (Object::cast_to<FileSystemList>(control)) {
+				FileSystemList *file_system_list = Object::cast_to<FileSystemList>(control);
+				int tab_index = container->get_tab_idx_from_control(file_system_list);
+				String path = file_system_list->get_current_path();
+				String title = path.get_file();
+				if (title.is_empty()) {
+					title = path;
+				}
+				container->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
+				container->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
+				container->set_tab_title(tab_index, title);
+			}
+		}
+	}
+	for (auto control : file_system_trees) {
+		control->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		control->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
+		control->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
+	}
+	for (auto control : file_system_lists) {
+		control->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
+	}
+
+	gui_main = new_scene;
+	return true;
 }
 
 void AppNode::_update_main_menu_type() {
@@ -923,12 +958,62 @@ AppNode::AppNode() {
 	gui_base->add_child(main_vbox);
 	main_vbox->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT, Control::PRESET_MODE_MINSIZE);
 
+	// Title Bar
 	title_bar = memnew(HBoxContainer);
 	main_vbox->add_child(title_bar);
+
+	Control *spacer = memnew(Control);
+	spacer->set_mouse_filter(Control::MOUSE_FILTER_PASS);
+	spacer->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	title_bar->add_child(spacer);
+
+	HBoxContainer *button_hbox = memnew(HBoxContainer);
+	title_bar->add_child(button_hbox);
+
+	Button *left_toggle_button = memnew(Button);
+	// left_toggle_button->set_flat(true);
+	left_toggle_button->set_theme_type_variation("MainScreenButton");
+	left_toggle_button->set_focus_mode(Control::FOCUS_NONE);
+	left_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	left_toggle_button->set_tooltip_text(RTR("Toggle Left Sidebar"));
+	button_hbox->add_child(left_toggle_button);
+
+	Button *right_toggle_button = memnew(Button);
+	// right_toggle_button->set_flat(true);
+	right_toggle_button->set_theme_type_variation("MainScreenButton");
+	right_toggle_button->set_focus_mode(Control::FOCUS_NONE);
+	right_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	right_toggle_button->set_tooltip_text(RTR("Toggle Right Sidebar"));
+	button_hbox->add_child(right_toggle_button);
 
 	about = memnew(AppAbout);
 	gui_base->add_child(about);
 	_init_main_menu();
+
+	// Body
+	HBoxContainer *hbox = memnew(HBoxContainer);
+	hbox->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	hbox->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	main_vbox->add_child(hbox);
+
+	// Ribbon
+	ribbon = memnew(VBoxContainer);
+	hbox->add_child(ribbon);
+	// ribbon->set_custom_minimum_size(Size2(20, 20));
+	// ribbon->hide();
+
+	// TODO: VTabBar
+	TabBar *actions = memnew(TabBar);
+	ribbon->add_child(actions);
+	actions->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	actions->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+	actions->add_tab("1");
+	actions->add_tab("2");
+
+	Button *settings_button = memnew(Button);
+	ribbon->add_child(settings_button);
+	settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	split_menu = memnew(PopupMenu);
 	split_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
@@ -940,46 +1025,20 @@ AppNode::AppNode() {
 
 #define LOAD_SCENE 1
 	if (LOAD_SCENE && _load_main_scene()) {
-		main_vbox->add_child(gui_main);
+		hbox->add_child(gui_main);
 	} else {
-		HBoxContainer *hbox = memnew(HBoxContainer);
-		hbox->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		hbox->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		main_vbox->add_child(hbox);
-		gui_main = hbox;
-
-		// Ribbon
-		ribbon = memnew(VBoxContainer);
-		hbox->add_child(ribbon);
-		// ribbon->set_custom_minimum_size(Size2(20, 20));
-		// ribbon->hide();
-		ribbon->set_owner(gui_main);
-
-		// TODO: VTabBar
-		TabBar *actions = memnew(TabBar);
-		ribbon->add_child(actions);
-		actions->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		actions->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		actions->set_owner(gui_main);
-
-		actions->add_tab("1");
-		actions->add_tab("2");
-
-		Button *settings_button = memnew(Button);
-		ribbon->add_child(settings_button);
-		settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
-		settings_button->set_owner(gui_main);
-
-		// Body
+		// Default layout.
 		HSplitContainer *left_hsplit = memnew(HSplitContainer);
 		hbox->add_child(left_hsplit);
 		left_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		left_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		left_hsplit->set_owner(gui_main);
+
+		gui_main = left_hsplit;
 
 		// Left sidebar
 		left_sidebar = memnew(VMultiSplitContainer);
 		left_hsplit->add_child(left_sidebar);
+		left_sidebar->set_name(LEFT_SIDEBAR_NAME);
 		left_sidebar->set_owner(gui_main);
 
 		AppTabContainer *left_tab_container = memnew(AppTabContainer);
@@ -1003,33 +1062,38 @@ AppNode::AppNode() {
 		file_system_tree->set_owner(gui_main);
 		file_system_trees.push_back(file_system_tree);
 
-		// Tabs
 		HSplitContainer *right_hsplit = memnew(HSplitContainer);
 		left_hsplit->add_child(right_hsplit);
 		right_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		right_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 		right_hsplit->set_owner(gui_main);
 
-		MultiSplitContainer *center_split = memnew(MultiSplitContainer);
-		right_hsplit->add_child(center_split);
-		center_split->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		center_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		center_split->set_owner(gui_main);
+		// Tabs
+		central_area = memnew(MultiSplitContainer);
+		right_hsplit->add_child(central_area);
+		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		central_area->set_name(CENTRAL_AREA_NAME);
+		central_area->set_owner(gui_main);
 
 		AppTabContainer *tab_container = _create_tab_container();
-		center_split->split(tab_container);
+		central_area->split(tab_container);
 		tab_container->set_owner(gui_main);
 		_new_tab(tab_container);
 
 		// Right sidebar
 		right_sidebar = memnew(VMultiSplitContainer);
 		right_hsplit->add_child(right_sidebar);
+		right_sidebar->set_name(RIGHT_SIDEBAR_NAME);
 		right_sidebar->set_owner(gui_main);
 
 		AppTabContainer *right_tab_container = memnew(AppTabContainer);
 		right_sidebar->split(right_tab_container);
 		right_tab_container->set_owner(gui_main);
 	}
+
+	left_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_left_sidebar));
+	right_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_right_sidebar));
 
 	layout_save_delay_timer = memnew(Timer);
 	add_child(layout_save_delay_timer);

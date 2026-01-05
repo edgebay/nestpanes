@@ -7,10 +7,11 @@
 
 class Control;
 class HBoxContainer;
-class VMultiSplitContainer;
 class MenuBar;
 class MenuButton;
+class MultiSplitContainer;
 class VBoxContainer;
+class VMultiSplitContainer;
 
 class AppTabContainer;
 class FileSystemControl;
@@ -124,6 +125,7 @@ private:
 	HBoxContainer *title_bar = nullptr;
 	VBoxContainer *ribbon = nullptr;
 	VMultiSplitContainer *left_sidebar = nullptr;
+	MultiSplitContainer *central_area = nullptr;
 	VMultiSplitContainer *right_sidebar = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
@@ -180,6 +182,9 @@ private:
 
 	void _split_menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
+
+	void _toggle_left_sidebar();
+	void _toggle_right_sidebar();
 
 	AppTabContainer *_create_tab_container();
 	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?
