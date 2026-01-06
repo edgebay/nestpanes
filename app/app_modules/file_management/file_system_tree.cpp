@@ -165,7 +165,7 @@ void FileSystemTree::_create_tree(TreeItem *p_parent, const FileSystemTreeDirect
 }
 
 void FileSystemTree::_create_tree_item(TreeItem *p_parent, const FileInfo *p_file_info) {
-	const int icon_size = get_app_theme_constant(SNAME("class_icon_size"));
+	const int icon_size = get_theme_constant(SNAME("class_icon_size"));
 	TreeItem *file_item = tree->create_item(p_parent);
 	const String file_metadata = p_file_info->path;
 	file_item->set_text(0, p_file_info->name);

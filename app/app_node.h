@@ -172,7 +172,6 @@ private:
 	bool load_layout_done = false;
 
 	void _update_theme(bool p_skip_creation = false);
-	Ref<Texture2D> _get_app_theme_native_menu_icon(const StringName &p_name, bool p_global_menu, bool p_dark_mode) const;
 
 	void _check_system_theme_changed();
 

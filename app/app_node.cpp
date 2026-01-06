@@ -90,25 +90,13 @@ void AppNode::_update_theme(bool p_skip_creation) {
 		// distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
 
 		// // Do not set icon.
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), _get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), _get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), _get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), _get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
 
 		// _update_renderer_color();
 	}
-}
-
-Ref<Texture2D> AppNode::_get_app_theme_native_menu_icon(const StringName &p_name, bool p_global_menu, bool p_dark_mode) const {
-	if (!p_global_menu) {
-		return theme->get_icon(p_name, SNAME("AppIcons"));
-	}
-	if (p_dark_mode && theme->has_icon(String(p_name) + "Dark", SNAME("AppIcons"))) {
-		return theme->get_icon(String(p_name) + "Dark", SNAME("AppIcons"));
-	} else if (!p_dark_mode && theme->has_icon(String(p_name) + "Light", SNAME("AppIcons"))) {
-		return theme->get_icon(String(p_name) + "Light", SNAME("AppIcons"));
-	}
-	return theme->get_icon(p_name, SNAME("AppIcons"));
 }
 
 void AppNode::_check_system_theme_changed() {
@@ -145,10 +133,10 @@ void AppNode::_check_system_theme_changed() {
 		bool dark_mode = DisplayServer::get_singleton()->is_dark_mode();
 
 		// // Do not set icon.
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), _get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), _get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), _get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), _get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
+		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
 		// editor_dock_manager->update_docks_menu();
 	}
 }
@@ -682,6 +670,7 @@ bool AppNode::_load_main_scene() {
 		container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
 		container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
 
+		// TODO: 1. Other classes, 2. use metadata/_tab_name
 		// Update tab icon and text
 		for (int i = 0; i < container->get_child_count(); i++) {
 			Node *control = container->get_child(i);
@@ -848,7 +837,7 @@ void AppNode::_init_main_menu() {
 	// TODO: SHORTCUT_AND_COMMAND
 	ED_SHORTCUT_AND_COMMAND("editor/editor_help", TTRC("Search Help..."), Key::F1);
 	ED_SHORTCUT_OVERRIDE("editor/editor_help", "macos", KeyModifierMask::ALT | Key::SPACE);
-	// help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode), ED_GET_SHORTCUT("editor/editor_help"), HELP_SEARCH);
+	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode), ED_GET_SHORTCUT("editor/editor_help"), HELP_SEARCH);
 	// help_menu->add_separator();
 	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/online_docs", TTRC("Online Documentation")), HELP_DOCS);
 	// help_menu->add_separator();
@@ -858,9 +847,9 @@ void AppNode::_init_main_menu() {
 	// // Do not set icon.
 	// if (!global_menu || !OS::get_singleton()->has_feature("macos")) {
 	// 	// On macOS  "Quit" and "About" options are in the "app" menu.
-	// 	help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/about", TTRC("About")), HELP_ABOUT);
+	// 	help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/about", TTRC("About")), HELP_ABOUT);
 	// }
-	// help_menu->add_icon_shortcut(_get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
+	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
 }
 
 void AppNode::_notification(int p_what) {
