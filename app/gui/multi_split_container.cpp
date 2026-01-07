@@ -240,6 +240,8 @@ void MultiSplitContainer::_create_sub_split(Control *p_control, Control *p_from,
 	move_child(split_container, control_index);
 	print_line("- sub split ", control_index, p_from, p_control);
 
+	split_container->connect(SceneStringName(mouse_exited), callable_mp(this, &MultiSplitContainer::_on_child_mouse_exited));
+
 	Node *owner = get_owner();
 	split_container->set_owner(owner);
 	split_container->split(p_control, p_from, p_direction);
@@ -264,6 +266,15 @@ void MultiSplitContainer::_clear_draggers() {
 	draggers.clear();
 }
 
+void MultiSplitContainer::_on_child_mouse_exited() {
+	if (!split_dragging) {
+		return;
+	}
+
+	drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+	print_line("child mouse exited, ", this);
+}
+
 void MultiSplitContainer::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_SORT_CHILDREN: {
@@ -277,6 +288,24 @@ void MultiSplitContainer::_notification(int p_what) {
 		case NOTIFICATION_TRANSLATION_CHANGED:
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
 			queue_sort();
+		} break;
+
+		case NOTIFICATION_DRAG_BEGIN: {
+			Dictionary drop_data = get_viewport()->gui_get_drag_data();
+
+			// Check if we are dragging a tab.
+			const String type = drop_data.get("type", "");
+			if (type == "tab_container_tab") { // TODO: type
+				split_dragging = true;
+				drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+			}
+		} break;
+
+		case NOTIFICATION_DRAG_END: {
+			if (split_dragging) {
+				split_dragging = false;
+				drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
+			}
 		} break;
 	}
 }
@@ -390,11 +419,15 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 		// Set vertical.
 		if (p_direction == SPLIT_UP || p_direction == SPLIT_DOWN) {
 			// TODO: is_fixed
-			ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
-			vertical = true;
+			if (vertical != true) {
+				ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
+				vertical = true;
+			}
 		} else if (p_direction == SPLIT_LEFT || p_direction == SPLIT_RIGHT) {
-			ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
-			vertical = false;
+			if (vertical != false) {
+				ERR_FAIL_COND_MSG(is_fixed, "Can't change orientation of " + get_class() + ".");
+				vertical = false;
+			}
 		}
 	}
 	ERR_FAIL_COND_MSG(p_from == nullptr, vformat("Split failed, from 0x%08X, new 0x%08X.", p_from, p_control));
@@ -415,7 +448,7 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 				} else if (p_direction == SPLIT_DOWN) {
 					control_index = i + 1;
 				} else {
-					_create_sub_split(p_control, p_from, p_direction);
+					_create_sub_split(p_control, p_from, p_direction); // TODO: is_fixed, vertical
 					return;
 				}
 			} else {
@@ -469,6 +502,7 @@ void MultiSplitContainer::remove(Control *p_control) {
 			remove_child(c);
 
 			int index_in_parent = get_index(false);
+			this->disconnect(SceneStringName(mouse_exited), callable_mp(split_container, &MultiSplitContainer::_on_child_mouse_exited));
 			split_container->remove_child(this);
 			split_container->add_child(c);
 			split_container->move_child(c, index_in_parent);
@@ -536,8 +570,89 @@ void MultiSplitContainer::_bind_methods() {
 
 MultiSplitContainer::MultiSplitContainer(bool p_vertical) {
 	vertical = p_vertical;
+
+	drop_overlay = memnew(DropOverlay);
+	// drop_overlay->set_custom_minimum_size(Size2(100, 100));
+	drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
+	// drop_overlay->set_visible(false);
+	add_child(drop_overlay, false, INTERNAL_MODE_BACK);
 }
 
 MultiSplitContainer::~MultiSplitContainer() {
 	draggers.clear();
+}
+
+void DropOverlay::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_MOUSE_ENTER: {
+			print_line("DropOverlay enter", this);
+		} break;
+
+		case NOTIFICATION_MOUSE_EXIT: {
+			print_line("DropOverlay exit", this);
+		} break;
+
+			// case NOTIFICATION_DRAG_BEGIN: {
+			// 	print_line("DropOverlay pass", this);
+			// 	set_mouse_filter(MOUSE_FILTER_PASS);
+			// } break;
+
+			// case NOTIFICATION_DRAG_END: {
+			// 	print_line("DropOverlay ignore", this);
+			// 	set_mouse_filter(MOUSE_FILTER_IGNORE);
+			// } break;
+	}
+}
+
+bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
+	print_line("DropOverlay::can_drop_data: ", p_point, p_data, this);
+	Dictionary d = p_data;
+	if (!d.has("type")) {
+		return false;
+	}
+
+	if (String(d["type"]) == "tab_container_tab") {
+		return true;
+	}
+
+	return false;
+}
+
+void DropOverlay::drop_data(const Point2 &p_point, const Variant &p_data) {
+}
+
+void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	MultiSplitContainer *sc = Object::cast_to<MultiSplitContainer>(get_parent());
+
+	if (sc->get_child_count(false) <= 0) {
+		return;
+	}
+
+	Ref<InputEventMouseMotion> mm = p_event;
+
+	if (mm.is_valid()) {
+		Vector2i in_parent_pos = get_transform().xform(mm->get_position());
+		print_line("in_parent_pos: ", in_parent_pos, mm->get_position());
+		Control *child = nullptr;
+		int child_count = sc->get_child_count(false); // TODO: sortable
+		for (int i = 0; i < child_count; i++) {
+			// Control *c = sc->as_sortable_control(get_child(i, false), Container::SortableVisibilityMode::VISIBLE);	// TODO
+			Control *c = Object::cast_to<Control>(sc->get_child(i, false));
+			bool has_point = c->get_rect().has_point(in_parent_pos);
+			if (has_point) {
+				print_line("in c: ", c);
+				child = c;
+				break;
+			}
+		}
+
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
+		if (split_container) {
+			set_mouse_filter(MOUSE_FILTER_IGNORE);
+			print_line("child split");
+		}
+	}
 }
