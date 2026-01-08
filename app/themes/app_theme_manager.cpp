@@ -1148,6 +1148,49 @@ void AppThemeManager::_populate_standard_styles(const Ref<AppTheme> &p_theme, Th
 		p_theme->set_constant("outline_size", "TabContainer", 0);
 		p_theme->set_constant("h_separation", "TabBar", 4 * APP_SCALE);
 		p_theme->set_constant("outline_size", "TabBar", 0);
+
+		// AppTabContainer.
+		{
+			float scale = APP_SCALE;
+
+			// Font colors
+			const Color control_font_color = Color(0.875, 0.875, 0.875);
+			const Color control_font_disabled_color = control_font_color * Color(1, 1, 1, 0.5);
+
+			p_theme->set_stylebox("tabbar_background", "AppTabContainer", style_tabbar_background);
+			p_theme->set_stylebox(SceneStringName(panel), "AppTabContainer", p_config.content_panel_style);
+
+			p_theme->set_stylebox("tab_selected", "AppTabContainer", style_tab_selected);
+			p_theme->set_stylebox("tab_hovered", "AppTabContainer", style_tab_hovered);
+			p_theme->set_stylebox("tab_unselected", "AppTabContainer", style_tab_unselected);
+			p_theme->set_stylebox("tab_disabled", "AppTabContainer", style_tab_disabled);
+			p_theme->set_stylebox("tab_focus", "AppTabContainer", style_tab_focus);
+
+			p_theme->set_icon("menu", "AppTabContainer", p_theme->get_icon(SNAME("GuiTabMenu"), AppStringName(AppIcons)));
+			p_theme->set_icon("menu_highlight", "AppTabContainer", p_theme->get_icon(SNAME("GuiTabMenuHl"), AppStringName(AppIcons)));
+			p_theme->set_icon("increment", "AppTabContainer", p_theme->get_icon(SNAME("GuiScrollArrowRight"), AppStringName(AppIcons)));
+			p_theme->set_icon("decrement", "AppTabContainer", p_theme->get_icon(SNAME("GuiScrollArrowLeft"), AppStringName(AppIcons)));
+			p_theme->set_icon("increment_highlight", "AppTabContainer", p_theme->get_icon(SNAME("GuiScrollArrowRightHl"), AppStringName(AppIcons)));
+			p_theme->set_icon("decrement_highlight", "AppTabContainer", p_theme->get_icon(SNAME("GuiScrollArrowLeftHl"), AppStringName(AppIcons)));
+			p_theme->set_icon("drop_mark", "AppTabContainer", p_theme->get_icon(SNAME("GuiTabDropMark"), AppStringName(AppIcons)));
+
+			p_theme->set_font(SceneStringName(font), "AppTabContainer", Ref<Font>());
+			p_theme->set_font_size(SceneStringName(font_size), "AppTabContainer", -1);
+
+			p_theme->set_color("font_selected_color", "AppTabContainer", p_config.font_color);
+			p_theme->set_color("font_hovered_color", "AppTabContainer", p_config.font_color);
+			p_theme->set_color("font_unselected_color", "AppTabContainer", p_config.font_disabled_color);
+			p_theme->set_color("font_outline_color", "AppTabContainer", p_config.font_outline_color);
+			p_theme->set_color("drop_mark_color", "AppTabContainer", tab_highlight);
+
+			p_theme->set_color("font_disabled_color", "AppTabContainer", control_font_disabled_color);
+
+			p_theme->set_constant("side_margin", "AppTabContainer", 0);
+			p_theme->set_constant("outline_size", "AppTabContainer", 0);
+
+			p_theme->set_constant("icon_separation", "AppTabContainer", Math::round(4 * scale));
+			p_theme->set_constant("icon_max_width", "AppTabContainer", 0);
+		}
 	}
 
 	// Separators.
