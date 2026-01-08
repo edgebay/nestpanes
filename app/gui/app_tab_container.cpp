@@ -1,12 +1,22 @@
 #include "app_tab_container.h"
 
+#include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
+#include "scene/gui/panel.h"
+#include "scene/gui/popup_menu.h"
+#include "scene/gui/texture_rect.h"
+
 #include "scene/theme/theme_db.h"
+
+#include "app/app_modules/settings/app_settings.h"
+#include "app/app_string_names.h"
+#include "app/gui/app_control.h"
+#include "app/themes/app_scale.h"
 
 Rect2 AppTabContainer::_get_tab_rect() const {
 	Rect2 rect;
 	if (tabs_visible && get_tab_count() > 0) {
-		rect = Rect2(theme_cache.tabbar_style->get_offset(), tab_bar->get_size());
+		rect = Rect2(theme_cache.tabbar_style->get_offset(), tabbar_hbox->get_size());
 		rect.position.x += is_layout_rtl() ? theme_cache.menu_icon->get_width() : theme_cache.side_margin;
 	}
 
@@ -16,7 +26,7 @@ Rect2 AppTabContainer::_get_tab_rect() const {
 int AppTabContainer::_get_tab_height() const {
 	int height = 0;
 	if (tabs_visible && get_tab_count() > 0) {
-		height = tab_bar->get_minimum_size().height + theme_cache.tabbar_style->get_margin(SIDE_TOP) + theme_cache.tabbar_style->get_margin(SIDE_BOTTOM);
+		height = tabbar_hbox->get_minimum_size().height + theme_cache.tabbar_style->get_margin(SIDE_TOP) + theme_cache.tabbar_style->get_margin(SIDE_BOTTOM);
 	}
 
 	return height;
@@ -104,6 +114,35 @@ void AppTabContainer::gui_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
+void AppTabContainer::shortcut_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	Ref<InputEventKey> k = p_event;
+	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
+		// if (ED_IS_SHORTCUT("editor/next_tab", p_event)) {
+		// 	int next_tab = EditorNode::get_editor_data().get_edited_scene() + 1;
+		// 	next_tab %= EditorNode::get_editor_data().get_edited_scene_count();
+		// 	_on_tab_changed(next_tab);
+		// }
+		// if (ED_IS_SHORTCUT("editor/prev_tab", p_event)) {
+		// 	int next_tab = EditorNode::get_editor_data().get_edited_scene() - 1;
+		// 	next_tab = next_tab >= 0 ? next_tab : EditorNode::get_editor_data().get_edited_scene_count() - 1;
+		// 	_on_tab_changed(next_tab);
+		// }
+	}
+}
+
+void AppTabContainer::unhandled_key_input(const Ref<InputEvent> &p_event) {
+	if (!tab_preview_panel->is_visible()) {
+		return;
+	}
+
+	Ref<InputEventKey> k = p_event;
+	if (k.is_valid() && k->is_action_pressed(SNAME("ui_cancel"), false, true)) {
+		tab_preview_panel->hide();
+	}
+}
+
 void AppTabContainer::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
@@ -154,7 +193,7 @@ void AppTabContainer::_notification(int p_what) {
 				}
 			}
 
-			_on_resized();
+			_on_tab_resized();
 		} break;
 
 		case NOTIFICATION_VISIBILITY_CHANGED: {
@@ -176,19 +215,31 @@ void AppTabContainer::_notification(int p_what) {
 			updating_visibility = false;
 		} break;
 
+		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
+			if (EditorSettings::get_singleton()->check_changed_settings_in_group("interface/tabs")) {
+				// tab_bar->set_tab_close_display_policy((TabBar::CloseButtonDisplayPolicy)EDITOR_GET("interface/tabs/display_close_button").operator int());
+				tab_bar->set_max_tab_width(int(EDITOR_GET("interface/tabs/maximum_width")) * APP_SCALE);
+				_on_tab_resized();
+			}
+		} break;
+
 		case NOTIFICATION_TRANSLATION_CHANGED:
-		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
+		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
+			theme_changing = true;
+			callable_mp(this, &AppTabContainer::_on_theme_changed).call_deferred(); // Wait until all changed theme.
+
+			_on_tab_resized();
+		} break;
 		case NOTIFICATION_THEME_CHANGED: {
 			theme_changing = true;
 			callable_mp(this, &AppTabContainer::_on_theme_changed).call_deferred(); // Wait until all changed theme.
 
-			// tabbar_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("tabbar_background"), SNAME("AppTabContainer")));
-			// _tab_bar->add_theme_constant_override("icon_max_width", get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor)));
+			tab_bar->add_theme_constant_override("icon_max_width", get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor)));
 
 			tab_add->set_button_icon(get_theme_icon(SNAME("Add"), SNAME("AppIcons")));
 			tab_add->add_theme_color_override("icon_normal_color", Color(0.6f, 0.6f, 0.6f, 0.8f));
 
-			// scene_tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
+			tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
 		} break;
 	}
 }
@@ -205,43 +256,73 @@ void AppTabContainer::_menu_option_confirm(int p_option, bool p_confirmed) {
 	}
 }
 
-void AppTabContainer::_on_resized() {
-	TabBar *_tab_bar = get_tab_bar();
-	const Size2 add_button_size = Size2(tab_add->get_size().x, _tab_bar->get_size().y);
-	// if (_tab_bar->get_offset_buttons_visible()) {
-	// 	// Move the add button to a fixed position.
-	// 	if (tab_add->get_parent() == _tab_bar) {
-	// 		_tab_bar->remove_child(tab_add);
-	// 		scene_tab_add_ph->add_child(tab_add);
-	// 		tab_add->set_rect(Rect2(Point2(), add_button_size));
-	// 	}
-	// } else {
-	// 	// Move the add button to be after the last tab.
-	// 	if (tab_add->get_parent() == scene_tab_add_ph) {
-	// 		scene_tab_add_ph->remove_child(tab_add);
-	// 		_tab_bar->add_child(tab_add);
+void AppTabContainer::_update_context_menu() {
+	// #define DISABLE_LAST_OPTION_IF(m_condition)                   \
+	// 	if (m_condition) {                                        \
+	// 		tab_bar_context_menu->set_item_disabled(-1, true); \
 	// 	}
 
-	if (_tab_bar->get_tab_count() == 0) {
-		tab_add->set_rect(Rect2(Point2(), add_button_size));
-		return;
-	}
+	// 	tab_bar_context_menu->clear();
+	// 	tab_bar_context_menu->reset_size();
 
-	Rect2 last_tab = _tab_bar->get_tab_rect(_tab_bar->get_tab_count() - 1);
-	int hsep = _tab_bar->get_theme_constant(SNAME("h_separation"));
-	if (_tab_bar->is_layout_rtl()) {
-		tab_add->set_rect(Rect2(Point2(last_tab.position.x - add_button_size.x - hsep, last_tab.position.y), add_button_size));
-	} else {
-		tab_add->set_rect(Rect2(Point2(last_tab.position.x + last_tab.size.width + hsep, last_tab.position.y), add_button_size));
-	}
-	// }
+	// 	int tab_id = tab_bar->get_hovered_tab();
+	// 	bool no_root_node = !EditorNode::get_editor_data().get_edited_scene_root(tab_id);
+
+	// tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_scene"), AppTabContainer::FILE_NEW_SCENE);
+	// 	if (tab_id >= 0) {
+	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene"), EditorNode::SCENE_SAVE_SCENE);
+	// 		DISABLE_LAST_OPTION_IF(no_root_node);
+	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene_as"), EditorNode::SCENE_SAVE_AS_SCENE);
+	// 		DISABLE_LAST_OPTION_IF(no_root_node);
+	// 	}
+
+	// 	bool can_save_all_scenes = false;
+	// 	for (int i = 0; i < EditorNode::get_editor_data().get_edited_scene_count(); i++) {
+	// 		if (!EditorNode::get_editor_data().get_scene_path(i).is_empty() && EditorNode::get_editor_data().get_edited_scene_root(i)) {
+	// 			can_save_all_scenes = true;
+	// 			break;
+	// 		}
+	// 	}
+	// 	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_all_scenes"), EditorNode::SCENE_SAVE_ALL_SCENES);
+	// 	DISABLE_LAST_OPTION_IF(!can_save_all_scenes);
+
+	// 	if (tab_id >= 0) {
+	// 		tab_bar_context_menu->add_separator();
+	// 		tab_bar_context_menu->add_item(RTR("Show in FileSystem"), SCENE_SHOW_IN_FILESYSTEM);
+	// 		DISABLE_LAST_OPTION_IF(!ResourceLoader::exists(EditorNode::get_editor_data().get_scene_path(tab_id)));
+	// 		tab_bar_context_menu->add_item(RTR("Play This Scene"), SCENE_RUN);
+	// 		DISABLE_LAST_OPTION_IF(no_root_node);
+
+	// 		tab_bar_context_menu->add_separator();
+	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/close_scene"), EditorNode::SCENE_CLOSE);
+	// 		tab_bar_context_menu->set_item_text(-1, RTR("Close Tab"));
+	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/reopen_closed_scene"), EditorNode::SCENE_OPEN_PREV);
+	// 		tab_bar_context_menu->set_item_text(-1, RTR("Undo Close Tab"));
+	// 		DISABLE_LAST_OPTION_IF(!EditorNode::get_singleton()->has_previous_closed_scenes());
+	// 		tab_bar_context_menu->add_item(RTR("Close Other Tabs"), SCENE_CLOSE_OTHERS);
+	// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() <= 1);
+	// 		tab_bar_context_menu->add_item(RTR("Close Tabs to the Right"), SCENE_CLOSE_RIGHT);
+	// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() == tab_id + 1);
+	// 		tab_bar_context_menu->add_item(RTR("Close All Tabs"), SCENE_CLOSE_ALL);
+
+	// 		const PackedStringArray paths = { EditorNode::get_editor_data().get_scene_path(tab_id) };
+	// 		EditorContextMenuPluginManager::get_singleton()->add_options_from_plugins(tab_bar_context_menu, EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TABS, paths);
+	// 	} else {
+	// 		EditorContextMenuPluginManager::get_singleton()->add_options_from_plugins(tab_bar_context_menu, EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TABS, {});
+	// 	}
+	// #undef DISABLE_LAST_OPTION_IF
+
+	// last_hovered_tab = tab_id;
+}
+
+void AppTabContainer::_custom_menu_option(int p_option) {
 }
 
 void AppTabContainer::_reposition_active_tab(int p_to_index) {
 	// AppTabContainer::get_editor_data().move_edited_scene_to_index(p_to_index);
 	// update_scene_tabs();
 
-	_on_resized();
+	_on_tab_resized();
 }
 
 void AppTabContainer::_on_theme_changed() {
@@ -301,11 +382,11 @@ void AppTabContainer::_repaint() {
 	// Move the TabBar to the top or bottom.
 	// Don't change the left and right offsets since the TabBar will resize and may change tab offset.
 	if (tabs_position == POSITION_BOTTOM) {
-		tab_bar->set_anchor_and_offset(SIDE_BOTTOM, 1.0, -bottom_margin);
-		tab_bar->set_anchor_and_offset(SIDE_TOP, 1.0, top_margin - _get_tab_height());
+		tabbar_hbox->set_anchor_and_offset(SIDE_BOTTOM, 1.0, -bottom_margin);
+		tabbar_hbox->set_anchor_and_offset(SIDE_TOP, 1.0, top_margin - _get_tab_height());
 	} else {
-		tab_bar->set_anchor_and_offset(SIDE_TOP, 0.0, top_margin);
-		tab_bar->set_anchor_and_offset(SIDE_BOTTOM, 0.0, _get_tab_height() - bottom_margin);
+		tabbar_hbox->set_anchor_and_offset(SIDE_TOP, 0.0, top_margin);
+		tabbar_hbox->set_anchor_and_offset(SIDE_BOTTOM, 0.0, _get_tab_height() - bottom_margin);
 	}
 
 	updating_visibility = true;
@@ -353,27 +434,27 @@ void AppTabContainer::_update_margins() {
 	}
 
 	if (get_tab_count() == 0) {
-		tab_bar->set_offset(SIDE_LEFT, left_margin);
-		tab_bar->set_offset(SIDE_RIGHT, -right_margin);
+		tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
+		tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
 		return;
 	}
 
 	switch (get_tab_alignment()) {
 		case TabBar::ALIGNMENT_LEFT: {
-			tab_bar->set_offset(SIDE_LEFT, left_margin + theme_cache.side_margin);
-			tab_bar->set_offset(SIDE_RIGHT, -right_margin);
+			tabbar_hbox->set_offset(SIDE_LEFT, left_margin + theme_cache.side_margin);
+			tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
 		} break;
 
 		case TabBar::ALIGNMENT_CENTER: {
-			tab_bar->set_offset(SIDE_LEFT, left_margin);
-			tab_bar->set_offset(SIDE_RIGHT, -right_margin);
+			tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
+			tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
 		} break;
 
 		case TabBar::ALIGNMENT_RIGHT: {
-			tab_bar->set_offset(SIDE_LEFT, left_margin);
+			tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
 
 			if (has_popup) {
-				tab_bar->set_offset(SIDE_RIGHT, -right_margin);
+				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
 				return;
 			}
 
@@ -383,9 +464,9 @@ void AppTabContainer::_update_margins() {
 
 			// Calculate if all the tabs would still fit if the margin was present.
 			if (get_clip_tabs() && (tab_bar->get_offset_buttons_visible() || (get_tab_count() > 1 && (total_tabs_width + theme_cache.side_margin) > get_size().width))) {
-				tab_bar->set_offset(SIDE_RIGHT, -right_margin);
+				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
 			} else {
-				tab_bar->set_offset(SIDE_RIGHT, -right_margin - theme_cache.side_margin);
+				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin - theme_cache.side_margin);
 			}
 		} break;
 
@@ -405,7 +486,7 @@ Vector<Control *> AppTabContainer::_get_tab_controls() const {
 	Vector<Control *> controls;
 	for (int i = 0; i < get_child_count(); i++) {
 		Control *control = as_sortable_control(get_child(i), SortableVisibilityMode::IGNORE);
-		if (!control || control == tab_bar || children_removing.has(control)) {
+		if (!control || control == tabbar_hbox || children_removing.has(control)) {
 			continue;
 		}
 
@@ -493,6 +574,8 @@ void AppTabContainer::_on_tab_clicked(int p_tab) {
 }
 
 void AppTabContainer::_on_tab_closed(int p_tab) {
+	emit_signal("tab_closed", p_tab);
+
 	Node *control = get_child(p_tab, false);
 	if (control != nullptr) {
 		remove_child(control);
@@ -507,13 +590,97 @@ void AppTabContainer::_on_tab_closed(int p_tab) {
 
 void AppTabContainer::_on_tab_hovered(int p_tab) {
 	emit_signal(SNAME("tab_hovered"), p_tab);
+
+	if (!bool(EDITOR_GET("interface/tabs/show_thumbnail_on_hover"))) {
+		return;
+	}
+
+	// // Currently the tab previews are displayed under the running game process when embed.
+	// // Right now, the easiest technique to fix that is to prevent displaying the tab preview
+	// // when the user is in the Game View.
+	// if (EditorNode::get_singleton()->get_editor_main_screen()->get_selected_index() == EditorMainScreen::EDITOR_GAME && EditorRunBar::get_singleton()->is_playing()) {
+	// 	return;
+	// }
+
+	// int current_tab = tab_bar->get_current_tab();
+
+	// if (p_tab == current_tab || p_tab < 0) {
+	// 	tab_preview_panel->hide();
+	// } else {
+	// 	String path = EditorNode::get_editor_data().get_scene_path(p_tab);
+	// 	if (!path.is_empty()) {
+	// 		EditorResourcePreview::get_singleton()->queue_resource_preview(path, this, "_tab_preview_done", p_tab);
+	// 	}
+	// }
+}
+
+void AppTabContainer::_on_tab_exit() {
+	tab_preview_panel->hide();
 }
 
 void AppTabContainer::_on_tab_changed(int p_tab) {
 	callable_mp(this, &AppTabContainer::_repaint).call_deferred();
 	queue_redraw();
 
+	tab_preview_panel->hide();
+
 	emit_signal(SNAME("tab_changed"), p_tab);
+}
+
+void AppTabContainer::_on_tab_input(const Ref<InputEvent> &p_input) {
+	Ref<InputEventMouseButton> mb = p_input;
+
+	if (mb.is_valid()) {
+		if (mb->get_button_index() == MouseButton::LEFT && mb->is_double_click()) {
+			int tab_buttons = 0;
+			if (tab_bar->get_offset_buttons_visible()) {
+				tab_buttons = get_theme_icon(SNAME("increment"), SNAME("TabBar"))->get_width() + get_theme_icon(SNAME("decrement"), SNAME("TabBar"))->get_width();
+			}
+
+			if ((is_layout_rtl() && mb->get_position().x > tab_buttons) || (!is_layout_rtl() && mb->get_position().x < tab_bar->get_size().width - tab_buttons)) {
+				trigger_menu_option(AppTabContainer::FILE_NEW_SCENE, true);
+			}
+		}
+		if (mb->get_button_index() == MouseButton::RIGHT && mb->is_pressed()) {
+			// Context menu.
+			_update_context_menu();
+
+			tab_bar_context_menu->set_position(tab_bar->get_screen_position() + mb->get_position());
+			tab_bar_context_menu->reset_size();
+			tab_bar_context_menu->popup();
+		}
+	}
+}
+
+void AppTabContainer::_on_tab_resized() {
+	const Size2 add_button_size = Size2(tab_add->get_size().x, tab_bar->get_size().y);
+	if (tab_bar->get_offset_buttons_visible()) {
+		// Move the add button to a fixed position.
+		if (tab_add->get_parent() == tab_bar) {
+			tab_bar->remove_child(tab_add);
+			tab_add_ph->add_child(tab_add);
+			tab_add->set_rect(Rect2(Point2(), add_button_size));
+		}
+	} else {
+		// Move the add button to be after the last tab.
+		if (tab_add->get_parent() == tab_add_ph) {
+			tab_add_ph->remove_child(tab_add);
+			tab_bar->add_child(tab_add);
+		}
+
+		if (tab_bar->get_tab_count() == 0) {
+			tab_add->set_rect(Rect2(Point2(), add_button_size));
+			return;
+		}
+
+		Rect2 last_tab = tab_bar->get_tab_rect(tab_bar->get_tab_count() - 1);
+		int hsep = tab_bar->get_theme_constant(SNAME("h_separation"));
+		if (tab_bar->is_layout_rtl()) {
+			tab_add->set_rect(Rect2(Point2(last_tab.position.x - add_button_size.x - hsep, last_tab.position.y), add_button_size));
+		} else {
+			tab_add->set_rect(Rect2(Point2(last_tab.position.x + last_tab.size.width + hsep, last_tab.position.y), add_button_size));
+		}
+	}
 }
 
 void AppTabContainer::_on_tab_selected(int p_tab) {
@@ -569,6 +736,18 @@ void AppTabContainer::_on_tab_visibility_changed(Control *p_child) {
 	updating_visibility = false;
 }
 
+void AppTabContainer::_tab_preview_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, const Variant &p_udata) {
+	int p_tab = p_udata;
+	if (p_preview.is_valid()) {
+		tab_preview->set_texture(p_preview);
+
+		Rect2 rect = tab_bar->get_tab_rect(p_tab);
+		rect.position += tab_bar->get_global_position();
+		tab_preview_panel->set_global_position(rect.position + Vector2(0, rect.size.height));
+		tab_preview_panel->show();
+	}
+}
+
 void AppTabContainer::_refresh_tab_indices() {
 	Vector<Control *> controls = _get_tab_controls();
 	for (int i = 0; i < controls.size(); i++) {
@@ -579,6 +758,7 @@ void AppTabContainer::_refresh_tab_indices() {
 void AppTabContainer::_refresh_tab_names() {
 	Vector<Control *> controls = _get_tab_controls();
 	for (int i = 0; i < controls.size(); i++) {
+		// TODO: use meta name
 		if (!controls[i]->has_meta("_tab_name") && String(controls[i]->get_name()) != get_tab_title(i)) {
 			tab_bar->set_tab_title(i, controls[i]->get_name());
 		}
@@ -588,7 +768,7 @@ void AppTabContainer::_refresh_tab_names() {
 void AppTabContainer::add_child_notify(Node *p_child) {
 	Container::add_child_notify(p_child);
 
-	if (p_child == tab_bar) {
+	if (p_child == tabbar_container) {
 		return;
 	}
 
@@ -614,15 +794,12 @@ void AppTabContainer::add_child_notify(Node *p_child) {
 	if (!is_inside_tree()) {
 		callable_mp(this, &AppTabContainer::_repaint).call_deferred();
 	}
-
-	// TODO
-	// _on_resized();
 }
 
 void AppTabContainer::move_child_notify(Node *p_child) {
 	Container::move_child_notify(p_child);
 
-	if (p_child == tab_bar) {
+	if (p_child == tabbar_container) {
 		return;
 	}
 
@@ -633,15 +810,12 @@ void AppTabContainer::move_child_notify(Node *p_child) {
 
 	_refresh_tab_indices();
 	queue_accessibility_update();
-
-	// TODO
-	// _on_resized();
 }
 
 void AppTabContainer::remove_child_notify(Node *p_child) {
 	Container::remove_child_notify(p_child);
 
-	if (p_child == tab_bar) {
+	if (p_child == tabbar_container) {
 		return;
 	}
 
@@ -1068,6 +1242,7 @@ void AppTabContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("active_tab_rearranged", PropertyInfo(Variant::INT, "idx_to")));
 	ADD_SIGNAL(MethodInfo("tab_changed", PropertyInfo(Variant::INT, "tab")));
 	ADD_SIGNAL(MethodInfo("tab_clicked", PropertyInfo(Variant::INT, "tab")));
+	ADD_SIGNAL(MethodInfo("tab_closed", PropertyInfo(Variant::INT, "tab")));
 	ADD_SIGNAL(MethodInfo("tab_hovered", PropertyInfo(Variant::INT, "tab")));
 	ADD_SIGNAL(MethodInfo("tab_selected", PropertyInfo(Variant::INT, "tab")));
 	ADD_SIGNAL(MethodInfo("tab_button_pressed", PropertyInfo(Variant::INT, "tab")));
@@ -1131,10 +1306,26 @@ void AppTabContainer::_bind_methods() {
 	BIND_THEME_ITEM(Theme::DATA_TYPE_CONSTANT, AppTabContainer, outline_size);
 }
 
+// TODO: settings string "interface/tabs/xxx"
 AppTabContainer::AppTabContainer() {
+	set_process_shortcut_input(true);
+	set_process_unhandled_key_input(true);
+
+	tabbar_container = memnew(HBoxContainer);
+	tabbar_hbox = tabbar_container;
+	add_child(tabbar_container, false, INTERNAL_MODE_FRONT);
+	tabbar_container->set_use_parent_material(true);
+	tabbar_container->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
+
 	tab_bar = memnew(TabBar);
 	SET_DRAG_FORWARDING_GCDU(tab_bar, AppTabContainer);
-	add_child(tab_bar, false, INTERNAL_MODE_FRONT);
+	tabbar_container->add_child(tab_bar);
+	tab_bar->set_select_with_rmb(true);
+	// tab_bar->set_tab_close_display_policy((TabBar::CloseButtonDisplayPolicy)EDITOR_GET("interface/tabs/display_close_button").operator int());
+	tab_bar->set_max_tab_width(int(EDITOR_GET("interface/tabs/maximum_width")) * APP_SCALE);
+	tab_bar->set_drag_to_rearrange_enabled(true); // TODO: handle set_drag_to_rearrange_enabled
+	tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+	tab_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tab_bar->set_use_parent_material(true);
 	tab_bar->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
 	tab_bar->connect("tab_changed", callable_mp(this, &AppTabContainer::_on_tab_changed));
@@ -1142,33 +1333,51 @@ AppTabContainer::AppTabContainer() {
 	tab_bar->connect("tab_hovered", callable_mp(this, &AppTabContainer::_on_tab_hovered));
 	tab_bar->connect("tab_selected", callable_mp(this, &AppTabContainer::_on_tab_selected));
 	tab_bar->connect("tab_button_pressed", callable_mp(this, &AppTabContainer::_on_tab_button_pressed));
+	tab_bar->connect("tab_close_pressed", callable_mp(this, &AppTabContainer::_on_tab_closed));
+	tab_bar->connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_tab_exit));
+	tab_bar->connect(SceneStringName(gui_input), callable_mp(this, &AppTabContainer::_on_tab_input));
 	tab_bar->connect("active_tab_rearranged", callable_mp(this, &AppTabContainer::_on_active_tab_rearranged));
+	tab_bar->connect(SceneStringName(resized), callable_mp(this, &AppTabContainer::_on_tab_resized), CONNECT_DEFERRED);
 
-	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
-
-	// connect("pre_popup_pressed", callable_mp(this, &AppNode::_dock_pre_popup).bind(i));
-	set_drag_to_rearrange_enabled(true);
-	set_tabs_rearrange_group(1);
-	// connect("tab_changed", callable_mp(this, &AppNode::_dock_tab_changed));
-	set_use_hidden_tabs_for_min_size(true);
+	tab_bar_context_menu = memnew(PopupMenu);
+	tabbar_container->add_child(tab_bar_context_menu);
+	tab_bar_context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppTabContainer::trigger_menu_option).bind(false));
+	// tab_bar_context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppTabContainer::_custom_menu_option));
 
 	tab_add = memnew(Button);
 	tab_add->set_flat(true);
 	tab_add->set_tooltip_text(RTR("Add a new scene."));
+	tab_bar->add_child(tab_add);
 	tab_add->connect(SceneStringName(pressed), callable_mp(this, &AppTabContainer::trigger_menu_option).bind(AppTabContainer::FILE_NEW_SCENE, false));
 	tab_add->hide();
 
-	TabBar *_tab_bar = tab_bar; // get_tab_bar();
-	// _tab_bar->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_ALWAYS);
-	_tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
-	_tab_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	_tab_bar->add_child(tab_add, false, INTERNAL_MODE_FRONT);
+	tab_add_ph = memnew(Control);
+	tab_add_ph->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+	tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
+	tabbar_container->add_child(tab_add_ph);
 
-	_tab_bar->connect("tab_close_pressed", callable_mp(this, &AppTabContainer::_on_tab_closed));
-	// _tab_bar->connect("active_tab_rearranged", callable_mp(this, &AppTabContainer::_reposition_active_tab));
-	// _tab_bar->connect(SceneStringName(resized), callable_mp(this, &AppTabContainer::_on_resized), CONNECT_DEFERRED);
+	// On-hover tab preview.
 
-	// set_theme_type_variation("TabContainer");
+	Control *tab_preview_anchor = memnew(Control);
+	tab_preview_anchor->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+	tabbar_container->add_child(tab_preview_anchor);
+
+	tab_preview_panel = memnew(Panel);
+	tab_preview_panel->set_size(Size2(100, 100) * APP_SCALE);
+	tab_preview_panel->hide();
+	tab_preview_panel->set_self_modulate(Color(1, 1, 1, 0.7));
+	tab_preview_anchor->add_child(tab_preview_panel);
+
+	tab_preview = memnew(TextureRect);
+	tab_preview->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_CENTERED);
+	tab_preview->set_size(Size2(96, 96) * APP_SCALE);
+	tab_preview->set_position(Point2(2, 2) * APP_SCALE);
+	tab_preview_panel->add_child(tab_preview);
+
+	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
+
+	set_drag_to_rearrange_enabled(true);
+	// set_tabs_rearrange_group(1);
 }
 
 AppTabContainer::~AppTabContainer() {

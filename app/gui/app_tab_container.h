@@ -5,6 +5,10 @@
 #include "scene/gui/tab_bar.h"
 
 class Button;
+class HBoxContainer;
+class Panel;
+class PopupMenu;
+class TextureRect;
 
 class AppTabContainer : public Container {
 	GDCLASS(AppTabContainer, Container);
@@ -22,8 +26,16 @@ public:
 	};
 
 private:
+	HBoxContainer *tabbar_hbox = nullptr;
+	HBoxContainer *tabbar_container = nullptr;
+
 	TabBar *tab_bar = nullptr;
+	PopupMenu *tab_bar_context_menu = nullptr;
 	Button *tab_add = nullptr;
+	Control *tab_add_ph = nullptr;
+
+	Panel *tab_preview_panel = nullptr;
+	TextureRect *tab_preview = nullptr;
 
 	bool tabs_visible = true;
 	TabPosition tabs_position = POSITION_TOP;
@@ -80,8 +92,8 @@ private:
 	} theme_cache;
 
 	void _menu_option_confirm(int p_option, bool p_confirmed);
-
-	void _on_resized();
+	void _update_context_menu();
+	void _custom_menu_option(int p_option);
 
 	void _reposition_active_tab(int p_to_index);
 
@@ -98,10 +110,15 @@ private:
 	void _on_tab_clicked(int p_tab);
 	void _on_tab_closed(int p_tab);
 	void _on_tab_hovered(int p_tab);
+	void _on_tab_exit();
+	void _on_tab_input(const Ref<InputEvent> &p_input);
+	void _on_tab_resized();
 	void _on_tab_selected(int p_tab);
 	void _on_tab_button_pressed(int p_tab);
 	void _on_active_tab_rearranged(int p_tab);
 	void _on_tab_visibility_changed(Control *p_child);
+
+	void _tab_preview_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, const Variant &p_udata);
 
 	Variant _get_drag_data_fw(const Point2 &p_point, Control *p_from_control);
 	bool _can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from_control) const;
@@ -111,6 +128,8 @@ private:
 
 protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
+	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
+	virtual void unhandled_key_input(const Ref<InputEvent> &p_event) override;
 
 	void _notification(int p_what);
 
@@ -140,7 +159,6 @@ public:
 
 	void set_tabs_visible(bool p_visible);
 	bool are_tabs_visible() const;
-
 
 	void set_tab_title(int p_tab, const String &p_title);
 	String get_tab_title(int p_tab) const;

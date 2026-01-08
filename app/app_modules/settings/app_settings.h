@@ -131,6 +131,9 @@ void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, 
 Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path);
 
 // TODO: Remove
+#define EditorSettings AppSettings
+#define NOTIFICATION_EDITOR_SETTINGS_CHANGED NOTIFICATION_APP_SETTINGS_CHANGED
+
 #define EDITOR_DEF APP_DEF
 
 #define EDITOR_GET APP_GET
@@ -143,6 +146,7 @@ Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path);
 #define ED_GET_SHORTCUT APP_GET_SHORTCUT
 
 #define EditorStringName AppStringName
+#define Editor App
 #define EditorIcons AppIcons
 #define EditorStyles AppStyles
 #define EditorFonts AppFonts

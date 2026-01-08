@@ -320,6 +320,11 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set(m_name, m_default_value);                                                          \
 	hints[m_name] = PropertyInfo(m_type, m_name, m_property_hint, m_hint_string, m_usage);
 
+	// TODO: Remove
+#define EDITOR_SETTING APP_SETTING
+#define EDITOR_SETTING_BASIC APP_SETTING_BASIC
+#define EDITOR_SETTING_USAGE APP_SETTING_USAGE
+
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
 
 	// Display what the Auto display scale setting effectively corresponds to.
@@ -366,6 +371,11 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/base_spacing", 4, "0,8,1")
 	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/additional_spacing", 0, "0,8,1")
 	APP_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/theme/custom_theme", "", "*.res,*.tres,*.theme", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED)
+
+	// Tabs
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/tabs/display_close_button", 1, "Never,If Tab Active,Always"); // TabBar::CloseButtonDisplayPolicy
+	_initial_set("interface/tabs/show_thumbnail_on_hover", true);
+	EDITOR_SETTING_USAGE(Variant::INT, PROPERTY_HINT_RANGE, "interface/tabs/maximum_width", 350, "0,9999,1", PROPERTY_USAGE_DEFAULT)
 
 	// File dialog
 	_initial_set("filesystem/file_dialog/show_hidden_files", false);
