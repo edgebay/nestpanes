@@ -32,19 +32,6 @@ public:
 	MultiSplitContainerDragger();
 };
 
-class DropOverlay : public Control {
-	GDCLASS(DropOverlay, Control);
-
-protected:
-	void _notification(int p_what);
-
-public:
-	bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
-	void drop_data(const Point2 &p_point, const Variant &p_data) override;
-
-	void gui_input(const Ref<InputEvent> &p_event) override;
-};
-
 class MultiSplitContainer : public Container {
 	GDCLASS(MultiSplitContainer, Container);
 	friend class MultiSplitContainerDragger;
@@ -76,9 +63,6 @@ private:
 		}
 	};
 
-	bool split_dragging = false;
-	DropOverlay *drop_overlay = nullptr;
-
 	struct ThemeCache {
 		int separation = 0;
 		int minimum_grab_thickness = 0;
@@ -94,10 +78,9 @@ private:
 	int _get_separation() const;
 	void _resort();
 	void _create_sub_split(Control *p_control, Control *p_from, SplitDirection p_direction);
+	void _remove_sub_split(Control *p_control, Control *p_parent);
 
 	void _clear_draggers();
-
-	void _on_child_mouse_exited();
 
 protected:
 	bool is_fixed = false;
@@ -121,7 +104,7 @@ public:
 	void remove(Control *p_control);
 
 	MultiSplitContainer(bool p_vertical = false);
-	~MultiSplitContainer();
+	virtual ~MultiSplitContainer();
 };
 
 // TODO: do not limit?

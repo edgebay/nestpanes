@@ -7,8 +7,22 @@
 class Button;
 class HBoxContainer;
 class Panel;
+class PanelContainer;
 class PopupMenu;
 class TextureRect;
+
+class DropOverlay : public Control {
+	GDCLASS(DropOverlay, Control);
+
+protected:
+	void _notification(int p_what);
+
+public:
+	bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
+	void drop_data(const Point2 &p_point, const Variant &p_data) override;
+
+	void gui_input(const Ref<InputEvent> &p_event) override;
+};
 
 class AppTabContainer : public Container {
 	GDCLASS(AppTabContainer, Container);
@@ -26,7 +40,7 @@ public:
 	};
 
 private:
-	HBoxContainer *tabbar_hbox = nullptr;
+	PanelContainer *tabbar_panel = nullptr;
 	HBoxContainer *tabbar_container = nullptr;
 
 	TabBar *tab_bar = nullptr;
@@ -52,6 +66,9 @@ private:
 	bool new_tab_enabled = false;
 
 	int current_menu_option = 0;
+
+	bool split_dragging = false;
+	DropOverlay *drop_overlay = nullptr;
 
 	struct ThemeCache {
 		int side_margin = 0;
@@ -106,6 +123,7 @@ private:
 	void _refresh_tab_names();
 	void _update_margins();
 	void _on_mouse_exited();
+
 	void _on_tab_changed(int p_tab);
 	void _on_tab_clicked(int p_tab);
 	void _on_tab_closed(int p_tab);
@@ -126,9 +144,10 @@ private:
 	void _drag_move_tab(int p_from_index, int p_to_index);
 	void _drag_move_tab_from(TabBar *p_from_tabbar, int p_from_index, int p_to_index);
 
+	bool _is_internal_child(Node *p_node) const;
+
 protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
-	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
 	virtual void unhandled_key_input(const Ref<InputEvent> &p_event) override;
 
 	void _notification(int p_what);

@@ -3,6 +3,7 @@
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/panel.h"
+#include "scene/gui/panel_container.h"
 #include "scene/gui/popup_menu.h"
 #include "scene/gui/texture_rect.h"
 
@@ -13,10 +14,85 @@
 #include "app/gui/app_control.h"
 #include "app/themes/app_scale.h"
 
+void DropOverlay::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_MOUSE_ENTER: {
+			print_line("DropOverlay enter", this);
+		} break;
+
+		case NOTIFICATION_MOUSE_EXIT: {
+			print_line("DropOverlay exit", this);
+		} break;
+	}
+}
+
+bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
+	print_line("DropOverlay::can_drop_data: ", p_point, p_data, this);
+	Dictionary d = p_data;
+	if (!d.has("type")) {
+		return false;
+	}
+
+	if (String(d["type"]) == "tab_container_tab") {
+		return true;
+	}
+
+	return false;
+}
+
+void DropOverlay::drop_data(const Point2 &p_point, const Variant &p_data) {
+}
+
+void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	// MultiSplitContainer *sc = Object::cast_to<MultiSplitContainer>(get_parent());
+
+	// if (sc->get_child_count(false) <= 0) {
+	// 	return;
+	// }
+
+	// Ref<InputEventMouseMotion> mm = p_event;
+
+	// if (mm.is_valid()) {
+	// 	Vector2i in_parent_pos = get_transform().xform(mm->get_position());
+	// 	print_line("in_parent_pos: ", in_parent_pos, mm->get_position());
+	// 	Control *child = nullptr;
+	// 	int child_count = sc->get_child_count(false); // TODO: sortable
+	// 	for (int i = 0; i < child_count; i++) {
+	// 		// Control *c = sc->as_sortable_control(get_child(i, false), Container::SortableVisibilityMode::VISIBLE);	// TODO
+	// 		Control *c = Object::cast_to<Control>(sc->get_child(i, false));
+	// 		bool has_point = c->get_rect().has_point(in_parent_pos);
+	// 		print_line("in c: ", has_point ? "has_point" : "no_point", c->get_rect(), c);
+	// 		if (has_point) {
+	// 			child = c;
+	// 			break;
+	// 		}
+	// 	}
+
+	// 	// MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
+	// 	// if (split_container) {
+	// 	// 	set_mouse_filter(MOUSE_FILTER_IGNORE);
+	// 	// 	print_line("child split");
+	// 	// 	return;
+	// 	// }
+
+	// AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(child);
+	// if (tab_container) {
+	// 	Control *tab_bar_area = tab_container->get_tab_bar_area();
+	// 	if (tab_bar_area->get_rect().has_point(in_parent_pos)) {
+	// 		set_mouse_filter(MOUSE_FILTER_IGNORE);
+	// 		print_line("child tab");
+	// 	}
+	// 	return;
+	// }
+	// }
+}
+
 Rect2 AppTabContainer::_get_tab_rect() const {
 	Rect2 rect;
 	if (tabs_visible && get_tab_count() > 0) {
-		rect = Rect2(theme_cache.tabbar_style->get_offset(), tabbar_hbox->get_size());
+		rect = Rect2(theme_cache.tabbar_style->get_offset(), tabbar_panel->get_size());
 		rect.position.x += is_layout_rtl() ? theme_cache.menu_icon->get_width() : theme_cache.side_margin;
 	}
 
@@ -26,7 +102,7 @@ Rect2 AppTabContainer::_get_tab_rect() const {
 int AppTabContainer::_get_tab_height() const {
 	int height = 0;
 	if (tabs_visible && get_tab_count() > 0) {
-		height = tabbar_hbox->get_minimum_size().height + theme_cache.tabbar_style->get_margin(SIDE_TOP) + theme_cache.tabbar_style->get_margin(SIDE_BOTTOM);
+		height = tabbar_panel->get_minimum_size().height + theme_cache.tabbar_style->get_margin(SIDE_TOP) + theme_cache.tabbar_style->get_margin(SIDE_BOTTOM);
 	}
 
 	return height;
@@ -114,24 +190,6 @@ void AppTabContainer::gui_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
-void AppTabContainer::shortcut_input(const Ref<InputEvent> &p_event) {
-	ERR_FAIL_COND(p_event.is_null());
-
-	Ref<InputEventKey> k = p_event;
-	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
-		// if (ED_IS_SHORTCUT("editor/next_tab", p_event)) {
-		// 	int next_tab = EditorNode::get_editor_data().get_edited_scene() + 1;
-		// 	next_tab %= EditorNode::get_editor_data().get_edited_scene_count();
-		// 	_on_tab_changed(next_tab);
-		// }
-		// if (ED_IS_SHORTCUT("editor/prev_tab", p_event)) {
-		// 	int next_tab = EditorNode::get_editor_data().get_edited_scene() - 1;
-		// 	next_tab = next_tab >= 0 ? next_tab : EditorNode::get_editor_data().get_edited_scene_count() - 1;
-		// 	_on_tab_changed(next_tab);
-		// }
-	}
-}
-
 void AppTabContainer::unhandled_key_input(const Ref<InputEvent> &p_event) {
 	if (!tab_preview_panel->is_visible()) {
 		return;
@@ -146,6 +204,7 @@ void AppTabContainer::unhandled_key_input(const Ref<InputEvent> &p_event) {
 void AppTabContainer::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
+			// TODO: tab name, setup_current_tab
 			// If some nodes happen to be renamed outside the tree, the tab names need to be updated manually.
 			if (get_tab_count() > 0) {
 				_refresh_tab_names();
@@ -227,13 +286,13 @@ void AppTabContainer::_notification(int p_what) {
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
 			theme_changing = true;
 			callable_mp(this, &AppTabContainer::_on_theme_changed).call_deferred(); // Wait until all changed theme.
-
-			_on_tab_resized();
 		} break;
 		case NOTIFICATION_THEME_CHANGED: {
 			theme_changing = true;
 			callable_mp(this, &AppTabContainer::_on_theme_changed).call_deferred(); // Wait until all changed theme.
 
+			// tabbar_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("tabbar_background"), SNAME("AppTabContainer")));
+			tabbar_panel->add_theme_style_override(SceneStringName(panel), theme_cache.tabbar_style);
 			tab_bar->add_theme_constant_override("icon_max_width", get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor)));
 
 			tab_add->set_button_icon(get_theme_icon(SNAME("Add"), SNAME("AppIcons")));
@@ -241,10 +300,30 @@ void AppTabContainer::_notification(int p_what) {
 
 			tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
 		} break;
+
+		case NOTIFICATION_DRAG_BEGIN: {
+			Dictionary drop_data = get_viewport()->gui_get_drag_data();
+
+			// Check if we are dragging a tab.
+			const String type = drop_data.get("type", "");
+			print_line("drag type: ", type, drop_overlay->get_rect());
+			if (type == "tab_container_tab") { // TODO: type
+				split_dragging = true;
+				drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+			}
+		} break;
+
+		case NOTIFICATION_DRAG_END: {
+			if (split_dragging) {
+				split_dragging = false;
+				drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
+			}
+		} break;
 	}
 }
 
 void AppTabContainer::_menu_option_confirm(int p_option, bool p_confirmed) {
+	// TODO
 	if (!p_confirmed) { // FIXME: this may be a hack.
 		current_menu_option = (MenuOptions)p_option;
 	}
@@ -268,7 +347,7 @@ void AppTabContainer::_update_context_menu() {
 	// 	int tab_id = tab_bar->get_hovered_tab();
 	// 	bool no_root_node = !EditorNode::get_editor_data().get_edited_scene_root(tab_id);
 
-	// tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_scene"), AppTabContainer::FILE_NEW_SCENE);
+	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_scene"), AppTabContainer::FILE_NEW_SCENE);
 	// 	if (tab_id >= 0) {
 	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene"), EditorNode::SCENE_SAVE_SCENE);
 	// 		DISABLE_LAST_OPTION_IF(no_root_node);
@@ -376,17 +455,24 @@ void AppTabContainer::_repaint() {
 	Vector<Control *> controls = _get_tab_controls();
 	int current = get_current_tab();
 
+	int tab_height = _get_tab_height();
 	float top_margin = theme_cache.tabbar_style->get_margin(SIDE_TOP);
 	float bottom_margin = theme_cache.tabbar_style->get_margin(SIDE_BOTTOM);
 
 	// Move the TabBar to the top or bottom.
 	// Don't change the left and right offsets since the TabBar will resize and may change tab offset.
 	if (tabs_position == POSITION_BOTTOM) {
-		tabbar_hbox->set_anchor_and_offset(SIDE_BOTTOM, 1.0, -bottom_margin);
-		tabbar_hbox->set_anchor_and_offset(SIDE_TOP, 1.0, top_margin - _get_tab_height());
+		tabbar_panel->set_anchor_and_offset(SIDE_BOTTOM, 1.0, -bottom_margin);
+		tabbar_panel->set_anchor_and_offset(SIDE_TOP, 1.0, top_margin - tab_height);
+
+		drop_overlay->set_anchor_and_offset(SIDE_TOP, 0.0, 0);
+		drop_overlay->set_anchor_and_offset(SIDE_BOTTOM, 1.0, tab_height);
 	} else {
-		tabbar_hbox->set_anchor_and_offset(SIDE_TOP, 0.0, top_margin);
-		tabbar_hbox->set_anchor_and_offset(SIDE_BOTTOM, 0.0, _get_tab_height() - bottom_margin);
+		tabbar_panel->set_anchor_and_offset(SIDE_TOP, 0.0, top_margin);
+		tabbar_panel->set_anchor_and_offset(SIDE_BOTTOM, 0.0, tab_height - bottom_margin);
+
+		drop_overlay->set_anchor_and_offset(SIDE_TOP, 0.0, tab_height);
+		drop_overlay->set_anchor_and_offset(SIDE_BOTTOM, 1.0, 0);
 	}
 
 	updating_visibility = true;
@@ -399,9 +485,9 @@ void AppTabContainer::_repaint() {
 
 			if (tabs_visible) {
 				if (tabs_position == POSITION_BOTTOM) {
-					c->set_offset(SIDE_BOTTOM, -_get_tab_height());
+					c->set_offset(SIDE_BOTTOM, -tab_height);
 				} else {
-					c->set_offset(SIDE_TOP, _get_tab_height());
+					c->set_offset(SIDE_TOP, tab_height);
 				}
 			}
 
@@ -434,27 +520,27 @@ void AppTabContainer::_update_margins() {
 	}
 
 	if (get_tab_count() == 0) {
-		tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
-		tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
+		tabbar_panel->set_offset(SIDE_LEFT, left_margin);
+		tabbar_panel->set_offset(SIDE_RIGHT, -right_margin);
 		return;
 	}
 
 	switch (get_tab_alignment()) {
 		case TabBar::ALIGNMENT_LEFT: {
-			tabbar_hbox->set_offset(SIDE_LEFT, left_margin + theme_cache.side_margin);
-			tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
+			tabbar_panel->set_offset(SIDE_LEFT, left_margin + theme_cache.side_margin);
+			tabbar_panel->set_offset(SIDE_RIGHT, -right_margin);
 		} break;
 
 		case TabBar::ALIGNMENT_CENTER: {
-			tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
-			tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
+			tabbar_panel->set_offset(SIDE_LEFT, left_margin);
+			tabbar_panel->set_offset(SIDE_RIGHT, -right_margin);
 		} break;
 
 		case TabBar::ALIGNMENT_RIGHT: {
-			tabbar_hbox->set_offset(SIDE_LEFT, left_margin);
+			tabbar_panel->set_offset(SIDE_LEFT, left_margin);
 
 			if (has_popup) {
-				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
+				tabbar_panel->set_offset(SIDE_RIGHT, -right_margin);
 				return;
 			}
 
@@ -464,9 +550,9 @@ void AppTabContainer::_update_margins() {
 
 			// Calculate if all the tabs would still fit if the margin was present.
 			if (get_clip_tabs() && (tab_bar->get_offset_buttons_visible() || (get_tab_count() > 1 && (total_tabs_width + theme_cache.side_margin) > get_size().width))) {
-				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin);
+				tabbar_panel->set_offset(SIDE_RIGHT, -right_margin);
 			} else {
-				tabbar_hbox->set_offset(SIDE_RIGHT, -right_margin - theme_cache.side_margin);
+				tabbar_panel->set_offset(SIDE_RIGHT, -right_margin - theme_cache.side_margin);
 			}
 		} break;
 
@@ -486,7 +572,7 @@ Vector<Control *> AppTabContainer::_get_tab_controls() const {
 	Vector<Control *> controls;
 	for (int i = 0; i < get_child_count(); i++) {
 		Control *control = as_sortable_control(get_child(i), SortableVisibilityMode::IGNORE);
-		if (!control || control == tabbar_hbox || children_removing.has(control)) {
+		if (!control || _is_internal_child(control) || children_removing.has(control)) {
 			continue;
 		}
 
@@ -531,6 +617,10 @@ void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_inde
 		return;
 	}
 	move_tab_from_tab_container(from_tab_container, p_from_index, p_to_index);
+}
+
+bool AppTabContainer::_is_internal_child(Node *p_node) const {
+	return (p_node == tabbar_panel || p_node == drop_overlay);
 }
 
 void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p_from_index, int p_to_index) {
@@ -595,6 +685,7 @@ void AppTabContainer::_on_tab_hovered(int p_tab) {
 		return;
 	}
 
+	// TODO: preview
 	// // Currently the tab previews are displayed under the running game process when embed.
 	// // Right now, the easiest technique to fix that is to prevent displaying the tab preview
 	// // when the user is in the Game View.
@@ -768,7 +859,7 @@ void AppTabContainer::_refresh_tab_names() {
 void AppTabContainer::add_child_notify(Node *p_child) {
 	Container::add_child_notify(p_child);
 
-	if (p_child == tabbar_container) {
+	if (_is_internal_child(p_child)) {
 		return;
 	}
 
@@ -785,7 +876,6 @@ void AppTabContainer::add_child_notify(Node *p_child) {
 	if (get_tab_count() == 1) {
 		queue_redraw();
 	}
-	queue_accessibility_update();
 
 	p_child->connect("renamed", callable_mp(this, &AppTabContainer::_refresh_tab_names));
 	p_child->connect(SceneStringName(visibility_changed), callable_mp(this, &AppTabContainer::_on_tab_visibility_changed).bind(c));
@@ -799,7 +889,7 @@ void AppTabContainer::add_child_notify(Node *p_child) {
 void AppTabContainer::move_child_notify(Node *p_child) {
 	Container::move_child_notify(p_child);
 
-	if (p_child == tabbar_container) {
+	if (_is_internal_child(p_child)) {
 		return;
 	}
 
@@ -809,13 +899,12 @@ void AppTabContainer::move_child_notify(Node *p_child) {
 	}
 
 	_refresh_tab_indices();
-	queue_accessibility_update();
 }
 
 void AppTabContainer::remove_child_notify(Node *p_child) {
 	Container::remove_child_notify(p_child);
 
-	if (p_child == tabbar_container) {
+	if (_is_internal_child(p_child)) {
 		return;
 	}
 
@@ -838,7 +927,6 @@ void AppTabContainer::remove_child_notify(Node *p_child) {
 	if (get_tab_count() == 0) {
 		queue_redraw();
 	}
-	queue_accessibility_update();
 
 	p_child->remove_meta("_tab_index");
 	p_child->remove_meta("_tab_name");
@@ -1251,16 +1339,16 @@ void AppTabContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("new_tab"));
 	ADD_SIGNAL(MethodInfo("emptied"));
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1"), "set_current_tab", "get_current_tab");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tabs_position", PROPERTY_HINT_ENUM, "Top,Bottom"), "set_tabs_position", "get_tabs_position");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "clip_tabs"), "set_clip_tabs", "get_clip_tabs");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "tabs_visible"), "set_tabs_visible", "are_tabs_visible");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_to_rearrange_enabled"), "set_drag_to_rearrange_enabled", "get_drag_to_rearrange_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tabs_rearrange_group"), "set_tabs_rearrange_group", "get_tabs_rearrange_group");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hidden_tabs_for_min_size"), "set_use_hidden_tabs_for_min_size", "get_use_hidden_tabs_for_min_size");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_focus_mode", PROPERTY_HINT_ENUM, "None,Click,All"), "set_tab_focus_mode", "get_tab_focus_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_enabled"), "set_deselect_enabled", "get_deselect_enabled");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1"), "set_current_tab", "get_current_tab");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tabs_position", PROPERTY_HINT_ENUM, "Top,Bottom"), "set_tabs_position", "get_tabs_position");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "clip_tabs"), "set_clip_tabs", "get_clip_tabs");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "tabs_visible"), "set_tabs_visible", "are_tabs_visible");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_to_rearrange_enabled"), "set_drag_to_rearrange_enabled", "get_drag_to_rearrange_enabled");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tabs_rearrange_group"), "set_tabs_rearrange_group", "get_tabs_rearrange_group");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hidden_tabs_for_min_size"), "set_use_hidden_tabs_for_min_size", "get_use_hidden_tabs_for_min_size");
+	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_focus_mode", PROPERTY_HINT_ENUM, "None,Click,All"), "set_tab_focus_mode", "get_tab_focus_mode");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deselect_enabled"), "set_deselect_enabled", "get_deselect_enabled");
 
 	ADD_CLASS_DEPENDENCY("TabBar");
 	ADD_CLASS_DEPENDENCY("Button");
@@ -1308,14 +1396,17 @@ void AppTabContainer::_bind_methods() {
 
 // TODO: settings string "interface/tabs/xxx"
 AppTabContainer::AppTabContainer() {
-	set_process_shortcut_input(true);
 	set_process_unhandled_key_input(true);
 
+	tabbar_panel = memnew(PanelContainer);
+	add_child(tabbar_panel, false, INTERNAL_MODE_FRONT);
+	tabbar_panel->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
+
 	tabbar_container = memnew(HBoxContainer);
-	tabbar_hbox = tabbar_container;
-	add_child(tabbar_container, false, INTERNAL_MODE_FRONT);
-	tabbar_container->set_use_parent_material(true);
-	tabbar_container->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
+	tabbar_panel->add_child(tabbar_container);
+	// add_child(tabbar_container, false, INTERNAL_MODE_FRONT);
+	// tabbar_container->set_use_parent_material(true);
+	// tabbar_container->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
 
 	tab_bar = memnew(TabBar);
 	SET_DRAG_FORWARDING_GCDU(tab_bar, AppTabContainer);
@@ -1326,7 +1417,7 @@ AppTabContainer::AppTabContainer() {
 	tab_bar->set_drag_to_rearrange_enabled(true); // TODO: handle set_drag_to_rearrange_enabled
 	tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	tab_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	tab_bar->set_use_parent_material(true);
+	// tab_bar->set_use_parent_material(true);
 	tab_bar->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
 	tab_bar->connect("tab_changed", callable_mp(this, &AppTabContainer::_on_tab_changed));
 	tab_bar->connect("tab_clicked", callable_mp(this, &AppTabContainer::_on_tab_clicked));
@@ -1373,6 +1464,13 @@ AppTabContainer::AppTabContainer() {
 	tab_preview->set_size(Size2(96, 96) * APP_SCALE);
 	tab_preview->set_position(Point2(2, 2) * APP_SCALE);
 	tab_preview_panel->add_child(tab_preview);
+
+	drop_overlay = memnew(DropOverlay);
+	drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
+	// drop_overlay->set_visible(false);
+	add_child(drop_overlay, false, INTERNAL_MODE_BACK);
+	// drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_WIDE);
 
 	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
 
