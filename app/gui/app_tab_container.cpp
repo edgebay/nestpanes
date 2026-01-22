@@ -14,20 +14,81 @@
 #include "app/gui/app_control.h"
 #include "app/themes/app_scale.h"
 
+DropOverlay::DropPosition DropOverlay::_get_position(const Point2 &p_point) const {
+	DropPosition position = DropPosition::DROP_CENTER;
+	Size2 size = get_size();
+
+	double h_margin = size.width / 3.0;
+	double v_margin = size.height / 3.0;
+
+	if (h_margin < 1 || v_margin < 1) {
+		return position;
+	}
+
+	int32_t px = p_point.x;
+	int32_t py = p_point.y;
+	if (px < h_margin) {
+		position = DropPosition::DROP_LEFT;
+	} else if (px > (size.width - h_margin)) {
+		position = DropPosition::DROP_RIGHT;
+	} else {
+		if (py < v_margin) {
+			position = DropPosition::DROP_UP;
+		} else if (py > (size.height - v_margin)) {
+			position = DropPosition::DROP_DOWN;
+		} else {
+			// center
+		}
+	}
+
+	return position;
+}
+
 void DropOverlay::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_MOUSE_ENTER: {
+			is_hovering = true;
+			queue_redraw();
 			print_line("DropOverlay enter", this);
 		} break;
 
 		case NOTIFICATION_MOUSE_EXIT: {
+			is_hovering = false;
+			queue_redraw();
 			print_line("DropOverlay exit", this);
+		} break;
+
+		case NOTIFICATION_DRAW: {
+			if (is_hovering) {
+				Size2 size = get_size();
+				double h_margin = size.width / 3.0;
+				double v_margin = size.height / 3.0;
+				switch (drop_position) {
+					case DROP_UP:
+						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), Size2(size.width, v_margin)));
+						break;
+					case DROP_DOWN:
+						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(0, size.height - v_margin), Size2(size.width, v_margin)));
+						break;
+					case DROP_LEFT:
+						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), Size2(h_margin, size.height)));
+						break;
+					case DROP_RIGHT:
+						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(size.width - h_margin, 0), Size2(h_margin, size.height)));
+						break;
+					case DROP_CENTER:
+						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), size));
+						break;
+
+					default:
+						break;
+				}
+			}
 		} break;
 	}
 }
 
 bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
-	print_line("DropOverlay::can_drop_data: ", p_point, p_data, this);
 	Dictionary d = p_data;
 	if (!d.has("type")) {
 		return false;
@@ -52,41 +113,49 @@ void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
 	// 	return;
 	// }
 
-	// Ref<InputEventMouseMotion> mm = p_event;
+	Ref<InputEventMouseMotion> mm = p_event;
 
-	// if (mm.is_valid()) {
-	// 	Vector2i in_parent_pos = get_transform().xform(mm->get_position());
-	// 	print_line("in_parent_pos: ", in_parent_pos, mm->get_position());
-	// 	Control *child = nullptr;
-	// 	int child_count = sc->get_child_count(false); // TODO: sortable
-	// 	for (int i = 0; i < child_count; i++) {
-	// 		// Control *c = sc->as_sortable_control(get_child(i, false), Container::SortableVisibilityMode::VISIBLE);	// TODO
-	// 		Control *c = Object::cast_to<Control>(sc->get_child(i, false));
-	// 		bool has_point = c->get_rect().has_point(in_parent_pos);
-	// 		print_line("in c: ", has_point ? "has_point" : "no_point", c->get_rect(), c);
-	// 		if (has_point) {
-	// 			child = c;
-	// 			break;
-	// 		}
-	// 	}
+	if (mm.is_valid()) {
+		Vector2i in_parent_pos = get_transform().xform(mm->get_position());
 
-	// 	// MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
-	// 	// if (split_container) {
-	// 	// 	set_mouse_filter(MOUSE_FILTER_IGNORE);
-	// 	// 	print_line("child split");
-	// 	// 	return;
-	// 	// }
+		DropPosition current_drop_position = _get_position(mm->get_position());
+		print_line("in_parent_pos: ", in_parent_pos, mm->get_position(), drop_position);
 
-	// AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(child);
-	// if (tab_container) {
-	// 	Control *tab_bar_area = tab_container->get_tab_bar_area();
-	// 	if (tab_bar_area->get_rect().has_point(in_parent_pos)) {
-	// 		set_mouse_filter(MOUSE_FILTER_IGNORE);
-	// 		print_line("child tab");
-	// 	}
-	// 	return;
-	// }
-	// }
+		if (current_drop_position != drop_position) {
+			drop_position = current_drop_position;
+			queue_redraw();
+		}
+
+		// Control *child = nullptr;
+		// int child_count = sc->get_child_count(false); // TODO: sortable
+		// for (int i = 0; i < child_count; i++) {
+		// 	// Control *c = sc->as_sortable_control(get_child(i, false), Container::SortableVisibilityMode::VISIBLE);	// TODO
+		// 	Control *c = Object::cast_to<Control>(sc->get_child(i, false));
+		// 	bool has_point = c->get_rect().has_point(in_parent_pos);
+		// 	print_line("in c: ", has_point ? "has_point" : "no_point", c->get_rect(), c);
+		// 	if (has_point) {
+		// 		child = c;
+		// 		break;
+		// 	}
+		// }
+
+		// 	// MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
+		// 	// if (split_container) {
+		// 	// 	set_mouse_filter(MOUSE_FILTER_IGNORE);
+		// 	// 	print_line("child split");
+		// 	// 	return;
+		// 	// }
+
+		// AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(child);
+		// if (tab_container) {
+		// 	Control *tab_bar_area = tab_container->get_tab_bar_area();
+		// 	if (tab_bar_area->get_rect().has_point(in_parent_pos)) {
+		// 		set_mouse_filter(MOUSE_FILTER_IGNORE);
+		// 		print_line("child tab");
+		// 	}
+		// 	return;
+		// }
+	}
 }
 
 Rect2 AppTabContainer::_get_tab_rect() const {
@@ -1474,6 +1543,7 @@ AppTabContainer::AppTabContainer() {
 
 	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
 
+	// TODO: move to memnew()?
 	set_drag_to_rearrange_enabled(true);
 	// set_tabs_rearrange_group(1);
 }

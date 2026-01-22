@@ -14,6 +14,21 @@ class TextureRect;
 class DropOverlay : public Control {
 	GDCLASS(DropOverlay, Control);
 
+public:
+	enum DropPosition {
+		DROP_UP,
+		DROP_DOWN,
+		DROP_LEFT,
+		DROP_RIGHT,
+		DROP_CENTER,
+	};
+
+private:
+	bool is_hovering = false;
+	DropPosition drop_position = DROP_CENTER;
+
+	DropPosition _get_position(const Point2 &p_point) const;
+
 protected:
 	void _notification(int p_what);
 
