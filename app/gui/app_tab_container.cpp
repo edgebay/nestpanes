@@ -18,6 +18,7 @@ DropOverlay::DropPosition DropOverlay::_get_position(const Point2 &p_point) cons
 	DropPosition position = DropPosition::DROP_CENTER;
 	Size2 size = get_size();
 
+	// TODO: 3.0
 	double h_margin = size.width / 3.0;
 	double v_margin = size.height / 3.0;
 
@@ -64,19 +65,19 @@ void DropOverlay::_notification(int p_what) {
 				double h_margin = size.width / 3.0;
 				double v_margin = size.height / 3.0;
 				switch (drop_position) {
-					case DROP_UP:
+					case DropPosition::DROP_UP:
 						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), Size2(size.width, v_margin)));
 						break;
-					case DROP_DOWN:
+					case DropPosition::DROP_DOWN:
 						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(0, size.height - v_margin), Size2(size.width, v_margin)));
 						break;
-					case DROP_LEFT:
+					case DropPosition::DROP_LEFT:
 						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), Size2(h_margin, size.height)));
 						break;
-					case DROP_RIGHT:
+					case DropPosition::DROP_RIGHT:
 						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(size.width - h_margin, 0), Size2(h_margin, size.height)));
 						break;
-					case DROP_CENTER:
+					case DropPosition::DROP_CENTER:
 						draw_style_box(get_theme_stylebox(SNAME("hovered"), SNAME("Tree")), Rect2(Point2(), size));
 						break;
 
@@ -102,6 +103,14 @@ bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) co
 }
 
 void DropOverlay::drop_data(const Point2 &p_point, const Variant &p_data) {
+	Dictionary d = p_data;
+	if (!d.has("type")) {
+		return;
+	}
+
+	if (String(d["type"]) == "tab_container_tab") {
+		emit_signal(SNAME("dropped"), p_point, p_data, drop_position);
+	}
 }
 
 void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
@@ -156,6 +165,10 @@ void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
 		// 	return;
 		// }
 	}
+}
+
+void DropOverlay::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("dropped", PropertyInfo(Variant::VECTOR2, "point"), PropertyInfo(Variant::DICTIONARY, "data"), PropertyInfo(Variant::INT, "position")));
 }
 
 Rect2 AppTabContainer::_get_tab_rect() const {
@@ -686,6 +699,22 @@ void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_inde
 		return;
 	}
 	move_tab_from_tab_container(from_tab_container, p_from_index, p_to_index);
+}
+
+void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position) {
+	print_line("on drop data: ", p_position);
+	switch (p_position) {
+		case DropPosition::DROP_CENTER:
+			// TODO: Handle dragging and dropping tabs within the same container
+			if (!drag_to_rearrange_enabled) {
+				break;
+			}
+			tab_bar->_handle_drop_data("tab_container_tab", p_point, p_data, callable_mp(this, &AppTabContainer::_drag_move_tab), callable_mp(this, &AppTabContainer::_drag_move_tab_from));
+			break;
+		default:
+			emit_signal(SNAME("tab_dropped"), p_position, p_data);
+			break;
+	}
 }
 
 bool AppTabContainer::_is_internal_child(Node *p_node) const {
@@ -1407,6 +1436,7 @@ void AppTabContainer::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("new_tab"));
 	ADD_SIGNAL(MethodInfo("emptied"));
+	ADD_SIGNAL(MethodInfo("tab_dropped", PropertyInfo(Variant::INT, "position"), PropertyInfo(Variant::DICTIONARY, "data")));
 
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1"), "set_current_tab", "get_current_tab");
@@ -1540,6 +1570,7 @@ AppTabContainer::AppTabContainer() {
 	// drop_overlay->set_visible(false);
 	add_child(drop_overlay, false, INTERNAL_MODE_BACK);
 	// drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_WIDE);
+	drop_overlay->connect("dropped", callable_mp(this, &AppTabContainer::_on_drop_data));
 
 	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
 

@@ -25,12 +25,13 @@ public:
 
 private:
 	bool is_hovering = false;
-	DropPosition drop_position = DROP_CENTER;
+	DropPosition drop_position = DropPosition::DROP_CENTER;
 
 	DropPosition _get_position(const Point2 &p_point) const;
 
 protected:
 	void _notification(int p_what);
+	static void _bind_methods();
 
 public:
 	bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
@@ -53,6 +54,8 @@ public:
 		POSITION_BOTTOM,
 		POSITION_MAX,
 	};
+
+	using DropPosition = DropOverlay::DropPosition;
 
 private:
 	PanelContainer *tabbar_panel = nullptr;
@@ -158,6 +161,7 @@ private:
 	void _drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from_control);
 	void _drag_move_tab(int p_from_index, int p_to_index);
 	void _drag_move_tab_from(TabBar *p_from_tabbar, int p_from_index, int p_to_index);
+	void _on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position);
 
 	bool _is_internal_child(Node *p_node) const;
 
