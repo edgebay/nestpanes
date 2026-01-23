@@ -1382,6 +1382,7 @@ void AppTabContainer::trigger_menu_option(int p_option, bool p_confirmed) {
 	_menu_option_confirm(p_option, p_confirmed);
 }
 
+// TODO: remove drag_to_rearrange_enabled?
 void AppTabContainer::set_drag_to_rearrange_enabled(bool p_enabled) {
 	drag_to_rearrange_enabled = p_enabled;
 }
@@ -1573,10 +1574,6 @@ AppTabContainer::AppTabContainer() {
 	drop_overlay->connect("dropped", callable_mp(this, &AppTabContainer::_on_drop_data));
 
 	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));
-
-	// TODO: move to memnew()?
-	set_drag_to_rearrange_enabled(true);
-	// set_tabs_rearrange_group(1);
 }
 
 AppTabContainer::~AppTabContainer() {

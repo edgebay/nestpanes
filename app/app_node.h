@@ -5,15 +5,16 @@
 #include "core/templates/safe_refcount.h"
 #include "scene/resources/theme.h"
 
+class AppTabContainer;
 class Control;
 class HBoxContainer;
 class MenuBar;
 class MenuButton;
 class MultiSplitContainer;
 class VBoxContainer;
-class VMultiSplitContainer;
 
-class AppTabContainer;
+class ContainerManager;
+
 class FileSystemControl;
 class FileSystemTree;
 class FileSystemList;
@@ -107,12 +108,6 @@ public:
 		// RESOURCE_SAVE,
 		// RESOURCE_SAVE_AS,
 		// SETTINGS_PICK_MAIN_SCENE,
-
-		// Split menu.
-		SPLIT_MENU_UP,
-		SPLIT_MENU_DOWN,
-		SPLIT_MENU_LEFT,
-		SPLIT_MENU_RIGHT
 	};
 
 private:
@@ -124,9 +119,11 @@ private:
 
 	HBoxContainer *title_bar = nullptr;
 	VBoxContainer *ribbon = nullptr;
-	VMultiSplitContainer *left_sidebar = nullptr;
+	MultiSplitContainer *left_sidebar = nullptr;
 	MultiSplitContainer *central_area = nullptr;
-	VMultiSplitContainer *right_sidebar = nullptr;
+	MultiSplitContainer *right_sidebar = nullptr;
+
+	ContainerManager *container_manager = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
 	MenuButton *main_menu_button = nullptr; // TODO: Remove?
@@ -144,13 +141,9 @@ private:
 	// String defer_load_scene;
 	// Node *_last_instantiated_scene = nullptr;
 
-	PopupMenu *split_menu = nullptr;
-
 	AppAbout *about = nullptr;
 
 	List<AppTabContainer *> tab_containers;
-	AppTabContainer *current_tab_container = nullptr;
-	AppTabContainer *selected_tab_container = nullptr;
 
 	List<FileSystemTree *> file_system_trees;
 	List<FileSystemList *> file_system_lists;
@@ -179,16 +172,11 @@ private:
 	void _menu_confirm_current();
 	void _menu_option_confirm(int p_option, bool p_confirmed);
 
-	void _split_menu_id_pressed(int p_option);
-	void _select_tab_container(AppTabContainer *p_tab_container);
-
 	void _toggle_left_sidebar();
 	void _toggle_right_sidebar();
 
-	AppTabContainer *_create_tab_container();
 	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?
 	int _new_editor(AppTabContainer *p_parent, const String &p_path);
-	void _tab_container_emptied(AppTabContainer *p_tab_container);
 
 	// void _on_tab_path_changed(const String &p_path);
 	void _on_tab_path_changed(FileSystemControl *p_fs);
@@ -197,6 +185,8 @@ private:
 	void _on_tree_item_selected(const String &p_path, bool is_dir);
 
 	void _exit(int p_exit_code);
+
+	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
 
 	String _get_config_path() const;
 	void _save_layout();
