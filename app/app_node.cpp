@@ -382,7 +382,7 @@ void AppNode::_on_tab_path_changed(FileSystemControl *p_fs) {
 		tab_container->set_tab_icon(tab_index, p_fs->get_current_dir_icon());
 		tab_container->set_tab_title(tab_index, title);
 
-		container_manager->set_current_tab_container(tab_container);
+		container_manager->set_current_tab_container(tab_container); // TODO: when tab activated/foucsed?
 	}
 	_save_layout();
 }
@@ -1044,6 +1044,8 @@ AppNode::AppNode() {
 
 		// Right sidebar.
 		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, right_hsplit, gui_main);
+
+		container_manager->set_current_tab_container(Object::cast_to<AppTabContainer>(central_area->get_child(0, false)));
 	}
 
 	left_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_left_sidebar));

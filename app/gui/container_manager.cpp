@@ -5,6 +5,8 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
 
+ContainerManager *ContainerManager::singleton = nullptr;
+
 void ContainerManager::_menu_id_pressed(int p_option) {
 	if (!selected_tab_container) {
 		return;
@@ -66,6 +68,7 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 	// Move tab.
 	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
 		p_tab_container->move_tab(p_data, p_tab_container->get_tab_count());
+		current_tab_container = p_tab_container;
 		return;
 	}
 
@@ -97,6 +100,9 @@ AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_directi
 	AppTabContainer *tab_container = _create_tab_container();
 	split_container->split(tab_container, p_from, (MultiSplitContainer::SplitDirection)p_direction);
 	tab_container->set_owner(split_container->get_owner()); // Note: after add to scene tree
+
+	current_tab_container = tab_container;
+
 	return tab_container;
 }
 
@@ -114,24 +120,6 @@ void ContainerManager::init_popup_menu(Node *p_parent) {
 
 PopupMenu *ContainerManager::get_popup() const {
 	return popup_menu;
-}
-
-MultiSplitContainer *ContainerManager::_create_split_container(const String &p_name, Node *p_parent, Node *p_owner) {
-	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
-
-	if (!p_name.is_empty()) {
-		split_container->set_name(p_name);
-	}
-
-	if (p_parent) {
-		p_parent->add_child(split_container);
-		if (p_owner) {
-			split_container->set_owner(p_owner);
-		}
-	}
-
-	split_containers.push_back(split_container);
-	return split_container;
 }
 
 AppTabContainer *ContainerManager::_create_tab_container() {
@@ -195,6 +183,7 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 }
 
 ContainerManager::ContainerManager() {
+	singleton = this;
 }
 
 ContainerManager::~ContainerManager() {

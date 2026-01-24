@@ -21,6 +21,8 @@ public:
 	// typedef Control *(*NewTabFunc)();
 
 private:
+	static ContainerManager *singleton;
+
 	// HashMap<String, NewTabFunc> *func_map;
 
 	PopupMenu *popup_menu = nullptr;
@@ -31,8 +33,6 @@ private:
 	AppTabContainer *current_tab_container = nullptr;
 	AppTabContainer *selected_tab_container = nullptr;
 
-	MultiSplitContainer *_create_split_container(const String &p_name = "", Node *p_parent = nullptr, Node *p_owner = nullptr);
-	// AppTabContainer *_create_tab_container(const String &p_name = "", Node *p_parent = nullptr, Node *p_owner = nullptr);
 	AppTabContainer *_create_tab_container();
 
 	void _menu_id_pressed(int p_option);
@@ -47,6 +47,8 @@ private:
 	// static void _bind_methods();
 
 public:
+	static ContainerManager *get_singleton() { return singleton; }
+
 	// int register_new_tab_function(const String &p_type, NewTabFunc p_function);
 
 	void init_popup_menu(Node *p_parent);
