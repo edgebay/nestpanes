@@ -116,55 +116,28 @@ void DropOverlay::drop_data(const Point2 &p_point, const Variant &p_data) {
 void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
-	// MultiSplitContainer *sc = Object::cast_to<MultiSplitContainer>(get_parent());
-
-	// if (sc->get_child_count(false) <= 0) {
-	// 	return;
-	// }
-
 	Ref<InputEventMouseMotion> mm = p_event;
 
 	if (mm.is_valid()) {
-		Vector2i in_parent_pos = get_transform().xform(mm->get_position());
+		DropPosition current_drop_position = DropPosition::DROP_CENTER;
+		if (position_detection) {
+			current_drop_position = _get_position(mm->get_position());
+		}
 
-		DropPosition current_drop_position = _get_position(mm->get_position());
-		print_line("in_parent_pos: ", in_parent_pos, mm->get_position(), drop_position);
-
+		// print_line("in_parent_pos: ", get_transform().xform(mm->get_position()), mm->get_position(), current_drop_position, drop_position);
 		if (current_drop_position != drop_position) {
 			drop_position = current_drop_position;
 			queue_redraw();
 		}
-
-		// Control *child = nullptr;
-		// int child_count = sc->get_child_count(false); // TODO: sortable
-		// for (int i = 0; i < child_count; i++) {
-		// 	// Control *c = sc->as_sortable_control(get_child(i, false), Container::SortableVisibilityMode::VISIBLE);	// TODO
-		// 	Control *c = Object::cast_to<Control>(sc->get_child(i, false));
-		// 	bool has_point = c->get_rect().has_point(in_parent_pos);
-		// 	print_line("in c: ", has_point ? "has_point" : "no_point", c->get_rect(), c);
-		// 	if (has_point) {
-		// 		child = c;
-		// 		break;
-		// 	}
-		// }
-
-		// 	// MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
-		// 	// if (split_container) {
-		// 	// 	set_mouse_filter(MOUSE_FILTER_IGNORE);
-		// 	// 	print_line("child split");
-		// 	// 	return;
-		// 	// }
-
-		// AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(child);
-		// if (tab_container) {
-		// 	Control *tab_bar_area = tab_container->get_tab_bar_area();
-		// 	if (tab_bar_area->get_rect().has_point(in_parent_pos)) {
-		// 		set_mouse_filter(MOUSE_FILTER_IGNORE);
-		// 		print_line("child tab");
-		// 	}
-		// 	return;
-		// }
 	}
+}
+
+void DropOverlay::enable_position_detection(bool p_enable) {
+	position_detection = p_enable;
+}
+
+bool DropOverlay::get_position_detection() const {
+	return position_detection;
 }
 
 void DropOverlay::_bind_methods() {
@@ -392,6 +365,15 @@ void AppTabContainer::_notification(int p_what) {
 			if (type == "tab_container_tab") { // TODO: type
 				split_dragging = true;
 				drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+
+				NodePath from_path = drop_data.get("from_path", NodePath());
+				NodePath tab_bar_path = get_tab_bar()->get_path();
+				print_line("path: ", from_path, tab_bar_path);
+				if (from_path == tab_bar_path && get_child_count(false) == 1) {
+					drop_overlay->enable_position_detection(false);
+				} else {
+					drop_overlay->enable_position_detection(true);
+				}
 			}
 		} break;
 
@@ -652,9 +634,9 @@ void AppTabContainer::_on_mouse_exited() {
 
 Vector<Control *> AppTabContainer::_get_tab_controls() const {
 	Vector<Control *> controls;
-	for (int i = 0; i < get_child_count(); i++) {
-		Control *control = as_sortable_control(get_child(i), SortableVisibilityMode::IGNORE);
-		if (!control || _is_internal_child(control) || children_removing.has(control)) {
+	for (int i = 0; i < get_child_count(false); i++) {
+		Control *control = as_sortable_control(get_child(i, false), SortableVisibilityMode::IGNORE);
+		if (!control || children_removing.has(control)) {
 			continue;
 		}
 
@@ -703,17 +685,18 @@ void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_inde
 
 void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position) {
 	print_line("on drop data: ", p_position);
-	switch (p_position) {
-		case DropPosition::DROP_CENTER:
-			// TODO: Handle dragging and dropping tabs within the same container
-			if (!drag_to_rearrange_enabled) {
-				break;
-			}
-			tab_bar->_handle_drop_data("tab_container_tab", p_point, p_data, callable_mp(this, &AppTabContainer::_drag_move_tab), callable_mp(this, &AppTabContainer::_drag_move_tab_from));
-			break;
-		default:
-			emit_signal(SNAME("tab_dropped"), p_position, p_data);
-			break;
+	Dictionary d = p_data;
+	if (!d.has("type")) {
+		return;
+	}
+
+	if (String(d["type"]) == "tab_container_tab") {
+		NodePath from_path = d["from_path"];
+		Node *from_node = get_node(from_path);
+		if (p_position == DropPosition::DROP_CENTER && from_node == get_tab_bar()) {
+			return;
+		}
+		emit_signal(SNAME("tab_dropped"), p_position, p_data);
 	}
 }
 
@@ -738,6 +721,7 @@ void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p
 	Control *moving_tabc = p_from->get_tab_control(p_from_index);
 	p_from->remove_child(moving_tabc);
 	add_child(moving_tabc, true);
+	// TODO: owner, use reparent()?
 
 	if (p_to_index < 0 || p_to_index > get_tab_count() - 1) {
 		p_to_index = get_tab_count() - 1;
@@ -757,6 +741,29 @@ void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p
 	}
 }
 
+void AppTabContainer::move_tab(const Variant &p_data, int p_to_index) {
+	Dictionary d = p_data;
+	if (!d.has("type")) {
+		return;
+	}
+
+	if (String(d["type"]) == "tab_container_tab") {
+		NodePath from_path = d["from_path"];
+		Node *from_node = get_node(from_path);
+		// TabBar *from_tab_bar = Object::cast_to<TabBar>(from_node);
+		// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_tab_bar->find_parent("AppTabContainer"));
+		// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_node(NodePath("../../")));
+		// TODO: handle layout
+		AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_parent()->get_parent()->get_parent());
+		print_line("move: ", from_node, p_from);
+		print_line(from_path);
+
+		int tab_from_id = d["tab_index"];
+
+		move_tab_from_tab_container(p_from, tab_from_id, p_to_index);
+	}
+}
+
 void AppTabContainer::_on_tab_clicked(int p_tab) {
 	emit_signal(SNAME("tab_clicked"), p_tab);
 }
@@ -768,11 +775,6 @@ void AppTabContainer::_on_tab_closed(int p_tab) {
 	if (control != nullptr) {
 		remove_child(control);
 		control->queue_free();
-	}
-
-	// TODO: use child_order_changed
-	if (get_child_count(false) == 0) {
-		emit_signal(SNAME("emptied"));
 	}
 }
 
@@ -1436,7 +1438,6 @@ void AppTabContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("pre_popup_pressed"));
 
 	ADD_SIGNAL(MethodInfo("new_tab"));
-	ADD_SIGNAL(MethodInfo("emptied"));
 	ADD_SIGNAL(MethodInfo("tab_dropped", PropertyInfo(Variant::INT, "position"), PropertyInfo(Variant::DICTIONARY, "data")));
 
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");

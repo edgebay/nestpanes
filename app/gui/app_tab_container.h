@@ -27,6 +27,8 @@ private:
 	bool is_hovering = false;
 	DropPosition drop_position = DropPosition::DROP_CENTER;
 
+	bool position_detection = true;
+
 	DropPosition _get_position(const Point2 &p_point) const;
 
 protected:
@@ -38,6 +40,9 @@ public:
 	void drop_data(const Point2 &p_point, const Variant &p_data) override;
 
 	void gui_input(const Ref<InputEvent> &p_event) override;
+
+	void enable_position_detection(bool p_enable);
+	bool get_position_detection() const;
 };
 
 class AppTabContainer : public Container {
@@ -244,6 +249,7 @@ public:
 	void trigger_menu_option(int p_option, bool p_confirmed);
 
 	void move_tab_from_tab_container(AppTabContainer *p_from, int p_from_index, int p_to_index = -1);
+	void move_tab(const Variant &p_data, int p_to_index = -1);
 
 	void set_drag_to_rearrange_enabled(bool p_enabled);
 	bool get_drag_to_rearrange_enabled() const;

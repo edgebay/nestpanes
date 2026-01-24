@@ -39,25 +39,37 @@ void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 	selected_tab_container = p_tab_container;
 }
 
-void ContainerManager::_tab_container_emptied(AppTabContainer *p_tab_container) {
-	if (tab_containers.size() == 1) {
-		// Last tab container.
-		return;
-	}
-	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_tab_container->get_parent());
-	if (split_container) {
-		split_container->remove(p_tab_container);
-		tab_containers.erase(p_tab_container);
-		p_tab_container->queue_free();
+void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
+	if (p_tab_container->get_child_count(false) == 0) {
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_tab_container->get_parent());
+		print_line("tab container emptied: ", p_tab_container, split_container);
+		if (split_container) {
+			// The last tab container in the main split container.
+			if (split_containers.find(split_container) && split_container->get_child_count(false) == 1) {
+				// TODO: new tab
+				// p_tab_container->add_child();
+			} else {
+				split_container->remove(p_tab_container);
+				tab_containers.erase(p_tab_container);
+				p_tab_container->queue_free();
 
-		if (current_tab_container == p_tab_container) {
-			current_tab_container = nullptr;
+				if (current_tab_container == p_tab_container) {
+					current_tab_container = nullptr;
+				}
+			}
 		}
 	}
 }
 
 void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container) {
 	print_line("drop tab: ", p_position, p_tab_container);
+	// Move tab.
+	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
+		p_tab_container->move_tab(p_data, p_tab_container->get_tab_count());
+		return;
+	}
+
+	// Split.
 	MultiSplitContainer::SplitDirection direction = MultiSplitContainer::SPLIT_RIGHT;
 	switch (p_position) {
 		case AppTabContainer::DropPosition::DROP_UP:
@@ -77,7 +89,7 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 			return;
 	}
 	AppTabContainer *tab_container = _split(p_tab_container, direction);
-	// TODO: move tab
+	tab_container->move_tab(p_data, 0);
 }
 
 AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_direction) {
@@ -135,7 +147,7 @@ AppTabContainer *ContainerManager::_create_tab_container() {
 
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &ContainerManager::_select_tab_container).bind(tab_container));
 	// tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind(tab_container));
-	tab_container->connect("emptied", callable_mp(this, &ContainerManager::_tab_container_emptied).bind(tab_container));
+	tab_container->connect("child_order_changed", callable_mp(this, &ContainerManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &ContainerManager::_on_drop_tab).bind(tab_container));
 
 	tab_containers.push_back(tab_container);

@@ -37,7 +37,7 @@ private:
 
 	void _menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
-	void _tab_container_emptied(AppTabContainer *p_tab_container);
+	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container);
 
 	AppTabContainer *_split(AppTabContainer *p_from, int p_direction);
