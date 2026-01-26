@@ -672,11 +672,7 @@ void AppTabContainer::_drag_move_tab(int p_from_index, int p_to_index) {
 }
 
 void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_index, int p_to_index) {
-	Node *parent = p_from_tabbar->get_parent();
-	if (!parent) {
-		return;
-	}
-	AppTabContainer *from_tab_container = Object::cast_to<AppTabContainer>(parent);
+	AppTabContainer *from_tab_container = _get_tab_container_from_tab_bar(p_from_tabbar);
 	if (!from_tab_container) {
 		return;
 	}
@@ -702,6 +698,28 @@ void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data
 
 bool AppTabContainer::_is_internal_child(Node *p_node) const {
 	return (p_node == tabbar_panel || p_node == drop_overlay);
+}
+
+AppTabContainer *AppTabContainer::_get_tab_container_from_tab_bar(TabBar *p_child) const {
+	// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_tab_bar->find_parent("AppTabContainer"));
+	// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_node(NodePath("../../")));
+
+	// TODO: handle layout
+	Node *parent = p_child->get_parent(); // tabbar_container
+	if (!parent) {
+		return nullptr;
+	}
+	parent = parent->get_parent(); // tabbar_panel
+	if (!parent) {
+		return nullptr;
+	}
+	parent = parent->get_parent(); // tab_container
+	if (!parent) {
+		return nullptr;
+	}
+
+	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(parent);
+	return tab_container;
 }
 
 void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p_from_index, int p_to_index) {
@@ -750,11 +768,11 @@ void AppTabContainer::move_tab(const Variant &p_data, int p_to_index) {
 	if (String(d["type"]) == "tab_container_tab") {
 		NodePath from_path = d["from_path"];
 		Node *from_node = get_node(from_path);
-		// TabBar *from_tab_bar = Object::cast_to<TabBar>(from_node);
-		// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_tab_bar->find_parent("AppTabContainer"));
-		// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_node(NodePath("../../")));
-		// TODO: handle layout
-		AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_parent()->get_parent()->get_parent());
+		TabBar *from_tab_bar = Object::cast_to<TabBar>(from_node);
+		AppTabContainer *p_from = _get_tab_container_from_tab_bar(from_tab_bar);
+		if (!p_from) {
+			return;
+		}
 		print_line("move: ", from_node, p_from);
 		print_line(from_path);
 
@@ -1538,7 +1556,7 @@ AppTabContainer::AppTabContainer() {
 
 	tab_add = memnew(Button);
 	tab_add->set_flat(true);
-	tab_add->set_tooltip_text(RTR("Add a new scene."));
+	tab_add->set_tooltip_text(RTR("Add a new scene.")); // TODO: scene -> pane
 	tab_bar->add_child(tab_add);
 	tab_add->connect(SceneStringName(pressed), callable_mp(this, &AppTabContainer::trigger_menu_option).bind(AppTabContainer::FILE_NEW_SCENE, false));
 	tab_add->hide();

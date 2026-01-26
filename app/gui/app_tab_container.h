@@ -170,6 +170,8 @@ private:
 
 	bool _is_internal_child(Node *p_node) const;
 
+	AppTabContainer *_get_tab_container_from_tab_bar(TabBar *p_child) const;
+
 protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 	virtual void unhandled_key_input(const Ref<InputEvent> &p_event) override;
