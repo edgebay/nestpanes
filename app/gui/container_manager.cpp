@@ -5,6 +5,9 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
 
+#include "app/gui/pane_base.h"
+#include "app/gui/pane_manager.h"
+
 ContainerManager *ContainerManager::singleton = nullptr;
 
 void ContainerManager::_menu_id_pressed(int p_option) {
@@ -39,6 +42,20 @@ void ContainerManager::_menu_id_pressed(int p_option) {
 
 void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 	selected_tab_container = p_tab_container;
+}
+
+void ContainerManager::_new_tab(AppTabContainer *p_tab_container) {
+	int tab_index = p_tab_container->get_tab_count();
+
+	PaneBase *pane = PaneManager::get_singleton()->create_pane(pane_type);
+	p_tab_container->add_child(pane);
+	pane->set_owner(p_tab_container->get_owner());
+	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(p_tab_container, pane));
+	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(p_tab_container, pane));
+
+	p_tab_container->set_tab_icon(tab_index, pane->get_icon());
+	p_tab_container->set_tab_title(tab_index, pane->get_title());
+	p_tab_container->set_current_tab(tab_index);
 }
 
 void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
@@ -95,6 +112,16 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 	tab_container->move_tab(p_data, 0);
 }
 
+void ContainerManager::_on_pane_title_changed(AppTabContainer *p_tab_container, PaneBase *p_pane) {
+	int tab_index = p_pane->get_index(false);
+	p_tab_container->set_tab_title(tab_index, p_pane->get_title());
+}
+
+void ContainerManager::_on_pane_icon_changed(AppTabContainer *p_tab_container, PaneBase *p_pane) {
+	int tab_index = p_pane->get_index(false);
+	p_tab_container->set_tab_icon(tab_index, p_pane->get_icon());
+}
+
 AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_direction) {
 	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_from->get_parent());
 	AppTabContainer *tab_container = _create_tab_container();
@@ -134,7 +161,7 @@ AppTabContainer *ContainerManager::_create_tab_container() {
 	}
 
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &ContainerManager::_select_tab_container).bind(tab_container));
-	// tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind(tab_container));
+	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind(tab_container));
 	tab_container->connect("child_order_changed", callable_mp(this, &ContainerManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &ContainerManager::_on_drop_tab).bind(tab_container));
 
@@ -183,10 +210,20 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 }
 
 ContainerManager::ContainerManager() {
+	ERR_FAIL_NULL_MSG(PaneManager::get_singleton(), "PaneManager doesn't exist.");
 	singleton = this;
+
+	List<PaneManager::PaneInfo> panes;
+	PaneManager::get_singleton()->get_pane_list(&panes);
+	if (!panes.is_empty()) {
+		const PaneManager::PaneInfo &info = panes.get(0);
+		pane_type = info.type;
+	}
 }
 
 ContainerManager::~ContainerManager() {
 	split_containers.clear();
 	tab_containers.clear();
+
+	singleton = nullptr;
 }

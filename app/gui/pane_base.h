@@ -13,6 +13,14 @@ private:
 	String title;
 	Ref<Texture2D> icon;
 
+protected:
+	void _notification(int p_what);
+
+	virtual String _get_pane_title() const;
+	virtual Ref<Texture2D> _get_pane_icon() const;
+
+	static void _bind_methods();
+
 public:
 	StringName get_type() const;
 
@@ -22,5 +30,6 @@ public:
 	void set_icon(const Ref<Texture2D> &p_icon);
 	Ref<Texture2D> get_icon() const;
 
-	PaneBase(const StringName &p_type, const String &p_title, const Ref<Texture2D> &p_icon);
+	PaneBase(const StringName &p_type);
+	virtual ~PaneBase();
 };

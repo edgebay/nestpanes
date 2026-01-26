@@ -1,9 +1,11 @@
 #pragma once
 
-#include "scene/gui/control.h"
+#include "core/object/object.h"
 
 class AppTabContainer;
 class MultiSplitContainer;
+class Node;
+class PaneBase;
 class PopupMenu;
 
 class ContainerManager : public Object {
@@ -23,7 +25,7 @@ public:
 private:
 	static ContainerManager *singleton;
 
-	// HashMap<String, NewTabFunc> *func_map;
+	// HashMap<String, NewTabFunc> func_map;
 
 	PopupMenu *popup_menu = nullptr;
 
@@ -33,12 +35,18 @@ private:
 	AppTabContainer *current_tab_container = nullptr;
 	AppTabContainer *selected_tab_container = nullptr;
 
+	StringName pane_type = "";
+
 	AppTabContainer *_create_tab_container();
 
 	void _menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
+	void _new_tab(AppTabContainer *p_tab_container);
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container);
+
+	void _on_pane_title_changed(AppTabContainer *p_tab_container, PaneBase *p_pane);
+	void _on_pane_icon_changed(AppTabContainer *p_tab_container, PaneBase *p_pane);
 
 	AppTabContainer *_split(AppTabContainer *p_from, int p_direction);
 

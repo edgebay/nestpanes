@@ -38,6 +38,8 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/container_manager.h"
 #include "app/gui/multi_split_container.h"
+#include "app/gui/pane_manager.h"
+#include "app/gui/welcome_pane.h"
 
 #define LEFT_SIDEBAR_NAME "left_sidebar"
 #define CENTRAL_AREA_NAME "central_area"
@@ -1002,6 +1004,10 @@ AppNode::AppNode() {
 	ribbon->add_child(settings_button);
 	settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
+	pane_manager = memnew(PaneManager);
+	// pane_manager->register_pane<WelcomePane>(WelcomePane::get_type_static(), theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	pane_manager->register_pane<WelcomePane>("WelcomePane", theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+
 	container_manager = memnew(ContainerManager);
 	container_manager->init_popup_menu(gui_base);
 
@@ -1081,6 +1087,7 @@ AppNode::AppNode() {
 
 AppNode::~AppNode() {
 	memdelete(container_manager);
+	memdelete(pane_manager);
 
 	AppSettings::destroy();
 	AppThemeManager::finalize();
