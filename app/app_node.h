@@ -14,7 +14,7 @@ class MultiSplitContainer;
 class VBoxContainer;
 
 class ContainerManager;
-class PaneManager;
+class PaneFactory;
 
 class FileSystemControl;
 class FileSystemTree;
@@ -125,7 +125,7 @@ private:
 	MultiSplitContainer *right_sidebar = nullptr;
 
 	ContainerManager *container_manager = nullptr;
-	PaneManager *pane_manager = nullptr;
+	PaneFactory *pane_factory = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
 	MenuButton *main_menu_button = nullptr; // TODO: Remove?

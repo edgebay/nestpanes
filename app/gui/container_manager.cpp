@@ -6,7 +6,7 @@
 #include "app/gui/multi_split_container.h"
 
 #include "app/gui/pane_base.h"
-#include "app/gui/pane_manager.h"
+#include "app/gui/pane_factory.h"
 
 ContainerManager *ContainerManager::singleton = nullptr;
 
@@ -47,11 +47,15 @@ void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 void ContainerManager::_new_tab(AppTabContainer *p_tab_container) {
 	int tab_index = p_tab_container->get_tab_count();
 
-	PaneBase *pane = PaneManager::get_singleton()->create_pane(pane_type);
+	PaneBase *pane = PaneFactory::get_singleton()->create_pane(pane_type);
 	p_tab_container->add_child(pane);
 	pane->set_owner(p_tab_container->get_owner());
 	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(p_tab_container, pane));
 	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(p_tab_container, pane));
+
+	// TODO: connect the pane's signal, should the handler function be placed in ContainerManager, PaneFactory, or elsewhere?
+	// pane->connect("signal", callable_mp(this, &ContainerManager::_func).bind(p_tab_container, pane));
+	// pane->connect("signal", callable_mp(PaneFactory::get_singleton(), &PaneFactory::func).bind(p_tab_container, pane));
 
 	p_tab_container->set_tab_icon(tab_index, pane->get_icon());
 	p_tab_container->set_tab_title(tab_index, pane->get_title());
@@ -65,7 +69,7 @@ void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab
 		if (split_container) {
 			// The last tab container in the main split container.
 			if (split_containers.find(split_container) && split_container->get_child_count(false) == 1) {
-				// TODO: new tab
+				// TODO: new tab?
 				// p_tab_container->add_child();
 			} else {
 				split_container->remove(p_tab_container);
@@ -109,7 +113,7 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 			return;
 	}
 	AppTabContainer *tab_container = _split(p_tab_container, direction);
-	tab_container->move_tab(p_data, 0);
+	tab_container->move_tab(p_data, 0); // TODO: split_container::_create_sub_split changed from_path
 }
 
 void ContainerManager::_on_pane_title_changed(AppTabContainer *p_tab_container, PaneBase *p_pane) {
@@ -210,13 +214,13 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 }
 
 ContainerManager::ContainerManager() {
-	ERR_FAIL_NULL_MSG(PaneManager::get_singleton(), "PaneManager doesn't exist.");
+	ERR_FAIL_NULL_MSG(PaneFactory::get_singleton(), "PaneFactory doesn't exist.");
 	singleton = this;
 
-	List<PaneManager::PaneInfo> panes;
-	PaneManager::get_singleton()->get_pane_list(&panes);
+	List<PaneFactory::PaneInfo> panes;
+	PaneFactory::get_singleton()->get_pane_list(&panes);
 	if (!panes.is_empty()) {
-		const PaneManager::PaneInfo &info = panes.get(0);
+		const PaneFactory::PaneInfo &info = panes.get(0);
 		pane_type = info.type;
 	}
 }
