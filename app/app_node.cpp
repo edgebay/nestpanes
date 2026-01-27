@@ -39,6 +39,8 @@
 #include "app/gui/container_manager.h"
 #include "app/gui/multi_split_container.h"
 #include "app/gui/pane_factory.h"
+
+#include "app/app_modules/settings/gui/settings_pane.h"
 #include "app/gui/welcome_pane.h"
 
 #define LEFT_SIDEBAR_NAME "left_sidebar"
@@ -1005,12 +1007,16 @@ AppNode::AppNode() {
 	settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	pane_factory = memnew(PaneFactory);
+	pane_factory->register_pane<SettingsPane>(
+			SettingsPane::get_class_static(),
+			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+
 	// pane_factory->register_pane<WelcomePane>("WelcomePane", theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 	pane_factory->register_pane<WelcomePane>(
-			WelcomePane::get_type_static(),
+			WelcomePane::get_class_static(),
 			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 	// pane_factory->register_pane<WelcomePane>(
-	// 		WelcomePane::get_type_static(),
+	// 		WelcomePane::get_class_static(),
 	// 		theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons")), // TODO
 	// 		callable_mp(this, &AppNode::_new_tab));
 
