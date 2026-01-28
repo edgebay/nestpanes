@@ -30,6 +30,7 @@
 #include "app/themes/app_theme_manager.h"
 
 #include "app/app_core/io/file_system_access.h"
+#include "app/gui/inspector/property_name_processor.h"
 
 #include "app/app_modules/file_management/file_system_list.h"
 #include "app/app_modules/file_management/file_system_tree.h"
@@ -885,6 +886,9 @@ AppNode::AppNode() {
 
 	// File system.
 	FileSystemAccess::create();
+
+	PropertyNameProcessor *pnp = memnew(PropertyNameProcessor);
+	add_child(pnp);
 
 	// Load settings.
 	if (!AppSettings::get_singleton()) {

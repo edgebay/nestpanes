@@ -11,6 +11,8 @@
 #include "scene/gui/tree.h"
 
 #include "app/gui/app_control.h"
+#include "app/gui/inspector/object_inspector.h"
+#include "app/gui/inspector/sectioned_inspector.h"
 
 #include "app/app_modules/settings/app_settings.h"
 
@@ -41,6 +43,36 @@ void SettingsPane::_app_restart() {
 }
 
 void SettingsPane::_app_restart_close() {
+}
+
+void SettingsPane::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			if (!EditorSettings::get_singleton()) {
+				return;
+			}
+
+			// EditorSettings::get_singleton()->update_text_editor_themes_list(); // Make sure we have an up to date list of themes.
+
+			// _update_dynamic_property_hints();
+
+			inspector->edit(EditorSettings::get_singleton());
+			inspector->get_inspector()->update_tree();
+
+			// _update_shortcuts();
+			// set_process_shortcut_input(true);
+
+			// // Restore valid window bounds or pop up at default size.
+			// Rect2 saved_size = EditorSettings::get_singleton()->get_project_metadata("dialog_bounds", "editor_settings", Rect2());
+			// if (saved_size != Rect2()) {
+			// 	popup(saved_size);
+			// } else {
+			// 	popup_centered_clamped(Size2(900, 700) * EDSCALE, 0.8);
+			// }
+
+			// _focus_current_search_box();
+		} break;
+	}
 }
 
 SettingsPane::SettingsPane() :
@@ -75,6 +107,16 @@ SettingsPane::SettingsPane() :
 	bool use_advanced = EDITOR_DEF("_editor_settings_advanced_mode", false);
 	advanced_switch->set_pressed(use_advanced);
 	advanced_switch->connect(SceneStringName(toggled), callable_mp(this, &SettingsPane::_advanced_toggled));
+
+	inspector = memnew(SectionedInspector);
+	inspector->get_inspector()->set_use_filter(true);
+	// inspector->get_inspector()->set_mark_unsaved(false);
+	inspector->register_search_box(search_box);
+	inspector->register_advanced_toggle(advanced_switch);
+	inspector->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	tab_general->add_child(inspector);
+	// inspector->get_inspector()->connect("property_edited", callable_mp(this, &EditorSettingsDialog::_settings_property_edited));
+	// inspector->get_inspector()->connect("restart_requested", callable_mp(this, &EditorSettingsDialog::_editor_restart_request));
 
 	restart_container = memnew(PanelContainer);
 	tab_general->add_child(restart_container);

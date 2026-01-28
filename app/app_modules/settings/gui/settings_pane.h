@@ -32,7 +32,7 @@ private:
 
 	LineEdit *search_box = nullptr;
 	CheckButton *advanced_switch = nullptr;
-	// 	SectionedInspector *inspector = nullptr;
+	SectionedInspector *inspector = nullptr;
 	// 	EditorEventSearchBar *shortcut_search_bar = nullptr;
 
 	// 	// Shortcuts
@@ -100,7 +100,8 @@ private:
 	void _app_restart();
 	void _app_restart_close();
 
-	// protected:
+protected:
+	void _notification(int p_what);
 	// 	static void _bind_methods();
 
 public:
