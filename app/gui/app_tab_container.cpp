@@ -9,6 +9,7 @@
 
 #include "scene/theme/theme_db.h"
 
+// TODO: app/gui/* should not depend on app/app_modules/*
 #include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
 #include "app/gui/app_control.h"
@@ -672,7 +673,8 @@ void AppTabContainer::_drag_move_tab(int p_from_index, int p_to_index) {
 }
 
 void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_index, int p_to_index) {
-	AppTabContainer *from_tab_container = _get_tab_container_from_tab_bar(p_from_tabbar);
+	// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
+	AppTabContainer *from_tab_container = _get_control_parent_tab_container(p_from_tabbar);
 	if (!from_tab_container) {
 		return;
 	}
@@ -700,26 +702,23 @@ bool AppTabContainer::_is_internal_child(Node *p_node) const {
 	return (p_node == tabbar_panel || p_node == drop_overlay);
 }
 
-AppTabContainer *AppTabContainer::_get_tab_container_from_tab_bar(TabBar *p_child) const {
-	// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_tab_bar->find_parent("AppTabContainer"));
-	// AppTabContainer *p_from = Object::cast_to<AppTabContainer>(from_node->get_node(NodePath("../../")));
-
-	// TODO: handle layout
-	Node *parent = p_child->get_parent(); // tabbar_container
-	if (!parent) {
-		return nullptr;
-	}
-	parent = parent->get_parent(); // tabbar_panel
-	if (!parent) {
-		return nullptr;
-	}
-	parent = parent->get_parent(); // tab_container
-	if (!parent) {
-		return nullptr;
+AppTabContainer *AppTabContainer::_get_control_parent_tab_container(Control *p_control) {
+	{
+		AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_control);
+		if (tab_container) {
+			return tab_container;
+		}
 	}
 
-	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(parent);
-	return tab_container;
+	Control *parent = p_control->get_parent_control();
+	while (parent) {
+		AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(parent);
+		if (tab_container) {
+			return tab_container;
+		}
+		parent = parent->get_parent_control();
+	}
+	return nullptr;
 }
 
 void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p_from_index, int p_to_index) {
@@ -769,7 +768,8 @@ void AppTabContainer::move_tab(const Variant &p_data, int p_to_index) {
 		NodePath from_path = d["from_path"];
 		Node *from_node = get_node(from_path);
 		TabBar *from_tab_bar = Object::cast_to<TabBar>(from_node);
-		AppTabContainer *p_from = _get_tab_container_from_tab_bar(from_tab_bar);
+		// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
+		AppTabContainer *p_from = _get_control_parent_tab_container(from_tab_bar);
 		if (!p_from) {
 			return;
 		}
@@ -787,13 +787,7 @@ void AppTabContainer::_on_tab_clicked(int p_tab) {
 }
 
 void AppTabContainer::_on_tab_closed(int p_tab) {
-	emit_signal("tab_closed", p_tab);
-
-	Node *control = get_child(p_tab, false);
-	if (control != nullptr) {
-		remove_child(control);
-		control->queue_free();
-	}
+	close_tab(p_tab);
 }
 
 void AppTabContainer::_on_tab_hovered(int p_tab) {
@@ -1438,6 +1432,16 @@ Vector<int> AppTabContainer::get_allowed_size_flags_horizontal() const {
 
 Vector<int> AppTabContainer::get_allowed_size_flags_vertical() const {
 	return Vector<int>();
+}
+
+void AppTabContainer::close_tab(int p_tab) {
+	emit_signal("tab_closed", p_tab);
+
+	Node *control = get_child(p_tab, false);
+	if (control != nullptr) {
+		remove_child(control);
+		control->queue_free();
+	}
 }
 
 void AppTabContainer::_bind_methods() {

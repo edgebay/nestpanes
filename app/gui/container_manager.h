@@ -68,6 +68,9 @@ public:
 	void set_current_tab_container(AppTabContainer *p_tab_container);
 	AppTabContainer *get_current_tab_container() const;
 
+	void new_tab();
+	void close_current_tab();
+
 	ContainerManager();
 	~ContainerManager();
 };

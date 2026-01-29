@@ -213,6 +213,19 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 	return current_tab_container;
 }
 
+void ContainerManager::new_tab() {
+	if (current_tab_container) {
+		_new_tab(current_tab_container);
+	}
+}
+
+void ContainerManager::close_current_tab() {
+	if (current_tab_container && current_tab_container->get_tab_count() > 0) {
+		int tab = current_tab_container->get_current_tab();
+		current_tab_container->close_tab(tab);
+	}
+}
+
 ContainerManager::ContainerManager() {
 	ERR_FAIL_NULL_MSG(PaneFactory::get_singleton(), "PaneFactory doesn't exist.");
 	singleton = this;

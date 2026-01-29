@@ -170,7 +170,7 @@ private:
 
 	bool _is_internal_child(Node *p_node) const;
 
-	AppTabContainer *_get_tab_container_from_tab_bar(TabBar *p_child) const;
+	static AppTabContainer *_get_control_parent_tab_container(Control *p_control);
 
 protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
@@ -262,6 +262,8 @@ public:
 
 	virtual Vector<int> get_allowed_size_flags_horizontal() const override;
 	virtual Vector<int> get_allowed_size_flags_vertical() const override;
+
+	void close_tab(int p_tab);
 
 	AppTabContainer();
 	~AppTabContainer();

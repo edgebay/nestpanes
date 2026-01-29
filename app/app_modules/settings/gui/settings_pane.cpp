@@ -10,6 +10,7 @@
 #include "scene/gui/texture_rect.h"
 #include "scene/gui/tree.h"
 
+#include "app/app_modules/settings/gui/settings_inspector_plugin.h"
 #include "app/gui/app_control.h"
 #include "app/gui/inspector/object_inspector.h"
 #include "app/gui/inspector/sectioned_inspector.h"
@@ -161,4 +162,9 @@ SettingsPane::SettingsPane() :
 	tab_shortcuts->add_child(shortcuts);
 
 	// SET_DRAG_FORWARDING_GCD(shortcuts, SettingsPane);
+
+	Ref<SettingsInspectorPlugin> plugin;
+	plugin.instantiate();
+	plugin->inspector = inspector;
+	EditorInspector::add_inspector_plugin(plugin);
 }

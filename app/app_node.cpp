@@ -30,6 +30,7 @@
 #include "app/themes/app_theme_manager.h"
 
 #include "app/app_core/io/file_system_access.h"
+#include "app/gui/inspector/object_properties.h"
 #include "app/gui/inspector/property_name_processor.h"
 
 #include "app/app_modules/file_management/file_system_list.h"
@@ -455,9 +456,10 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 				next_tab %= tab_count;
 				print_line(current_tab_container->get_current_tab(), ", next_tab: ", next_tab);
 				current_tab_container->set_current_tab(next_tab);
-			} else {
-				is_handled = false;
 			}
+			// else {
+			// 	is_handled = false;
+			// }
 		} else if (ED_IS_SHORTCUT("app/prev_tab", p_event)) {
 			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
@@ -466,9 +468,14 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 				next_tab = next_tab >= 0 ? next_tab : tab_count - 1;
 				print_line(current_tab_container->get_current_tab(), ", next_tab: ", next_tab);
 				current_tab_container->set_current_tab(next_tab);
-			} else {
-				is_handled = false;
 			}
+			// else {
+			// 	is_handled = false;
+			// }
+		} else if (ED_IS_SHORTCUT("app/new_tab", p_event)) {
+			container_manager->new_tab();
+		} else if (ED_IS_SHORTCUT("app/close_tab", p_event)) {
+			container_manager->close_current_tab();
 		}
 		// if (ED_IS_SHORTCUT("editor/filter_files", p_event)) {
 		// 	FileSystemDock::get_singleton()->focus_on_filter();
@@ -935,6 +942,12 @@ AppNode::AppNode() {
 		DisplayServer::get_singleton()->window_set_min_size(minimum_size);
 	}
 
+	{
+		Ref<ObjectInspectorDefaultPlugin> plugin;
+		plugin.instantiate();
+		EditorInspector::add_inspector_plugin(plugin);
+	}
+
 	AppThemeManager::initialize();
 	theme = AppThemeManager::generate_theme();
 	DisplayServer::set_early_window_clear_color_override(true, theme->get_color(SNAME("background"), AppStringName(App)));
@@ -1075,6 +1088,8 @@ AppNode::AppNode() {
 
 	ED_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
 	ED_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
+	ED_SHORTCUT("app/new_tab", TTRC("New Tab"), KeyModifierMask::CTRL + Key::T);
+	ED_SHORTCUT("app/close_tab", TTRC("Close Tab"), KeyModifierMask::CTRL + Key::W);
 	// ED_SHORTCUT("app/filter_files", TTRC("Focus FileSystem Filter"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::ALT + Key::P);
 
 	// command_palette = EditorCommandPalette::get_singleton();
