@@ -30,6 +30,7 @@ protected:
 	}
 
 	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false) const = 0;
+	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) const = 0;
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const = 0;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const = 0;
 	virtual Error _make_dir(const String &p_dir) = 0;
@@ -67,6 +68,7 @@ public:
 	// Support absolute paths only.
 
 	static Ref<Texture2D> get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false);
+	static Error get_file_info(const String &p_file_path, FileInfo &r_info);
 	static Error list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME);
 	static Error list_drives(List<FileInfo> &r_drives);
 

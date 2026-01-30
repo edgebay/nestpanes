@@ -175,6 +175,46 @@ Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, boo
 	return texture;
 }
 
+Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInfo &r_info) const {
+	WIN32_FILE_ATTRIBUTE_DATA fileData;
+	// if (!GetFileAttributesEx((LPCWSTR)(p_file_path.utf16().get_data()), GetFileExInfoStandard, &fileData)) {
+	if (!GetFileAttributesEx((p_file_path.utf8().get_data()), GetFileExInfoStandard, &fileData)) {
+		return FAILED;
+	}
+
+	bool is_dir = (fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	bool is_hidden = (fileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0;
+
+	r_info.name = p_file_path.get_file();
+	r_info.path = p_file_path;
+
+	r_info.icon = _get_icon(r_info.path, is_dir, is_hidden);
+
+	// FILETIME ft_create, ft_write;
+	// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);
+	uint64_t last_write_time = 0;
+	last_write_time = fileData.ftLastWriteTime.dwHighDateTime;
+	last_write_time <<= 32;
+	last_write_time |= fileData.ftLastWriteTime.dwLowDateTime;
+	const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
+	const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
+	if (last_write_time >= TICKS_TO_UNIX_EPOCH) {
+		last_write_time = (last_write_time - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
+	}
+	r_info.modified_time = last_write_time; // FileAccess::get_modified_time(r_info.path);
+
+	r_info.is_hidden = is_hidden;
+
+	if (!is_dir) {
+		r_info.type = r_info.name.get_extension();
+		r_info.size = ((uint64_t)fileData.nFileSizeHigh << 32) | fileData.nFileSizeLow;
+	} else {
+		r_info.type = FOLDER_TYPE;
+		r_info.size = 0;
+	}
+	return OK;
+}
+
 Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort) const {
 	if (p_dir == COMPUTER_PATH) {
 		return _list_drives(r_subdirs);
@@ -221,7 +261,7 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 		}
 		file_info.modified_time = last_write_time; // FileAccess::get_modified_time(file_info.path);
 
-		file_info.is_hidden = (fu.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+		file_info.is_hidden = is_hidden;
 
 		if (!is_dir) {
 			file_info.type = name.get_extension();

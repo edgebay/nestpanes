@@ -11,15 +11,17 @@ class HBoxContainer;
 class MenuBar;
 class MenuButton;
 class MultiSplitContainer;
+class PopupMenu;
 class VBoxContainer;
 
 class ContainerManager;
 class PaneFactory;
+class PaneBase;
 
+class FileSystem;
 class FileSystemControl;
 class FileSystemTree;
 class FileSystemList;
-class PopupMenu;
 
 class Timer;
 
@@ -152,6 +154,8 @@ private:
 
 	Ref<Theme> theme;
 
+	FileSystem *file_system;
+
 	bool exiting = false;
 	bool dimmed = false;
 
@@ -177,6 +181,9 @@ private:
 	void _toggle_left_sidebar();
 	void _toggle_right_sidebar();
 
+	void _on_navigation_pane_create(PaneBase *p_pane);
+
+	///
 	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?
 	int _new_editor(AppTabContainer *p_parent, const String &p_path);
 

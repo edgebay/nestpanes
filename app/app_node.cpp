@@ -42,6 +42,9 @@
 #include "app/gui/multi_split_container.h"
 #include "app/gui/pane_factory.h"
 
+#include "app/app_modules/file_management/file_system.h"
+#include "app/app_modules/file_management/gui/file_pane.h"
+#include "app/app_modules/file_management/gui/navigation_pane.h"
 #include "app/app_modules/settings/gui/settings_pane.h"
 #include "app/gui/welcome_pane.h"
 
@@ -311,6 +314,13 @@ void AppNode::_toggle_right_sidebar() {
 		right_sidebar->hide();
 	} else {
 		right_sidebar->show();
+	}
+}
+
+void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
+	NavigationPane *pane = Object::cast_to<NavigationPane>(p_pane);
+	if (pane) {
+		pane->set_file_system(file_system);
 	}
 }
 
@@ -893,6 +903,7 @@ AppNode::AppNode() {
 
 	// File system.
 	FileSystemAccess::create();
+	file_system = memnew(FileSystem);
 
 	PropertyNameProcessor *pnp = memnew(PropertyNameProcessor);
 	add_child(pnp);
@@ -1024,6 +1035,14 @@ AppNode::AppNode() {
 	settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	pane_factory = memnew(PaneFactory);
+	// pane_factory->register_pane<FilePane>(
+	// 		FilePane::get_class_static(),
+	// 		theme->get_icon(SNAME("Folder"), SNAME("AppIcons"))); // TODO
+	pane_factory->register_pane<NavigationPane>(
+			NavigationPane::get_class_static(),
+			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")), // TODO
+			callable_mp(this, &AppNode::_on_navigation_pane_create));
+
 	pane_factory->register_pane<SettingsPane>(
 			SettingsPane::get_class_static(),
 			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
@@ -1119,6 +1138,7 @@ AppNode::AppNode() {
 AppNode::~AppNode() {
 	memdelete(container_manager);
 	memdelete(pane_factory);
+	memdelete(file_system);
 
 	AppSettings::destroy();
 	AppThemeManager::finalize();
