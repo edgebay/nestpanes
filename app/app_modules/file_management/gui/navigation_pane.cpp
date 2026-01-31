@@ -174,53 +174,41 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 	}
 }
 
-// void NavigationPane::_tree_activate_file() {
-// 	TreeItem *selected = tree->get_selected();
-// 	if (selected) {
-// 		Dictionary d = selected->get_metadata(0);
-// 		String path = d["path"];
-// 		bool is_dir = d["is_dir"];
+void NavigationPane::_tree_activate_file() {
+	TreeItem *selected = tree->get_selected();
+	if (!selected) {
+		return;
+	}
 
-// 		// // TreeItem *parent = selected->get_parent();
-// 		// bool is_folder = file_path.ends_with("/");
+	Dictionary d = selected->get_metadata(0);
+	String path = d["path"];
+	bool is_dir = d["is_dir"];
 
-// 		// _select_file(file_path, is_folder);
+	if (is_dir) {
+		callable_mp(selected, &TreeItem::set_collapsed).call_deferred(!selected->is_collapsed());
+	} else {
+		emit_signal(SNAME("item_activated"), path, is_dir);
+	}
+}
 
-// 		emit_signal(SNAME("item_activated"), path, is_dir);
-// 	}
-// }
+void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_selected) {
+	// Return if we don't select something new.
+	if (!p_selected) {
+		return;
+	}
 
-// void NavigationPane::_tree_item_selected() {
-// 	TreeItem *selected = tree->get_selected();
-// 	if (!selected) {
-// 		return;
-// 	}
+	// Tree item selected.
+	TreeItem *selected = tree->get_selected();
+	if (!selected) {
+		return;
+	}
 
-// 	Dictionary d = selected->get_metadata(0);
-// 	String path = d["path"];
-// 	bool is_dir = d["is_dir"];
+	Dictionary d = selected->get_metadata(0);
+	String path = d["path"];
+	bool is_dir = d["is_dir"];
 
-// 	emit_signal(SceneStringName(item_selected), path, is_dir);
-// }
-
-// void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_selected) {
-// 	// Return if we don't select something new.
-// 	if (!p_selected) {
-// 		return;
-// 	}
-
-// 	// Tree item selected.
-// 	TreeItem *selected = tree->get_selected();
-// 	if (!selected) {
-// 		return;
-// 	}
-
-// 	Dictionary d = selected->get_metadata(0);
-// 	String path = d["path"];
-// 	bool is_dir = d["is_dir"];
-
-// 	emit_signal(SceneStringName(item_selected), path, is_dir);
-// }
+	emit_signal(SceneStringName(item_selected), path, is_dir);
+}
 
 // void NavigationPane::_tree_item_mouse_select(const Vector2 &p_pos, MouseButton p_button) {
 // 	if (p_button == MouseButton::LEFT) {
@@ -373,11 +361,10 @@ NavigationPane::NavigationPane() :
 	tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
 	tree->set_column_clip_content(0, true);
 
-	// // double-clicking selected.
-	// tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
-	// tree->connect("item_selected", callable_mp(this, &NavigationPane::_tree_item_selected));
-	// tree->connect("multi_selected", callable_mp(this, &NavigationPane::_tree_multi_selected));
-	// // tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_tree_item_mouse_select));
+	// double-clicking selected.
+	tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
+	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_tree_multi_selected));
+	// // tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_tree_rmb_select));	// multi_selected already contains left mouse button select
 	// // tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_tree_empty_click));
 	// tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked));
 	// tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_empty_clicked));

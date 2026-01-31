@@ -30,9 +30,8 @@ private:
 	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
 
 	// // void _select_file(const String &p_path, bool p_navigate = true);
-	// void _tree_activate_file();
-	// void _tree_item_selected();
-	// void _tree_multi_selected(Object *p_item, int p_column, bool p_selected);
+	void _tree_activate_file();
+	void _tree_multi_selected(Object *p_item, int p_column, bool p_selected);
 	// void _tree_item_mouse_select(const Vector2 &p_pos, MouseButton p_button);
 	// // void _tree_lmb_select(const Vector2 &p_pos, MouseButton p_button);
 	// // void _tree_rmb_select(const Vector2 &p_pos, MouseButton p_button);

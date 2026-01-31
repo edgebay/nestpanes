@@ -321,6 +321,8 @@ void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
 	NavigationPane *pane = Object::cast_to<NavigationPane>(p_pane);
 	if (pane) {
 		pane->set_file_system(file_system);
+		pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		pane->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
 	}
 }
 
@@ -404,18 +406,13 @@ void AppNode::_on_tab_path_changed(FileSystemControl *p_fs) {
 }
 
 void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
-	AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
-	if (is_dir) {
+	if (!is_dir) {
+		AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 		if (current_tab_container == nullptr) {
 			return;
 		}
-		int tab_index = _new_tab(current_tab_container);
-		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_tab_control(tab_index));
-		file_system_list->set_current_path(p_path);
-	} else {
-		if (current_tab_container == nullptr) {
-			return;
-		}
+
+		// TODO: Open file
 		// TODO: FileSystemList::_item_dc_selected
 		_new_editor(current_tab_container, p_path);
 	}
@@ -423,11 +420,12 @@ void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 
 // void AppNode::_on_tree_item_selected(TreeItem *p_item) {
 void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
-	AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 	if (is_dir) {
+		AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 		if (current_tab_container == nullptr) {
 			return;
 		}
+
 		FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_current_tab_control());
 		// TODO: handle file item
 		if (file_system_list) {
@@ -1072,14 +1070,16 @@ AppNode::AppNode() {
 		gui_main = left_hsplit;
 
 		// Left sidebar.
-		FileSystemTree *file_system_tree = memnew(FileSystemTree);
-		// left_tab_container->add_child(file_system_tree);
-		file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-		file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-		file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
-		// file_system_tree->set_owner(gui_main);
-		file_system_trees.push_back(file_system_tree);
-		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main, file_system_tree);
+		// FileSystemTree *file_system_tree = memnew(FileSystemTree);
+		// // left_tab_container->add_child(file_system_tree);
+		// file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		// file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
+		// file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
+		// // file_system_tree->set_owner(gui_main);
+		// file_system_trees.push_back(file_system_tree);
+		// left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main, file_system_tree);
+		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main);
+		container_manager->new_tab();
 
 		HSplitContainer *right_hsplit = memnew(HSplitContainer);
 		left_hsplit->add_child(right_hsplit);
