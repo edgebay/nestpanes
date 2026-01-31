@@ -18,7 +18,6 @@ private:
 	FileSystem *file_system = nullptr;
 
 	bool updating_tree = false;
-	List<TreeItem *> collapsed_changed_items;
 
 	String selected_path = "";
 
@@ -26,8 +25,9 @@ private:
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
 	void _update_tree(const Vector<String> &p_uncollapsed_paths = Vector<String>(), bool p_uncollapse_root = false, bool p_scroll_to_selected = true);
+	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
-	void _create_tree_item(TreeItem *p_parent, const FileInfo *p_file_info);
+	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
 
 	// // void _select_file(const String &p_path, bool p_navigate = true);
 	// void _tree_activate_file();
@@ -36,12 +36,15 @@ private:
 	// void _tree_item_mouse_select(const Vector2 &p_pos, MouseButton p_button);
 	// // void _tree_lmb_select(const Vector2 &p_pos, MouseButton p_button);
 	// // void _tree_rmb_select(const Vector2 &p_pos, MouseButton p_button);
-	// void _tree_item_collapsed(TreeItem *p_item);
+	void _tree_item_collapsed(TreeItem *p_item);
 
 	// // virtual Vector<String> _get_selected() const override;
 
 	// void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 	// void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
+
+	TreeItem *_search_item(const String &p_path);
+	void _on_file_system_changed(FileSystemDirectory *p_dir);
 
 protected:
 	// virtual void _update_file_ui() override;

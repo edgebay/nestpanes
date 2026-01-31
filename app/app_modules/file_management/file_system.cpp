@@ -10,20 +10,20 @@ String FileSystemDirectory::get_path() const {
 	return path;
 }
 
-String FileSystemDirectory::get_directory_path() const {
-	String directory_path = name;
-	const FileSystemDirectory *dir = parent;
-	while (dir) {
-		String dir_name = dir->get_name();
-		if (dir_name == COMPUTER_PATH) {
-			break;
-		} else if (dir_name == COMPUTER_PATH) { // TODO: drive
-		}
-		directory_path = dir->get_name().path_join(directory_path);
-		dir = dir->get_parent();
-	}
-	return directory_path;
-}
+// String FileSystemDirectory::get_directory_path() const {
+// 	String directory_path = name;
+// 	const FileSystemDirectory *dir = parent;
+// 	while (dir) {
+// 		String dir_name = dir->get_name();
+// 		if (dir_name == COMPUTER_PATH) {
+// 			break;
+// 		} else if (dir_name == COMPUTER_PATH) { // TODO: drive
+// 		}
+// 		directory_path = dir->get_name().path_join(directory_path);
+// 		dir = dir->get_parent();
+// 	}
+// 	return directory_path;
+// }
 
 Ref<Texture2D> FileSystemDirectory::get_icon() const {
 	return icon;
@@ -93,9 +93,9 @@ void FileSystemDirectory::scan(bool p_scan_subdirs) {
 
 	// Create all items for the files in the subdirectory.
 	for (const FileInfo &file_info : dir_list) {
-		FileSystemDirectory *sub_dir = memnew(FileSystemDirectory);
-		sub_dir->setup(this, file_info.name, file_info.path, file_info.icon, file_info.is_hidden, p_scan_subdirs);
-		subdirs.push_back(sub_dir);
+		FileSystemDirectory *subdir = memnew(FileSystemDirectory);
+		subdir->setup(this, file_info.name, file_info.path, file_info.icon, file_info.is_hidden, p_scan_subdirs);
+		subdirs.push_back(subdir);
 	}
 	for (const FileInfo &file_info : file_list) {
 		FileInfo *fi = memnew(FileInfo);
@@ -110,10 +110,12 @@ void FileSystemDirectory::clear() {
 	for (FileInfo *fi : files) {
 		memdelete(fi);
 	}
+	files.clear();
 
 	for (FileSystemDirectory *dir : subdirs) {
 		memdelete(dir);
 	}
+	subdirs.clear();
 
 	scanned = false;
 }
@@ -152,7 +154,7 @@ FileSystemDirectory *FileSystem::get_dir(const String &p_path) const {
 
 	bool found = false;
 	FileSystemDirectory *dir = file_system_root;
-	for (int i = 1; i < names.size(); i++) {
+	for (int i = 0; i < names.size(); i++) {
 		dir = dir->get_subdir(names[i]);
 		if (!dir) {
 			found = false;
@@ -177,7 +179,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 
 	bool found = false;
 	const FileSystemDirectory *dir = file_system_root;
-	for (int i = 1; i < names.size(); i++) {
+	for (int i = 0; i < names.size(); i++) {
 		dir = dir->get_subdir(names[i]);
 		if (!dir) {
 			found = false;
@@ -189,18 +191,22 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 	return found ? dir->get_file(file) : nullptr;
 }
 
+void FileSystem::_update(FileSystemDirectory *p_dir) {
+	print_line("fs update: ", p_dir->get_path());
+	p_dir->scan();
+	emit_signal(SNAME("file_system_changed"), p_dir);
+}
+
 void FileSystem::update(const String &p_path) {
 	// TODO: Use a list to store the paths and handle them in NOTIFICATION_PROCESS?
 	FileSystemDirectory *dir = get_dir(p_path);
 	if (dir) {
-		dir->scan(true);
-		// emit_signal(SNAME("file_system_changed"), dir);
+		callable_mp(this, &FileSystem::_update).call_deferred(dir);
 	}
 }
 
 void FileSystem::update(FileSystemDirectory *p_dir) {
-	p_dir->scan(true);
-	// emit_signal(SNAME("file_system_changed"), p_dir);
+	callable_mp(this, &FileSystem::_update).call_deferred(p_dir);
 }
 
 void FileSystem::update_file_system() {

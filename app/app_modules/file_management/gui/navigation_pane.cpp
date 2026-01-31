@@ -17,22 +17,12 @@ Ref<Texture2D> NavigationPane::_get_pane_icon() const {
 
 void NavigationPane::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_READY: {
-			_update_tree(Vector<String>(), true);
-		} break;
-
-			// case NOTIFICATION_PROCESS: {
-			// 	while (collapsed_changed_items.front()) {
-			// 		_scan_and_create_tree_items(collapsed_changed_items.front()->get());
-
-			// 		collapsed_changed_items.pop_front();
-			// 	}
-			// } break;
-
 		case NOTIFICATION_TRANSLATION_CHANGED:
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_THEME_CHANGED: {
-			_update_tree(get_uncollapsed_paths());
+			if (tree->get_root() != nullptr) {
+				_update_tree(get_uncollapsed_paths());
+			}
 		} break;
 	}
 }
@@ -40,6 +30,10 @@ void NavigationPane::_notification(int p_what) {
 void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, bool p_uncollapse_root, bool p_scroll_to_selected) {
 	ERR_FAIL_NULL(file_system);
 
+	print_line("update tree: ", p_uncollapsed_paths);
+	if (tree->has_connections("item_collapsed")) {
+		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
+	}
 	updating_tree = true;
 
 	tree->clear();
@@ -48,7 +42,7 @@ void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, boo
 
 	Vector<String> uncollapsed_paths = p_uncollapsed_paths;
 	if (p_uncollapse_root) {
-		uncollapsed_paths.push_back(file_system_root->get_name());
+		uncollapsed_paths.push_back(file_system_root->get_path());
 	}
 
 	_create_tree(root, file_system_root, uncollapsed_paths);
@@ -58,6 +52,41 @@ void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, boo
 	}
 
 	updating_tree = false;
+	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
+	print_line("update tree end");
+}
+
+void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
+	ERR_FAIL_NULL(file_system);
+
+	Dictionary d = p_parent->get_metadata(0);
+	String path = d["path"];
+	if (path != p_dir->get_path()) {
+		return;
+	}
+
+	print_line("update subtree: ", path);
+	if (tree->has_connections("item_collapsed")) {
+		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
+	}
+	updating_tree = true;
+
+	p_parent->clear_children();
+
+	// Create items for all subdirectories.
+	for (int i = 0; i < p_dir->get_subdir_count(); i++) {
+		FileSystemDirectory *subdir = p_dir->get_subdir(i);
+		_create_tree(p_parent, subdir, p_uncollapsed_paths);
+	}
+
+	// Build the tree.
+	for (int i = 0; i < p_dir->get_file_count(); i++) {
+		_create_file_item(p_parent, p_dir->get_file(i));
+	}
+
+	updating_tree = false;
+	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
+	print_line("update subtree end");
 }
 
 void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
@@ -97,13 +126,10 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	subdirectory_item->set_collapsed(!uncollapsed);
 	// }
 
-	print_line("create tree: ", lpath, uncollapsed ? ", uncoll" : ", coll");
-
 	// Create items for all subdirectories.
 	for (int i = 0; i < p_dir->get_subdir_count(); i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
 		if (uncollapsed) {
-			print_line("sub dir: ", subdir, subdir->is_scanned() ? ", s" : ", ns");
 			if (!subdir->is_scanned()) {
 				file_system->update(subdir);
 			}
@@ -113,11 +139,11 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 
 	// Build the tree.
 	for (int i = 0; i < p_dir->get_file_count(); i++) {
-		_create_tree_item(subdirectory_item, p_dir->get_file(i));
+		_create_file_item(subdirectory_item, p_dir->get_file(i));
 	}
 }
 
-void NavigationPane::_create_tree_item(TreeItem *p_parent, const FileInfo *p_file_info) {
+void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_file_info) {
 	const int icon_size = get_theme_constant(SNAME("class_icon_size"));
 	TreeItem *file_item = tree->create_item(p_parent);
 	const String file_metadata = p_file_info->path;
@@ -204,23 +230,42 @@ void NavigationPane::_create_tree_item(TreeItem *p_parent, const FileInfo *p_fil
 // 	}
 // }
 
-// void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
-// 	if (updating_tree) {
-// 		return;
-// 	}
-// 	emit_signal(SNAME("item_collapsed"));
+void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
+	// emit_signal(SNAME("item_collapsed"));
 
-// 	print_line("item collapsed changed: " + String(p_item->get_metadata(0)));
-// 	if (!p_item->is_collapsed()) {
-// 		Dictionary d = p_item->get_metadata(0);
-// 		FileSystemDirectory *fs = Object::cast_to<FileSystemDirectory>(d["data"]);
-// 		for (FileSystemDirectory *sub_dir : fs->subdirs) {
-// 			if (!sub_dir->scanned) {
-// 				collapsed_changed_items.push_back(p_item);	// TODO: notify file_system to scan, and handle its changed signal.
-// 			}
-// 		}
-// 	}
-// }
+	print_line("item collapsed changed: " + String(p_item->get_metadata(0)));
+	if (!p_item->is_collapsed()) {
+		Dictionary d = p_item->get_metadata(0);
+		FileSystemDirectory *dir = Object::cast_to<FileSystemDirectory>(d["data"]);
+		// TODO: Update the dir object itself(subdirs and files).
+		for (int i = 0; i < dir->get_subdir_count(); i++) {
+			FileSystemDirectory *subdir = dir->get_subdir(i);
+			if (!subdir->is_scanned()) {
+				file_system->update(subdir);
+			}
+		}
+	}
+}
+
+TreeItem *NavigationPane::_search_item(const String &p_path) {
+	for (TreeItem *current = tree->get_root(); current; current = current->get_next_in_tree()) {
+		Dictionary d = current->get_metadata(0);
+		if (d["path"] == p_path) {
+			return current;
+		}
+	}
+	return nullptr;
+}
+
+void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
+	TreeItem *item = _search_item(p_dir->get_path());
+	print_line("on fs changed: ", p_dir->get_path(), item);
+	if (!item) {
+		return;
+	}
+
+	callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
+}
 
 // void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
 // 	if (p_button != MouseButton::RIGHT) {
@@ -301,14 +346,16 @@ void NavigationPane::set_file_system(FileSystem *p_file_system) {
 	}
 
 	file_system = p_file_system;
-	_update_tree();
+	file_system->connect("file_system_changed", callable_mp(this, &NavigationPane::_on_file_system_changed));
+
+	callable_mp(this, &NavigationPane::_update_tree).call_deferred(Vector<String>(), true, true);
 }
 
 void NavigationPane::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_activated", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
 	// ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::OBJECT, "item", PROPERTY_HINT_RESOURCE_TYPE, "TreeItem")));
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
-	ADD_SIGNAL(MethodInfo("item_collapsed"));
+	// ADD_SIGNAL(MethodInfo("item_collapsed"));
 }
 
 NavigationPane::NavigationPane() :
@@ -326,8 +373,6 @@ NavigationPane::NavigationPane() :
 	tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
 	tree->set_column_clip_content(0, true);
 
-	// tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
-
 	// // double-clicking selected.
 	// tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
 	// tree->connect("item_selected", callable_mp(this, &NavigationPane::_tree_item_selected));
@@ -340,8 +385,6 @@ NavigationPane::NavigationPane() :
 	// // tree->connect(SceneStringName(gui_input), callable_mp(this, &NavigationPane::_tree_gui_input));
 	// // tree->connect(SceneStringName(mouse_exited), callable_mp(this, &NavigationPane::_tree_mouse_exited));
 	// tree->connect("item_edited", callable_mp(this, &NavigationPane::_item_edited));
-
-	// set_process(true);
 }
 
 NavigationPane::~NavigationPane() {

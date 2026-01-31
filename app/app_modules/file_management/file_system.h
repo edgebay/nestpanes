@@ -19,10 +19,23 @@ private:
 	Vector<FileSystemDirectory *> subdirs;
 	Vector<FileInfo *> files;
 
+protected:
+	friend class FileSystem;
+
+	void scan(bool p_scan_subdirs = false);
+	void clear();
+
+	void setup(FileSystemDirectory *p_parent,
+			const String &p_name,
+			const String &p_path,
+			const Ref<Texture2D> &p_icon,
+			bool p_hidden = false,
+			bool p_scan = false);
+
 public:
 	String get_name() const;
 	String get_path() const;
-	String get_directory_path() const;
+	// String get_directory_path() const;
 	Ref<Texture2D> get_icon() const;
 	bool is_hidden() const;
 	bool is_scanned() const;
@@ -36,16 +49,6 @@ public:
 	const FileInfo *get_file(int p_idx) const;
 	const FileInfo *get_file(const String &p_name) const;
 
-	void scan(bool p_scan_subdirs = false);
-	void clear();
-
-	void setup(FileSystemDirectory *p_parent,
-			const String &p_name,
-			const String &p_path,
-			const Ref<Texture2D> &p_icon,
-			bool p_hidden = false,
-			bool p_scan = false);
-
 	FileSystemDirectory();
 	~FileSystemDirectory();
 };
@@ -57,6 +60,8 @@ class FileSystem : public Object {
 
 private:
 	FileSystemDirectory *file_system_root = nullptr;
+
+	void _update(FileSystemDirectory *p_dir);
 
 protected:
 	static void _bind_methods();
