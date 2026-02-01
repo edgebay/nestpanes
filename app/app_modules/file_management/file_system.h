@@ -8,6 +8,7 @@ class FileSystemDirectory : public Object {
 	GDCLASS(FileSystemDirectory, Object);
 
 private:
+	// TODO: use FileInfo?
 	String name;
 	String path;
 	Ref<Texture2D> icon;
@@ -23,6 +24,7 @@ protected:
 	friend class FileSystem;
 
 	void scan(bool p_scan_subdirs = false);
+	FileSystemDirectory *create_subdir(const String &p_path);
 	void clear();
 
 	void setup(FileSystemDirectory *p_parent,
@@ -44,10 +46,12 @@ public:
 
 	int get_subdir_count() const;
 	FileSystemDirectory *get_subdir(int p_idx) const;
-	FileSystemDirectory *get_subdir(const String &p_name) const;
+	FileSystemDirectory *get_subdir_by_path(const String &p_path) const;
+	FileSystemDirectory *get_subdir_by_name(const String &p_name) const;
 	int get_file_count() const;
 	const FileInfo *get_file(int p_idx) const;
-	const FileInfo *get_file(const String &p_name) const;
+	const FileInfo *get_file_by_path(const String &p_path) const;
+	const FileInfo *get_file_by_name(const String &p_name) const;
 
 	FileSystemDirectory();
 	~FileSystemDirectory();
@@ -67,6 +71,9 @@ protected:
 	static void _bind_methods();
 
 public:
+	static bool is_valid_path(const String &p_path);
+	// static String normalize_path(const String &p_path);
+
 	FileSystemDirectory *get_root() const;
 	FileSystemDirectory *get_dir(const String &p_path) const;
 	const FileInfo *get_file(const String &p_path) const;
@@ -74,6 +81,8 @@ public:
 	void update(const String &p_path);
 	void update(FileSystemDirectory *p_dir);
 	void update_file_system();
+
+	FileSystemDirectory *load_dir(const String &p_path);
 
 	FileSystem();
 };

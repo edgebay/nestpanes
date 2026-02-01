@@ -21,6 +21,7 @@ protected:
 
 	virtual Error _make_dir(const String &p_dir) override;
 
+	virtual bool _path_exists(const String &p_path) const override;
 	virtual bool _file_exists(const String &p_file) const override;
 	virtual bool _dir_exists(const String &p_dir) const override;
 

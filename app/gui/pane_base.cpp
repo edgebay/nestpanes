@@ -1,12 +1,10 @@
 #include "pane_base.h"
 
 void PaneBase::_notification(int p_what) {
-	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE: {
-			title = _get_pane_title();
-			icon = _get_pane_icon();
-		} break;
-	}
+	// switch (p_what) {
+	// 	case NOTIFICATION_ENTER_TREE: {
+	// 	} break;
+	// }
 }
 
 String PaneBase::_get_pane_title() const {
@@ -18,31 +16,31 @@ Ref<Texture2D> PaneBase::_get_pane_icon() const {
 }
 
 StringName PaneBase::get_type() const {
-	return type;
+	return pane_type;
 }
 
 void PaneBase::set_title(const String &p_title) {
-	if (title != p_title) {
-		title = p_title;
-		// emit_signal(SNAME("title_changed"), title);
+	if (pane_title != p_title) {
+		pane_title = p_title;
+		// emit_signal(SNAME("title_changed"), pane_title);
 		emit_signal(SNAME("title_changed"));
 	}
 }
 
 String PaneBase::get_title() const {
-	return title;
+	return pane_title.is_empty() ? _get_pane_title() : pane_title;
 }
 
 void PaneBase::set_icon(const Ref<Texture2D> &p_icon) {
-	if (icon != p_icon) {
-		icon = p_icon;
+	if (pane_icon != p_icon) {
+		pane_icon = p_icon;
 		// emit_signal(SNAME("icon_changed"), p_icon);
 		emit_signal(SNAME("icon_changed"));
 	}
 }
 
 Ref<Texture2D> PaneBase::get_icon() const {
-	return icon;
+	return !pane_icon.is_valid() ? _get_pane_icon() : pane_icon;
 }
 
 void PaneBase::_bind_methods() {
@@ -53,7 +51,7 @@ void PaneBase::_bind_methods() {
 }
 
 PaneBase::PaneBase(const StringName &p_type) {
-	type = p_type;
+	pane_type = p_type;
 }
 
 PaneBase::~PaneBase() {

@@ -35,6 +35,7 @@ protected:
 	virtual Error _list_drives(List<FileInfo> &r_drives) const = 0;
 	virtual Error _make_dir(const String &p_dir) = 0;
 	virtual Error _make_dir_recursive(const String &p_dir);
+	virtual bool _path_exists(const String &p_file) const = 0;
 	virtual bool _file_exists(const String &p_file) const = 0;
 	virtual bool _dir_exists(const String &p_dir) const = 0;
 
@@ -75,6 +76,7 @@ public:
 	static Error make_dir(const String &p_dir);
 	static Error make_dir_recursive(const String &p_dir);
 
+	static bool path_exists(const String &p_path);
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);
 

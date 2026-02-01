@@ -50,7 +50,17 @@ FileSystemDirectory *FileSystemDirectory::get_subdir(int p_idx) const {
 	return subdirs[p_idx];
 }
 
-FileSystemDirectory *FileSystemDirectory::get_subdir(const String &p_name) const {
+FileSystemDirectory *FileSystemDirectory::get_subdir_by_path(const String &p_path) const {
+	for (FileSystemDirectory *dir : subdirs) {
+		if (dir->get_path() == p_path) {
+			return dir;
+		}
+	}
+
+	return nullptr;
+}
+
+FileSystemDirectory *FileSystemDirectory::get_subdir_by_name(const String &p_name) const {
 	for (FileSystemDirectory *dir : subdirs) {
 		if (dir->get_name() == p_name) {
 			return dir;
@@ -69,7 +79,17 @@ const FileInfo *FileSystemDirectory::get_file(int p_idx) const {
 	return files[p_idx];
 }
 
-const FileInfo *FileSystemDirectory::get_file(const String &p_name) const {
+const FileInfo *FileSystemDirectory::get_file_by_path(const String &p_path) const {
+	for (FileInfo *fi : files) {
+		if (fi->path == p_path) {
+			return fi;
+		}
+	}
+
+	return nullptr;
+}
+
+const FileInfo *FileSystemDirectory::get_file_by_name(const String &p_name) const {
 	for (FileInfo *fi : files) {
 		if (fi->name == p_name) {
 			return fi;
@@ -106,6 +126,25 @@ void FileSystemDirectory::scan(bool p_scan_subdirs) {
 	scanned = true;
 }
 
+FileSystemDirectory *FileSystemDirectory::create_subdir(const String &p_path) {
+	print_line("create subdir: ", p_path);
+	FileSystemDirectory *subdir = get_subdir_by_path(p_path);
+	if (subdir) {
+		return subdir;
+	}
+
+	FileInfo file_info;
+	Error err = FileSystemAccess::get_file_info(p_path, file_info);
+	if (err != OK) {
+		return nullptr;
+	}
+
+	subdir = memnew(FileSystemDirectory);
+	subdir->setup(this, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+	subdirs.push_back(subdir);
+	return subdir;
+}
+
 void FileSystemDirectory::clear() {
 	for (FileInfo *fi : files) {
 		memdelete(fi);
@@ -139,12 +178,20 @@ FileSystemDirectory::~FileSystemDirectory() {
 	clear();
 }
 
+bool FileSystem::is_valid_path(const String &p_path) {
+	return FileSystemAccess::path_exists(p_path);
+}
+
 /// FileSystemDirectory
 FileSystemDirectory *FileSystem::get_root() const {
 	return file_system_root;
 }
 
 FileSystemDirectory *FileSystem::get_dir(const String &p_path) const {
+	if (p_path == file_system_root->get_path()) {
+		return file_system_root;
+	}
+
 	String path = p_path.replace_char('\\', '/');
 	if (path.ends_with("/")) {
 		path = path.substr(0, path.length() - 1);
@@ -155,7 +202,7 @@ FileSystemDirectory *FileSystem::get_dir(const String &p_path) const {
 	bool found = false;
 	FileSystemDirectory *dir = file_system_root;
 	for (int i = 0; i < names.size(); i++) {
-		dir = dir->get_subdir(names[i]);
+		dir = dir->get_subdir_by_name(names[i]);
 		if (!dir) {
 			found = false;
 			break;
@@ -180,7 +227,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 	bool found = false;
 	const FileSystemDirectory *dir = file_system_root;
 	for (int i = 0; i < names.size(); i++) {
-		dir = dir->get_subdir(names[i]);
+		dir = dir->get_subdir_by_name(names[i]);
 		if (!dir) {
 			found = false;
 			break;
@@ -188,7 +235,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 		found = true;
 	}
 
-	return found ? dir->get_file(file) : nullptr;
+	return found ? dir->get_file_by_name(file) : nullptr;
 }
 
 void FileSystem::_update(FileSystemDirectory *p_dir) {
@@ -200,9 +247,11 @@ void FileSystem::_update(FileSystemDirectory *p_dir) {
 void FileSystem::update(const String &p_path) {
 	// TODO: Use a list to store the paths and handle them in NOTIFICATION_PROCESS?
 	FileSystemDirectory *dir = get_dir(p_path);
-	if (dir) {
-		callable_mp(this, &FileSystem::_update).call_deferred(dir);
+	if (!dir) {
+		return;
 	}
+
+	callable_mp(this, &FileSystem::_update).call_deferred(dir);
 }
 
 void FileSystem::update(FileSystemDirectory *p_dir) {
@@ -211,6 +260,52 @@ void FileSystem::update(FileSystemDirectory *p_dir) {
 
 void FileSystem::update_file_system() {
 	// TODO
+}
+
+FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
+	print_line("load dir: ", p_path);
+	if (p_path == file_system_root->get_path()) {
+		return file_system_root;
+	}
+
+	if (!FileSystemAccess::dir_exists(p_path)) {
+		return nullptr;
+	}
+
+	String path = p_path.replace_char('\\', '/');
+	if (path.ends_with("/")) {
+		path = path.substr(0, path.length() - 1);
+	}
+
+	Vector<String> names = path.split("/");
+
+	bool created = false;
+	bool found = false;
+	FileSystemDirectory *dir = file_system_root;
+	for (int i = 0; i < names.size(); i++) {
+		String name = names[i];
+		FileSystemDirectory *subdir = dir->get_subdir_by_name(name);
+		if (subdir) {
+			found = true;
+			dir = subdir;
+			continue;
+		}
+
+		dir = dir->create_subdir(dir->get_path().path_join(name));
+		if (!dir) {
+			break;
+		}
+		created = true;
+	}
+	if (!found && !created) {
+		return nullptr;
+	}
+
+	if (created || !dir->is_scanned()) {
+		callable_mp(this, &FileSystem::_update).call_deferred(dir);
+	}
+
+	return dir;
 }
 
 void FileSystem::_bind_methods() {

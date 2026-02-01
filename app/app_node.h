@@ -182,6 +182,7 @@ private:
 	void _toggle_right_sidebar();
 
 	void _on_navigation_pane_create(PaneBase *p_pane);
+	void _on_file_pane_create(PaneBase *p_pane);
 
 	///
 	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?

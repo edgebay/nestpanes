@@ -100,6 +100,11 @@ Error FileSystemAccess::make_dir_recursive(const String &p_dir) {
 	return FileSystemAccess::get_singleton()->_make_dir_recursive(p_dir);
 }
 
+bool FileSystemAccess::path_exists(const String &p_path) {
+	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), false, "FileSystemAccess not instantiated yet.");
+	return FileSystemAccess::get_singleton()->_path_exists(p_path);
+}
+
 bool FileSystemAccess::file_exists(const String &p_file) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), false, "FileSystemAccess not instantiated yet.");
 	return FileSystemAccess::get_singleton()->_file_exists(p_file);

@@ -50,12 +50,8 @@ void ContainerManager::_new_tab(AppTabContainer *p_tab_container) {
 	PaneBase *pane = PaneFactory::get_singleton()->create_pane(pane_type);
 	p_tab_container->add_child(pane);
 	pane->set_owner(p_tab_container->get_owner());
-	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(p_tab_container, pane));
-	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(p_tab_container, pane));
-
-	// TODO: connect the pane's signal, should the handler function be placed in ContainerManager, PaneFactory, or elsewhere?
-	// pane->connect("signal", callable_mp(this, &ContainerManager::_func).bind(p_tab_container, pane));
-	// pane->connect("signal", callable_mp(PaneFactory::get_singleton(), &PaneFactory::func).bind(p_tab_container, pane));
+	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(pane));
+	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(pane));
 
 	p_tab_container->set_tab_icon(tab_index, pane->get_icon());
 	p_tab_container->set_tab_title(tab_index, pane->get_title());
@@ -116,14 +112,16 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 	tab_container->move_tab(p_data, 0); // TODO: split_container::_create_sub_split changed from_path
 }
 
-void ContainerManager::_on_pane_title_changed(AppTabContainer *p_tab_container, PaneBase *p_pane) {
+void ContainerManager::_on_pane_title_changed(PaneBase *p_pane) {
+	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_pane->get_parent());
 	int tab_index = p_pane->get_index(false);
-	p_tab_container->set_tab_title(tab_index, p_pane->get_title());
+	tab_container->set_tab_title(tab_index, p_pane->get_title());
 }
 
-void ContainerManager::_on_pane_icon_changed(AppTabContainer *p_tab_container, PaneBase *p_pane) {
+void ContainerManager::_on_pane_icon_changed(PaneBase *p_pane) {
+	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_pane->get_parent());
 	int tab_index = p_pane->get_index(false);
-	p_tab_container->set_tab_icon(tab_index, p_pane->get_icon());
+	tab_container->set_tab_icon(tab_index, p_pane->get_icon());
 }
 
 AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_direction) {
@@ -215,7 +213,7 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 
 void ContainerManager::new_tab() {
 	if (current_tab_container) {
-		_new_tab(current_tab_container);
+		callable_mp(this, &ContainerManager::_new_tab).call_deferred(current_tab_container);
 	}
 }
 

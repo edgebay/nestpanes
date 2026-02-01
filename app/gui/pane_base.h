@@ -8,10 +8,10 @@ class PaneBase : public Control {
 	GDCLASS(PaneBase, Control);
 
 private:
-	StringName type;
+	StringName pane_type;
 
-	String title;
-	Ref<Texture2D> icon;
+	String pane_title = "";
+	Ref<Texture2D> pane_icon;
 
 protected:
 	void _notification(int p_what);

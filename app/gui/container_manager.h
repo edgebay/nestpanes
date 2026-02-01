@@ -45,8 +45,8 @@ private:
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container);
 
-	void _on_pane_title_changed(AppTabContainer *p_tab_container, PaneBase *p_pane);
-	void _on_pane_icon_changed(AppTabContainer *p_tab_container, PaneBase *p_pane);
+	void _on_pane_title_changed(PaneBase *p_pane);
+	void _on_pane_icon_changed(PaneBase *p_pane);
 
 	AppTabContainer *_split(AppTabContainer *p_from, int p_direction);
 

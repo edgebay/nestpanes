@@ -212,6 +212,7 @@ Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInf
 		r_info.type = FOLDER_TYPE;
 		r_info.size = 0;
 	}
+
 	return OK;
 }
 
@@ -343,6 +344,18 @@ Error FileSystemAccessWindows::_make_dir(const String &p_dir) {
 	}
 
 	return ERR_CANT_CREATE;
+}
+
+bool FileSystemAccessWindows::_path_exists(const String &p_path) const {
+	GLOBAL_LOCK_FUNCTION
+
+	DWORD fileAttr;
+	fileAttr = GetFileAttributesW((LPCWSTR)(p_path.utf16().get_data()));
+	if (INVALID_FILE_ATTRIBUTES == fileAttr) {
+		return false;
+	}
+
+	return true;
 }
 
 bool FileSystemAccessWindows::_file_exists(const String &p_file) const {

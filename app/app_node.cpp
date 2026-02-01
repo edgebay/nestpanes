@@ -326,6 +326,13 @@ void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
 	}
 }
 
+void AppNode::_on_file_pane_create(PaneBase *p_pane) {
+	FilePane *pane = Object::cast_to<FilePane>(p_pane);
+	if (pane) {
+		pane->set_file_system(file_system);
+	}
+}
+
 int AppNode::_new_tab(AppTabContainer *p_parent) {
 	int tab_index = p_parent->get_tab_count();
 
@@ -1033,9 +1040,10 @@ AppNode::AppNode() {
 	settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	pane_factory = memnew(PaneFactory);
-	// pane_factory->register_pane<FilePane>(
-	// 		FilePane::get_class_static(),
-	// 		theme->get_icon(SNAME("Folder"), SNAME("AppIcons"))); // TODO
+	pane_factory->register_pane<FilePane>(
+			FilePane::get_class_static(),
+			theme->get_icon(SNAME("Folder"), SNAME("AppIcons")), // TODO
+			callable_mp(this, &AppNode::_on_file_pane_create));
 	pane_factory->register_pane<NavigationPane>(
 			NavigationPane::get_class_static(),
 			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")), // TODO
@@ -1079,7 +1087,7 @@ AppNode::AppNode() {
 		// file_system_trees.push_back(file_system_tree);
 		// left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main, file_system_tree);
 		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main);
-		container_manager->new_tab();
+		// container_manager->new_tab();
 
 		HSplitContainer *right_hsplit = memnew(HSplitContainer);
 		left_hsplit->add_child(right_hsplit);
@@ -1088,11 +1096,12 @@ AppNode::AppNode() {
 		right_hsplit->set_owner(gui_main);
 
 		// Tabs.
-		// _new_tab(tab_container);
-		FileSystemList *file_system_list = memnew(FileSystemList);
-		file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
-		file_system_lists.push_back(file_system_list);
-		central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main, file_system_list);
+		// // _new_tab(tab_container);
+		// FileSystemList *file_system_list = memnew(FileSystemList);
+		// file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
+		// file_system_lists.push_back(file_system_list);
+		// central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main, file_system_list);
+		central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main);
 		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
@@ -1100,6 +1109,7 @@ AppNode::AppNode() {
 		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, right_hsplit, gui_main);
 
 		container_manager->set_current_tab_container(Object::cast_to<AppTabContainer>(central_area->get_child(0, false)));
+		container_manager->new_tab();
 	}
 
 	left_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_left_sidebar));
