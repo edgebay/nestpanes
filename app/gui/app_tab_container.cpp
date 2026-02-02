@@ -673,12 +673,7 @@ void AppTabContainer::_drag_move_tab(int p_from_index, int p_to_index) {
 }
 
 void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_index, int p_to_index) {
-	// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
-	AppTabContainer *from_tab_container = _get_control_parent_tab_container(p_from_tabbar);
-	if (!from_tab_container) {
-		return;
-	}
-	move_tab_from_tab_container(from_tab_container, p_from_index, p_to_index);
+	move_tab_from(p_from_tabbar, p_from_index, p_to_index);
 }
 
 void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position) {
@@ -694,7 +689,7 @@ void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data
 		if (p_position == DropPosition::DROP_CENTER && from_node == get_tab_bar()) {
 			return;
 		}
-		emit_signal(SNAME("tab_dropped"), p_position, p_data);
+		emit_signal(SNAME("tab_dropped"), p_position, from_node, d["tab_index"]);
 	}
 }
 
@@ -703,12 +698,7 @@ bool AppTabContainer::_is_internal_child(Node *p_node) const {
 }
 
 AppTabContainer *AppTabContainer::_get_control_parent_tab_container(Control *p_control) {
-	{
-		AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_control);
-		if (tab_container) {
-			return tab_container;
-		}
-	}
+	ERR_FAIL_NULL_V(p_control, nullptr);
 
 	Control *parent = p_control->get_parent_control();
 	while (parent) {
@@ -758,28 +748,19 @@ void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p
 	}
 }
 
-void AppTabContainer::move_tab(const Variant &p_data, int p_to_index) {
-	Dictionary d = p_data;
-	if (!d.has("type")) {
+void AppTabContainer::move_tab_from(TabBar *p_from_tab_bar, int p_from_index, int p_to_index) {
+	// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
+	AppTabContainer *tab_container = _get_control_parent_tab_container(p_from_tab_bar);
+	if (!tab_container) {
 		return;
 	}
 
-	if (String(d["type"]) == "tab_container_tab") {
-		NodePath from_path = d["from_path"];
-		Node *from_node = get_node(from_path);
-		TabBar *from_tab_bar = Object::cast_to<TabBar>(from_node);
-		// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
-		AppTabContainer *p_from = _get_control_parent_tab_container(from_tab_bar);
-		if (!p_from) {
-			return;
-		}
-		print_line("move: ", from_node, p_from);
-		print_line(from_path);
-
-		int tab_from_id = d["tab_index"];
-
-		move_tab_from_tab_container(p_from, tab_from_id, p_to_index);
+	int to_index = p_to_index;
+	if (p_to_index < 0) {
+		to_index = get_tab_count();
 	}
+
+	move_tab_from_tab_container(tab_container, p_from_index, to_index);
 }
 
 void AppTabContainer::_on_tab_clicked(int p_tab) {
@@ -1462,7 +1443,7 @@ void AppTabContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("pre_popup_pressed"));
 
 	ADD_SIGNAL(MethodInfo("new_tab"));
-	ADD_SIGNAL(MethodInfo("tab_dropped", PropertyInfo(Variant::INT, "position"), PropertyInfo(Variant::DICTIONARY, "data")));
+	ADD_SIGNAL(MethodInfo("tab_dropped", PropertyInfo(Variant::INT, "position"), PropertyInfo(Variant::OBJECT, "tab_bar"), PropertyInfo(Variant::INT, "from_index")));
 
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1"), "set_current_tab", "get_current_tab");

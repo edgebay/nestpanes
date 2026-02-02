@@ -251,7 +251,7 @@ public:
 	void trigger_menu_option(int p_option, bool p_confirmed);
 
 	void move_tab_from_tab_container(AppTabContainer *p_from, int p_from_index, int p_to_index = -1);
-	void move_tab(const Variant &p_data, int p_to_index = -1);
+	void move_tab_from(TabBar *p_from_tab_bar, int p_from_index, int p_to_index = -1);
 
 	void set_drag_to_rearrange_enabled(bool p_enabled);
 	bool get_drag_to_rearrange_enabled() const;

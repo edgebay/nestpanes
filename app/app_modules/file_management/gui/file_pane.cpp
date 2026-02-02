@@ -291,7 +291,7 @@ FilePane::FilePane() :
 	dir_prev->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_back));
 	dir_next->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_forward));
 	dir_up->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_up));
-	refresh->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_update_item_list));
+	refresh->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_update_ui));
 
 	toolbar->add_child(dir_prev);
 	toolbar->add_child(dir_next);

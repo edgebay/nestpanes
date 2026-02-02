@@ -92,11 +92,11 @@ void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab
 	}
 }
 
-void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container) {
-	print_line("drop tab: ", p_position, p_tab_container);
+void ContainerManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container) {
+	print_line("drop tab: ", p_position, p_from_tab_bar, p_from_index, p_tab_container);
 	// Move tab.
 	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
-		p_tab_container->move_tab(p_data, p_tab_container->get_tab_count());
+		p_tab_container->move_tab_from(p_from_tab_bar, p_from_index);
 		current_tab_container = p_tab_container;
 		return;
 	}
@@ -121,7 +121,7 @@ void ContainerManager::_on_drop_tab(int p_position, const Variant &p_data, AppTa
 			return;
 	}
 	AppTabContainer *tab_container = _split(p_tab_container, direction);
-	tab_container->move_tab(p_data, 0); // TODO: split_container::_create_sub_split changed from_path
+	tab_container->move_tab_from(p_from_tab_bar, p_from_index);
 }
 
 void ContainerManager::_on_pane_title_changed(PaneBase *p_pane) {

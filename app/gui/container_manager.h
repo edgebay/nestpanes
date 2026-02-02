@@ -7,6 +7,7 @@ class MultiSplitContainer;
 class Node;
 class PaneBase;
 class PopupMenu;
+class TabBar;
 
 class ContainerManager : public Object {
 	GDCLASS(ContainerManager, Object);
@@ -39,7 +40,7 @@ private:
 	void _select_tab_container(AppTabContainer *p_tab_container);
 	void _new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container);
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
-	void _on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container);
+	void _on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container);
 
 	void _on_pane_title_changed(PaneBase *p_pane);
 	void _on_pane_icon_changed(PaneBase *p_pane);
