@@ -6,6 +6,7 @@
 #include "scene/gui/button.h"
 
 #include "app/gui/app_control.h"
+#include "app/themes/app_scale.h"
 
 #include "app/app_modules/file_management/file_system.h"
 
@@ -258,6 +259,8 @@ void FilePane::_bind_methods() {
 
 FilePane::FilePane() :
 		PaneBase(get_class_static()) {
+	set_custom_minimum_size(Size2(320, 320) * APP_SCALE);
+
 	vbox = memnew(VBoxContainer);
 	add_child(vbox);
 	vbox->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);

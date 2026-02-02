@@ -348,6 +348,8 @@ void NavigationPane::_bind_methods() {
 
 NavigationPane::NavigationPane() :
 		PaneBase(get_class_static()) {
+	set_custom_minimum_size(Size2(200, 320) * APP_SCALE);
+
 	tree = memnew(Tree);
 	add_child(tree);
 	tree->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);

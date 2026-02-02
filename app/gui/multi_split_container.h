@@ -41,7 +41,7 @@ public:
 		SPLIT_UP,
 		SPLIT_DOWN,
 		SPLIT_LEFT,
-		SPLIT_RIGHT
+		SPLIT_RIGHT,
 	};
 
 private:
@@ -89,6 +89,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	static MultiSplitContainer *get_root_split_container(MultiSplitContainer *p_split);
+
 	void set_vertical(bool p_vertical);
 	bool is_vertical() const;
 

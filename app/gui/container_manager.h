@@ -20,12 +20,8 @@ public:
 		SPLIT_MENU_RIGHT,
 	};
 
-	// typedef Control *(*NewTabFunc)();
-
 private:
 	static ContainerManager *singleton;
-
-	// HashMap<String, NewTabFunc> func_map;
 
 	PopupMenu *popup_menu = nullptr;
 
@@ -37,11 +33,11 @@ private:
 
 	StringName pane_type = "";
 
-	AppTabContainer *_create_tab_container();
+	AppTabContainer *_create_tab_container(bool p_tab_closable = false);
 
 	void _menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
-	void _new_tab(AppTabContainer *p_tab_container);
+	void _new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container);
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _on_drop_tab(int p_position, const Variant &p_data, AppTabContainer *p_tab_container);
 
@@ -50,14 +46,14 @@ private:
 
 	AppTabContainer *_split(AppTabContainer *p_from, int p_direction);
 
+	void _set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable);
+
 	// protected:
 	// void _notification(int p_what);
 	// static void _bind_methods();
 
 public:
 	static ContainerManager *get_singleton() { return singleton; }
-
-	// int register_new_tab_function(const String &p_type, NewTabFunc p_function);
 
 	void init_popup_menu(Node *p_parent);
 	// void set_popup(PopupMenu *p_popup);
@@ -69,7 +65,11 @@ public:
 	AppTabContainer *get_current_tab_container() const;
 
 	void new_tab();
+	void new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container = nullptr);
 	void close_current_tab();
+
+	void set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable);
+	bool get_tab_closable(MultiSplitContainer *p_split_container) const;
 
 	ContainerManager();
 	~ContainerManager();

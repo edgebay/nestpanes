@@ -234,6 +234,13 @@ void MultiSplitContainer::_create_sub_split(Control *p_control, Control *p_from,
 	split_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	split_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
+	// List<StringName> meta_list;
+	// get_meta_list(&meta_list);
+	// for (const StringName &meta_key : meta_list) {
+	// 	Variant meta_value = get_meta(meta_key);
+	// 	split_container->set_meta(meta_key, meta_value);
+	// }
+
 	int control_index = p_from->get_index(false);
 	remove_child(p_from);
 	add_child(split_container);
@@ -304,6 +311,20 @@ void MultiSplitContainer::_notification(int p_what) {
 			queue_sort();
 		} break;
 	}
+}
+
+MultiSplitContainer *MultiSplitContainer::get_root_split_container(MultiSplitContainer *p_split) {
+	MultiSplitContainer *root = p_split;
+	Control *parent = p_split->get_parent_control();
+	while (parent) {
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(parent);
+		if (!split_container) {
+			return root;
+		}
+		root = split_container;
+		parent = parent->get_parent_control();
+	}
+	return root;
 }
 
 void MultiSplitContainer::set_vertical(bool p_vertical) {

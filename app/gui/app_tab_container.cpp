@@ -856,7 +856,7 @@ void AppTabContainer::_on_tab_input(const Ref<InputEvent> &p_input) {
 }
 
 void AppTabContainer::_on_tab_resized() {
-	const Size2 add_button_size = Size2(tab_add->get_size().x, tab_bar->get_size().y);
+	const Size2 add_button_size = tab_add->is_visible() ? Size2(tab_add->get_size().x, tab_bar->get_size().y) : Size2(0, tab_bar->get_size().y);
 	if (tab_bar->get_offset_buttons_visible()) {
 		// Move the add button to a fixed position.
 		if (tab_add->get_parent() == tab_bar) {
@@ -1304,9 +1304,11 @@ void AppTabContainer::set_new_tab_enabled(bool p_enabled) {
 	if (p_enabled) {
 		get_tab_bar()->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_ALWAYS);
 		tab_add->show();
+		tab_add_ph->show();
 	} else {
 		get_tab_bar()->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_NEVER);
 		tab_add->hide();
+		tab_add_ph->hide();
 	}
 	new_tab_enabled = p_enabled;
 }
@@ -1535,7 +1537,6 @@ AppTabContainer::AppTabContainer() {
 	SET_DRAG_FORWARDING_GCDU(tab_bar, AppTabContainer);
 	tabbar_container->add_child(tab_bar);
 	tab_bar->set_select_with_rmb(true);
-	// tab_bar->set_tab_close_display_policy((TabBar::CloseButtonDisplayPolicy)EDITOR_GET("interface/tabs/display_close_button").operator int());
 	tab_bar->set_max_tab_width(int(EDITOR_GET("interface/tabs/maximum_width")) * APP_SCALE);
 	tab_bar->set_drag_to_rearrange_enabled(true); // TODO: handle set_drag_to_rearrange_enabled
 	tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
@@ -1569,6 +1570,11 @@ AppTabContainer::AppTabContainer() {
 	tab_add_ph->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 	tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
 	tabbar_container->add_child(tab_add_ph);
+
+	// new_tab_enabled false
+	tab_bar->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_NEVER);
+	tab_add->hide();
+	tab_add_ph->hide();
 
 	// On-hover tab preview.
 

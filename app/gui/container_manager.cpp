@@ -44,18 +44,30 @@ void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 	selected_tab_container = p_tab_container;
 }
 
-void ContainerManager::_new_tab(AppTabContainer *p_tab_container) {
+void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container) {
 	int tab_index = p_tab_container->get_tab_count();
 
-	PaneBase *pane = PaneFactory::get_singleton()->create_pane(pane_type);
+	StringName type = p_pane_type;
+	if (type.is_empty()) {
+		type = pane_type;
+	}
+	print_line("new tab type: ", type, p_pane_type, pane_type);
+	PaneBase *pane = PaneFactory::get_singleton()->create_pane(type);
+	if (!pane) {
+		return;
+	}
 	p_tab_container->add_child(pane);
 	pane->set_owner(p_tab_container->get_owner());
 	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(pane));
 	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(pane));
 
+	// TODO: Update the current tab container when the pane gains focus.
+
 	p_tab_container->set_tab_icon(tab_index, pane->get_icon());
 	p_tab_container->set_tab_title(tab_index, pane->get_title());
 	p_tab_container->set_current_tab(tab_index);
+
+	current_tab_container = p_tab_container;
 }
 
 void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
@@ -126,7 +138,7 @@ void ContainerManager::_on_pane_icon_changed(PaneBase *p_pane) {
 
 AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_direction) {
 	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_from->get_parent());
-	AppTabContainer *tab_container = _create_tab_container();
+	AppTabContainer *tab_container = _create_tab_container(get_tab_closable(split_container));
 	split_container->split(tab_container, p_from, (MultiSplitContainer::SplitDirection)p_direction);
 	tab_container->set_owner(split_container->get_owner()); // Note: after add to scene tree
 
@@ -151,10 +163,10 @@ PopupMenu *ContainerManager::get_popup() const {
 	return popup_menu;
 }
 
-AppTabContainer *ContainerManager::_create_tab_container() {
+AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable) {
 	AppTabContainer *tab_container = memnew(AppTabContainer);
 	// tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
-	tab_container->set_new_tab_enabled(true);
+	tab_container->set_new_tab_enabled(p_tab_closable);
 	tab_container->set_drag_to_rearrange_enabled(true);
 	tab_container->set_tabs_rearrange_group(1);
 
@@ -163,7 +175,7 @@ AppTabContainer *ContainerManager::_create_tab_container() {
 	}
 
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &ContainerManager::_select_tab_container).bind(tab_container));
-	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind(tab_container));
+	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind("", tab_container));
 	tab_container->connect("child_order_changed", callable_mp(this, &ContainerManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &ContainerManager::_on_drop_tab).bind(tab_container));
 
@@ -174,12 +186,14 @@ AppTabContainer *ContainerManager::_create_tab_container() {
 }
 
 MultiSplitContainer *ContainerManager::create_container(const String &p_name, Node *p_parent, Node *p_owner, Node *p_child) {
+	bool tab_closable = false;
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
+	split_container->set_meta("tab_closable", tab_closable);
 	if (!p_name.is_empty()) {
 		split_container->set_name(p_name);
 	}
 
-	AppTabContainer *tab_container = _create_tab_container();
+	AppTabContainer *tab_container = _create_tab_container(tab_closable);
 	split_container->split(tab_container);
 	if (p_child) {
 		tab_container->add_child(p_child);
@@ -212,16 +226,76 @@ AppTabContainer *ContainerManager::get_current_tab_container() const {
 }
 
 void ContainerManager::new_tab() {
-	if (current_tab_container) {
-		callable_mp(this, &ContainerManager::_new_tab).call_deferred(current_tab_container);
+	if (current_tab_container && !pane_type.is_empty()) {
+		callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, current_tab_container);
 	}
+}
+
+void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container) {
+	AppTabContainer *tab_container = nullptr;
+	if (p_tab_container) {
+		tab_container = p_tab_container;
+	} else if (current_tab_container) {
+		tab_container = current_tab_container;
+	} else {
+		return;
+	}
+
+	if (!p_pane_type.is_empty()) {
+		pane_type = p_pane_type;
+	} else if (pane_type.is_empty()) {
+		return;
+	}
+
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container);
 }
 
 void ContainerManager::close_current_tab() {
 	if (current_tab_container && current_tab_container->get_tab_count() > 0) {
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent());
+		if (!get_tab_closable(split_container)) {
+			return;
+		}
+
 		int tab = current_tab_container->get_current_tab();
 		current_tab_container->close_tab(tab);
 	}
+}
+
+void ContainerManager::_set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable) {
+	p_split_container->set_meta("tab_closable", p_closable);
+	TypedArray<Node> children = p_split_container->get_children(false);
+	if (children.is_empty()) {
+		return;
+	}
+
+	for (Variant &c : children) {
+		AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(c);
+		if (tab_container) {
+			tab_container->set_new_tab_enabled(p_closable);
+			continue;
+		}
+
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(c);
+		if (split_container) {
+			_set_tab_closable(split_container, p_closable);
+			continue;
+		}
+	}
+}
+
+void ContainerManager::set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable) {
+	bool tab_closable = p_split_container->get_meta("tab_closable");
+	if (tab_closable == p_closable) {
+		return;
+	}
+
+	_set_tab_closable(p_split_container, p_closable);
+}
+
+bool ContainerManager::get_tab_closable(MultiSplitContainer *p_split_container) const {
+	MultiSplitContainer *split_container = MultiSplitContainer::get_root_split_container(p_split_container);
+	return split_container->get_meta("tab_closable");
 }
 
 ContainerManager::ContainerManager() {
