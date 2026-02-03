@@ -11,9 +11,9 @@
 
 #include "app/gui/welcome_pane.h"
 
-#include "app/app_modules/settings/gui/settings_pane.h"
-#include "app/gui/inspector/object_inspector.h"
-#include "app/gui/inspector/sectioned_inspector.h"
+// #include "app/app_modules/settings/gui/settings_pane.h"
+// #include "app/gui/inspector/object_inspector.h"
+// #include "app/gui/inspector/sectioned_inspector.h"
 
 #include "app/app_modules/file_management/file_system_list.h"
 #include "app/app_modules/file_management/file_system_tree.h"
@@ -36,9 +36,9 @@ void register_app_types() {
 
 	GDREGISTER_CLASS(WelcomePane);
 
-	GDREGISTER_CLASS(ObjectInspector);
-	GDREGISTER_CLASS(SectionedInspector);
-	GDREGISTER_CLASS(SettingsPane);
+	// GDREGISTER_CLASS(ObjectInspector);
+	// GDREGISTER_CLASS(SectionedInspector);
+	// GDREGISTER_CLASS(SettingsPane);
 
 	GDREGISTER_CLASS(FileSystemControl);
 	GDREGISTER_CLASS(FileSystemList);

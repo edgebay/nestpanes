@@ -85,4 +85,5 @@ public:
 	FileSystemDirectory *load_dir(const String &p_path);
 
 	FileSystem();
+	virtual ~FileSystem();
 };

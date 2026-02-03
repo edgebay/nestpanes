@@ -45,7 +45,7 @@
 #include "app/app_modules/file_management/file_system.h"
 #include "app/app_modules/file_management/gui/file_pane.h"
 #include "app/app_modules/file_management/gui/navigation_pane.h"
-#include "app/app_modules/settings/gui/settings_pane.h"
+// #include "app/app_modules/settings/gui/settings_pane.h"
 #include "app/gui/welcome_pane.h"
 
 #define LEFT_SIDEBAR_NAME "left_sidebar"
@@ -938,8 +938,8 @@ AppNode::AppNode() {
 	FileSystemAccess::create();
 	file_system = memnew(FileSystem);
 
-	PropertyNameProcessor *pnp = memnew(PropertyNameProcessor);
-	add_child(pnp);
+	// PropertyNameProcessor *pnp = memnew(PropertyNameProcessor);
+	// add_child(pnp);
 
 	// Load settings.
 	if (!AppSettings::get_singleton()) {
@@ -986,11 +986,11 @@ AppNode::AppNode() {
 		DisplayServer::get_singleton()->window_set_min_size(minimum_size);
 	}
 
-	{
-		Ref<ObjectInspectorDefaultPlugin> plugin;
-		plugin.instantiate();
-		EditorInspector::add_inspector_plugin(plugin);
-	}
+	// {
+	// 	Ref<ObjectInspectorDefaultPlugin> plugin;
+	// 	plugin.instantiate();
+	// 	EditorInspector::add_inspector_plugin(plugin);
+	// }
 
 	AppThemeManager::initialize();
 	theme = AppThemeManager::generate_theme();
@@ -1077,9 +1077,9 @@ AppNode::AppNode() {
 			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")), // TODO
 			callable_mp(this, &AppNode::_on_navigation_pane_create));
 
-	pane_factory->register_pane<SettingsPane>(
-			SettingsPane::get_class_static(),
-			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	// pane_factory->register_pane<SettingsPane>(
+	// 		SettingsPane::get_class_static(),
+	// 		theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	pane_factory->register_pane<WelcomePane>(
 			WelcomePane::get_class_static(),

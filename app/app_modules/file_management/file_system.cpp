@@ -316,3 +316,10 @@ FileSystem::FileSystem() {
 	file_system_root = memnew(FileSystemDirectory);
 	file_system_root->setup(nullptr, COMPUTER_PATH, COMPUTER_PATH, FileSystemAccess::get_icon(COMPUTER_PATH), false, true);
 }
+
+FileSystem::~FileSystem() {
+	if (file_system_root) {
+		memdelete(file_system_root);
+	}
+	file_system_root = nullptr;
+}
