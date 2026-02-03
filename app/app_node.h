@@ -15,6 +15,7 @@ class PopupMenu;
 class VBoxContainer;
 
 class ContainerManager;
+// class FilePane;
 class PaneFactory;
 class PaneBase;
 
@@ -147,6 +148,8 @@ private:
 
 	AppAbout *about = nullptr;
 
+	// FilePane *current_file_pane = nullptr;
+
 	List<AppTabContainer *> tab_containers;
 
 	List<FileSystemTree *> file_system_trees;
@@ -209,6 +212,8 @@ private:
 	void _update_main_menu_type();
 	void _add_to_main_menu(const String &p_name, PopupMenu *p_menu);
 	void _init_main_menu();
+
+	// void _gui_focus_changed(Control *p_control);
 
 protected:
 	void _notification(int p_what);

@@ -51,7 +51,7 @@ class AppTabContainer : public Container {
 public:
 	enum MenuOptions {
 		// Scene menu.
-		FILE_NEW_SCENE,
+		FILE_NEW_SCENE, // TODO: Pane/Tab
 	};
 
 	enum TabPosition {
@@ -90,7 +90,6 @@ private:
 
 	int current_menu_option = 0;
 
-	bool split_dragging = false;
 	DropOverlay *drop_overlay = nullptr;
 
 	struct ThemeCache {
@@ -159,6 +158,8 @@ private:
 	void _on_active_tab_rearranged(int p_tab);
 	void _on_tab_visibility_changed(Control *p_child);
 
+	void _on_tab_add();
+
 	void _tab_preview_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, const Variant &p_udata);
 
 	Variant _get_drag_data_fw(const Point2 &p_point, Control *p_from_control);
@@ -169,8 +170,6 @@ private:
 	void _on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position);
 
 	bool _is_internal_child(Node *p_node) const;
-
-	static AppTabContainer *_get_control_parent_tab_container(Control *p_control);
 
 protected:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
@@ -185,6 +184,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	static AppTabContainer *get_control_parent_tab_container(Control *p_control);
+
 	TabBar *get_tab_bar() const;
 
 	int get_tab_idx_at_point(const Point2 &p_point) const;

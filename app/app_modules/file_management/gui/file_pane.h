@@ -61,6 +61,7 @@ private:
 	void _go_back();
 	void _go_forward();
 	void _go_up();
+	void _refresh();
 
 	void _set_path(FileSystemDirectory *p_dir, bool p_update_history = true);
 

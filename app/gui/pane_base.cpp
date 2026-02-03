@@ -15,6 +15,26 @@ Ref<Texture2D> PaneBase::_get_pane_icon() const {
 	return Ref<Texture2D>();
 }
 
+PaneBase *PaneBase::get_control_parent_pane(Control *p_control) {
+	ERR_FAIL_NULL_V(p_control, nullptr);
+
+	PaneBase *pane = Object::cast_to<PaneBase>(p_control);
+	if (pane) {
+		return pane;
+	}
+
+	Control *parent = p_control->get_parent_control();
+	while (parent) {
+		PaneBase *pane = Object::cast_to<PaneBase>(parent);
+		if (pane) {
+			return pane;
+		}
+		parent = parent->get_parent_control();
+	}
+
+	return nullptr;
+}
+
 StringName PaneBase::get_type() const {
 	return pane_type;
 }

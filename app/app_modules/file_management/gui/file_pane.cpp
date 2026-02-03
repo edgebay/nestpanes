@@ -154,6 +154,8 @@ void FilePane::_go_history() {
 }
 
 void FilePane::_go_back() {
+	dir_prev->release_focus();
+
 	if (local_history_pos <= 0) {
 		return;
 	}
@@ -163,6 +165,8 @@ void FilePane::_go_back() {
 }
 
 void FilePane::_go_forward() {
+	dir_next->release_focus();
+
 	if (local_history_pos >= local_history.size() - 1) {
 		return;
 	}
@@ -172,6 +176,8 @@ void FilePane::_go_forward() {
 }
 
 void FilePane::_go_up() {
+	dir_up->release_focus();
+
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
 	if (!dir || dir == file_system->get_root()) {
 		return;
@@ -182,6 +188,12 @@ void FilePane::_go_up() {
 		file_system->update(dir);
 	}
 	_set_path(dir);
+}
+
+void FilePane::_refresh() {
+	refresh->release_focus();
+
+	callable_mp(this, &FilePane::_update_ui).call_deferred();
 }
 
 void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
@@ -270,28 +282,28 @@ FilePane::FilePane() :
 
 	dir_prev = memnew(Button);
 	dir_prev->set_theme_type_variation(SceneStringName(FlatButton));
-	dir_prev->set_tooltip_text(RTR("Go to previous folder."));
+	dir_prev->set_tooltip_text(RTR("Previous folder"));
 	dir_prev->set_disabled(true);
-	dir_prev->set_focus_mode(FOCUS_NONE);
+	// dir_prev->set_focus_mode(FOCUS_NONE);
 	dir_next = memnew(Button);
 	dir_next->set_theme_type_variation(SceneStringName(FlatButton));
-	dir_next->set_tooltip_text(RTR("Go to next folder."));
+	dir_next->set_tooltip_text(RTR("Next folder"));
 	dir_next->set_disabled(true);
-	dir_next->set_focus_mode(FOCUS_NONE);
+	// dir_next->set_focus_mode(FOCUS_NONE);
 	dir_up = memnew(Button);
 	dir_up->set_theme_type_variation(SceneStringName(FlatButton));
-	dir_up->set_tooltip_text(RTR("Go to parent folder."));
+	dir_up->set_tooltip_text(RTR("Parent folder"));
 	dir_up->set_disabled(true);
-	dir_up->set_focus_mode(FOCUS_NONE);
+	// dir_up->set_focus_mode(FOCUS_NONE);
 	refresh = memnew(Button);
 	refresh->set_theme_type_variation(SceneStringName(FlatButton));
-	refresh->set_tooltip_text(RTR("Refresh files."));
-	refresh->set_focus_mode(FOCUS_NONE);
+	refresh->set_tooltip_text(RTR("Refresh"));
+	// refresh->set_focus_mode(FOCUS_NONE);
 
 	dir_prev->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_back));
 	dir_next->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_forward));
 	dir_up->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_up));
-	refresh->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_update_ui));
+	refresh->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_refresh));
 
 	toolbar->add_child(dir_prev);
 	toolbar->add_child(dir_next);

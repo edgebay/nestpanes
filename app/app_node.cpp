@@ -321,7 +321,7 @@ void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
 	NavigationPane *pane = Object::cast_to<NavigationPane>(p_pane);
 	if (pane) {
 		pane->set_file_system(file_system);
-		pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		// pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
 		pane->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
 	}
 }
@@ -428,20 +428,26 @@ void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 // void AppNode::_on_tree_item_selected(TreeItem *p_item) {
 void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 	if (is_dir) {
-		AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
-		if (current_tab_container == nullptr) {
+		// Current tab container is NavigationPane
+		AppTabContainer *tab_container = container_manager->get_prev_tab_container();
+		if (tab_container == nullptr) {
 			return;
 		}
 
-		// FileSystemList *file_system_list = Object::cast_to<FileSystemList>(current_tab_container->get_current_tab_control());
+		// FileSystemList *file_system_list = Object::cast_to<FileSystemList>(tab_container->get_current_tab_control());
 		// // TODO: handle file item
 		// if (file_system_list) {
 		// 	file_system_list->set_current_path(p_path);
 		// }
-		FilePane *pane = Object::cast_to<FilePane>(current_tab_container->get_current_tab_control());
+		FilePane *pane = Object::cast_to<FilePane>(tab_container->get_current_tab_control());
 		if (pane) {
 			pane->set_path(p_path);
 		}
+
+		// print_line("current file_pane: ", current_file_pane);
+		// if (current_file_pane) {
+		// 	current_file_pane->set_path(p_path);
+		// }
 	}
 }
 
@@ -881,9 +887,27 @@ void AppNode::_init_main_menu() {
 	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("editor/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
 }
 
+// void AppNode::_gui_focus_changed(Control *p_control) {
+// 	PaneBase *pane = PaneBase::get_control_parent_pane(p_control);
+// 	if (!pane) {
+// 		return;
+// 	}
+
+// 	FilePane *file_pane = Object::cast_to<FilePane>(pane);
+// 	if (!file_pane) {
+// 		return;
+// 	}
+
+// 	current_file_pane = file_pane;
+// }
+
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
+			// Viewport *viewport = get_viewport();
+			// ERR_FAIL_NULL(viewport);
+			// viewport->connect("gui_focus_changed", callable_mp(this, &AppNode::_gui_focus_changed));
+
 			_load_layout();
 		} break;
 
@@ -1003,7 +1027,7 @@ AppNode::AppNode() {
 	left_toggle_button->set_theme_type_variation("MainScreenButton");
 	left_toggle_button->set_focus_mode(Control::FOCUS_NONE);
 	left_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
-	left_toggle_button->set_tooltip_text(RTR("Toggle Left Sidebar"));
+	left_toggle_button->set_tooltip_text(RTR("Toggle left sidebar"));
 	button_hbox->add_child(left_toggle_button);
 
 	Button *right_toggle_button = memnew(Button);
@@ -1011,7 +1035,7 @@ AppNode::AppNode() {
 	right_toggle_button->set_theme_type_variation("MainScreenButton");
 	right_toggle_button->set_focus_mode(Control::FOCUS_NONE);
 	right_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
-	right_toggle_button->set_tooltip_text(RTR("Toggle Right Sidebar"));
+	right_toggle_button->set_tooltip_text(RTR("Toggle right sidebar"));
 	button_hbox->add_child(right_toggle_button);
 
 	about = memnew(AppAbout);
@@ -1062,7 +1086,7 @@ AppNode::AppNode() {
 			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 
 	container_manager = memnew(ContainerManager);
-	container_manager->init_popup_menu(gui_base);
+	gui_base->add_child(container_manager);
 
 #define LOAD_SCENE 0
 	if (LOAD_SCENE && _load_main_scene()) {
@@ -1105,6 +1129,7 @@ AppNode::AppNode() {
 		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 		container_manager->set_tab_closable(central_area, true);
+		container_manager->set_tabs_rearrange_group(central_area, 1);
 		container_manager->new_tab(FilePane::get_class_static());
 
 		// Right sidebar.
@@ -1145,7 +1170,6 @@ AppNode::AppNode() {
 }
 
 AppNode::~AppNode() {
-	memdelete(container_manager);
 	memdelete(pane_factory);
 	memdelete(file_system);
 

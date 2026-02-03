@@ -358,30 +358,32 @@ void AppTabContainer::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_DRAG_BEGIN: {
-			Dictionary drop_data = get_viewport()->gui_get_drag_data();
+			if (get_tabs_rearrange_group() != -1) {
+				Dictionary drop_data = get_viewport()->gui_get_drag_data();
 
-			// Check if we are dragging a tab.
-			const String type = drop_data.get("type", "");
-			print_line("drag type: ", type, drop_overlay->get_rect());
-			if (type == "tab_container_tab") { // TODO: type
-				split_dragging = true;
-				drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+				// Check if we are dragging a tab.
+				const String type = drop_data.get("type", "");
+				print_line("drag type: ", type, drop_overlay->get_rect());
+				if (type == "tab_container_tab") { // TODO: type
+					NodePath from_path = drop_data.get("from_path", NodePath());
+					Node *from_node = get_node(from_path);
+					TabBar *from_tabs = Object::cast_to<TabBar>(from_node);
+					if (from_tabs && from_tabs->get_tabs_rearrange_group() == get_tabs_rearrange_group()) {
+						drop_overlay->show();
 
-				NodePath from_path = drop_data.get("from_path", NodePath());
-				NodePath tab_bar_path = get_tab_bar()->get_path();
-				print_line("path: ", from_path, tab_bar_path);
-				if (from_path == tab_bar_path && get_child_count(false) == 1) {
-					drop_overlay->enable_position_detection(false);
-				} else {
-					drop_overlay->enable_position_detection(true);
+						if (from_tabs == get_tab_bar() && get_child_count(false) == 1) {
+							drop_overlay->enable_position_detection(false);
+						} else {
+							drop_overlay->enable_position_detection(true);
+						}
+					}
 				}
 			}
 		} break;
 
 		case NOTIFICATION_DRAG_END: {
-			if (split_dragging) {
-				split_dragging = false;
-				drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
+			if (drop_overlay->is_visible()) {
+				drop_overlay->hide();
 			}
 		} break;
 	}
@@ -412,7 +414,7 @@ void AppTabContainer::_update_context_menu() {
 	// 	int tab_id = tab_bar->get_hovered_tab();
 	// 	bool no_root_node = !EditorNode::get_editor_data().get_edited_scene_root(tab_id);
 
-	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_scene"), AppTabContainer::FILE_NEW_SCENE);
+	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_tab"), AppTabContainer::FILE_NEW_SCENE);
 	// 	if (tab_id >= 0) {
 	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene"), EditorNode::SCENE_SAVE_SCENE);
 	// 		DISABLE_LAST_OPTION_IF(no_root_node);
@@ -697,8 +699,13 @@ bool AppTabContainer::_is_internal_child(Node *p_node) const {
 	return (p_node == tabbar_panel || p_node == drop_overlay);
 }
 
-AppTabContainer *AppTabContainer::_get_control_parent_tab_container(Control *p_control) {
+AppTabContainer *AppTabContainer::get_control_parent_tab_container(Control *p_control) {
 	ERR_FAIL_NULL_V(p_control, nullptr);
+
+	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_control);
+	if (tab_container) {
+		return tab_container;
+	}
 
 	Control *parent = p_control->get_parent_control();
 	while (parent) {
@@ -708,6 +715,7 @@ AppTabContainer *AppTabContainer::_get_control_parent_tab_container(Control *p_c
 		}
 		parent = parent->get_parent_control();
 	}
+
 	return nullptr;
 }
 
@@ -750,7 +758,7 @@ void AppTabContainer::move_tab_from_tab_container(AppTabContainer *p_from, int p
 
 void AppTabContainer::move_tab_from(TabBar *p_from_tab_bar, int p_from_index, int p_to_index) {
 	// TODO: handle layout: tab_container/tabbar_panel/tabbar_container
-	AppTabContainer *tab_container = _get_control_parent_tab_container(p_from_tab_bar);
+	AppTabContainer *tab_container = get_control_parent_tab_container(p_from_tab_bar);
 	if (!tab_container) {
 		return;
 	}
@@ -918,6 +926,12 @@ void AppTabContainer::_on_tab_visibility_changed(Control *p_child) {
 	}
 
 	updating_visibility = false;
+}
+
+void AppTabContainer::_on_tab_add() {
+	tab_add->release_focus();
+
+	emit_signal(SNAME("new_tab"));
 }
 
 void AppTabContainer::_tab_preview_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, const Variant &p_udata) {
@@ -1531,7 +1545,8 @@ AppTabContainer::AppTabContainer() {
 	tab_bar->connect("tab_button_pressed", callable_mp(this, &AppTabContainer::_on_tab_button_pressed));
 	tab_bar->connect("tab_close_pressed", callable_mp(this, &AppTabContainer::_on_tab_closed));
 	tab_bar->connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_tab_exit));
-	tab_bar->connect(SceneStringName(gui_input), callable_mp(this, &AppTabContainer::_on_tab_input));
+	// TODO: split, new tab
+	// tab_bar->connect(SceneStringName(gui_input), callable_mp(this, &AppTabContainer::_on_tab_input));
 	tab_bar->connect("active_tab_rearranged", callable_mp(this, &AppTabContainer::_on_active_tab_rearranged));
 	tab_bar->connect(SceneStringName(resized), callable_mp(this, &AppTabContainer::_on_tab_resized), CONNECT_DEFERRED);
 
@@ -1542,9 +1557,9 @@ AppTabContainer::AppTabContainer() {
 
 	tab_add = memnew(Button);
 	tab_add->set_flat(true);
-	tab_add->set_tooltip_text(RTR("Add a new scene.")); // TODO: scene -> pane
+	tab_add->set_tooltip_text(RTR("New tab"));
 	tab_bar->add_child(tab_add);
-	tab_add->connect(SceneStringName(pressed), callable_mp(this, &AppTabContainer::trigger_menu_option).bind(AppTabContainer::FILE_NEW_SCENE, false));
+	tab_add->connect(SceneStringName(pressed), callable_mp(this, &AppTabContainer::_on_tab_add));
 	tab_add->hide();
 
 	tab_add_ph = memnew(Control);
@@ -1577,8 +1592,8 @@ AppTabContainer::AppTabContainer() {
 
 	drop_overlay = memnew(DropOverlay);
 	drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	drop_overlay->set_mouse_filter(MOUSE_FILTER_IGNORE);
-	// drop_overlay->set_visible(false);
+	drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
+	drop_overlay->hide();
 	add_child(drop_overlay, false, INTERNAL_MODE_BACK);
 	// drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_WIDE);
 	drop_overlay->connect("dropped", callable_mp(this, &AppTabContainer::_on_drop_data));

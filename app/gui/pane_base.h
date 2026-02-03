@@ -22,6 +22,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	static PaneBase *get_control_parent_pane(Control *p_control);
+
 	StringName get_type() const;
 
 	void set_title(const String &p_title);

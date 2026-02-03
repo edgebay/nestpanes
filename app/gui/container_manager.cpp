@@ -10,6 +10,16 @@
 
 ContainerManager *ContainerManager::singleton = nullptr;
 
+void ContainerManager::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			Viewport *viewport = get_viewport();
+			ERR_FAIL_NULL(viewport);
+			viewport->connect("gui_focus_changed", callable_mp(this, &ContainerManager::_gui_focus_changed));
+		} break;
+	}
+}
+
 void ContainerManager::_menu_id_pressed(int p_option) {
 	if (!selected_tab_container) {
 		return;
@@ -34,8 +44,8 @@ void ContainerManager::_menu_id_pressed(int p_option) {
 			return;
 	}
 
-	_split(selected_tab_container, direction);
-	// TODO: copy tab
+	AppTabContainer *tab_container = _split(selected_tab_container, direction);
+	new_tab(pane_type, tab_container);
 
 	selected_tab_container = nullptr;
 }
@@ -67,7 +77,7 @@ void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *
 	p_tab_container->set_tab_title(tab_index, pane->get_title());
 	p_tab_container->set_current_tab(tab_index);
 
-	current_tab_container = p_tab_container;
+	set_current_tab_container(p_tab_container);
 }
 
 void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
@@ -85,7 +95,7 @@ void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab
 				p_tab_container->queue_free();
 
 				if (current_tab_container == p_tab_container) {
-					current_tab_container = nullptr;
+					clear_current_tab_container();
 				}
 			}
 		}
@@ -97,7 +107,7 @@ void ContainerManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int 
 	// Move tab.
 	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
 		p_tab_container->move_tab_from(p_from_tab_bar, p_from_index);
-		current_tab_container = p_tab_container;
+		set_current_tab_container(p_tab_container);
 		return;
 	}
 
@@ -138,41 +148,33 @@ void ContainerManager::_on_pane_icon_changed(PaneBase *p_pane) {
 
 AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_direction) {
 	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_from->get_parent());
-	AppTabContainer *tab_container = _create_tab_container(get_tab_closable(split_container));
+	bool tab_closable = get_tab_closable(split_container);
+	int group_id = get_tabs_rearrange_group(split_container);
+
+	AppTabContainer *tab_container = _create_tab_container(tab_closable, group_id);
 	split_container->split(tab_container, p_from, (MultiSplitContainer::SplitDirection)p_direction);
 	tab_container->set_owner(split_container->get_owner()); // Note: after add to scene tree
 
-	current_tab_container = tab_container;
+	set_current_tab_container(tab_container);
 
 	return tab_container;
-}
-
-void ContainerManager::init_popup_menu(Node *p_parent) {
-	ERR_FAIL_NULL(p_parent);
-
-	popup_menu = memnew(PopupMenu);
-	popup_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
-	popup_menu->add_item(RTR("Split Down"), SPLIT_MENU_DOWN);
-	popup_menu->add_item(RTR("Split Left"), SPLIT_MENU_LEFT);
-	popup_menu->add_item(RTR("Split Right"), SPLIT_MENU_RIGHT);
-	popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &ContainerManager::_menu_id_pressed));
-	p_parent->add_child(popup_menu);
 }
 
 PopupMenu *ContainerManager::get_popup() const {
 	return popup_menu;
 }
 
-AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable) {
+AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable, int p_group_id) {
 	AppTabContainer *tab_container = memnew(AppTabContainer);
 	// tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
 	tab_container->set_new_tab_enabled(p_tab_closable);
 	tab_container->set_drag_to_rearrange_enabled(true);
-	tab_container->set_tabs_rearrange_group(1);
+	tab_container->set_tabs_rearrange_group(p_group_id);
 
-	if (popup_menu) {
-		tab_container->set_popup(popup_menu);
-	}
+	// TODO: split, new tab
+	// if (popup_menu) {
+	// 	tab_container->set_popup(popup_menu);
+	// }
 
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &ContainerManager::_select_tab_container).bind(tab_container));
 	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind("", tab_container));
@@ -180,20 +182,22 @@ AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable) {
 	tab_container->connect("tab_dropped", callable_mp(this, &ContainerManager::_on_drop_tab).bind(tab_container));
 
 	tab_containers.push_back(tab_container);
-	current_tab_container = tab_container;
+	set_current_tab_container(tab_container);
 
 	return tab_container;
 }
 
 MultiSplitContainer *ContainerManager::create_container(const String &p_name, Node *p_parent, Node *p_owner, Node *p_child) {
-	bool tab_closable = false;
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
+	bool tab_closable = false;
+	int group_id = -1;
 	split_container->set_meta("tab_closable", tab_closable);
+	split_container->set_meta("group_id", group_id);
 	if (!p_name.is_empty()) {
 		split_container->set_name(p_name);
 	}
 
-	AppTabContainer *tab_container = _create_tab_container(tab_closable);
+	AppTabContainer *tab_container = _create_tab_container(tab_closable, group_id);
 	split_container->split(tab_container);
 	if (p_child) {
 		tab_container->add_child(p_child);
@@ -217,16 +221,35 @@ MultiSplitContainer *ContainerManager::create_container(const String &p_name, No
 
 void ContainerManager::set_current_tab_container(AppTabContainer *p_tab_container) {
 	if (p_tab_container && p_tab_container != current_tab_container) {
+		if (current_tab_container != nullptr) {
+			prev_tab_container = current_tab_container;
+		}
 		current_tab_container = p_tab_container;
 	}
+}
+
+void ContainerManager::clear_current_tab_container() {
+	if (prev_tab_container == current_tab_container) {
+		prev_tab_container = nullptr;
+	}
+	current_tab_container = nullptr;
 }
 
 AppTabContainer *ContainerManager::get_current_tab_container() const {
 	return current_tab_container;
 }
 
+AppTabContainer *ContainerManager::get_prev_tab_container() const {
+	return prev_tab_container;
+}
+
 void ContainerManager::new_tab() {
 	if (current_tab_container && !pane_type.is_empty()) {
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent());
+		if (!get_tab_closable(split_container)) {
+			return;
+		}
+
 		callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, current_tab_container);
 	}
 }
@@ -263,7 +286,6 @@ void ContainerManager::close_current_tab() {
 }
 
 void ContainerManager::_set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable) {
-	p_split_container->set_meta("tab_closable", p_closable);
 	TypedArray<Node> children = p_split_container->get_children(false);
 	if (children.is_empty()) {
 		return;
@@ -284,12 +306,49 @@ void ContainerManager::_set_tab_closable(MultiSplitContainer *p_split_container,
 	}
 }
 
+void ContainerManager::_set_tabs_rearrange_group(MultiSplitContainer *p_split_container, int p_group_id) {
+	TypedArray<Node> children = p_split_container->get_children(false);
+	if (children.is_empty()) {
+		return;
+	}
+
+	for (Variant &c : children) {
+		AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(c);
+		if (tab_container) {
+			tab_container->set_tabs_rearrange_group(p_group_id);
+			continue;
+		}
+
+		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(c);
+		if (split_container) {
+			_set_tabs_rearrange_group(split_container, p_group_id);
+			continue;
+		}
+	}
+}
+
+void ContainerManager::_gui_focus_changed(Control *p_control) {
+	// Control *focus_owner = get_viewport()->gui_get_focus_owner();
+	// if (focus_owner) {
+	// 	return;
+	// }
+
+	AppTabContainer *tab_container = AppTabContainer::get_control_parent_tab_container(p_control);
+	print_line("gui foucs: ", p_control, tab_container);
+	if (!tab_container) {
+		return;
+	}
+
+	set_current_tab_container(tab_container);
+}
+
 void ContainerManager::set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable) {
 	bool tab_closable = p_split_container->get_meta("tab_closable");
 	if (tab_closable == p_closable) {
 		return;
 	}
 
+	p_split_container->set_meta("tab_closable", p_closable);
 	_set_tab_closable(p_split_container, p_closable);
 }
 
@@ -298,9 +357,32 @@ bool ContainerManager::get_tab_closable(MultiSplitContainer *p_split_container) 
 	return split_container->get_meta("tab_closable");
 }
 
+void ContainerManager::set_tabs_rearrange_group(MultiSplitContainer *p_split_container, int p_group_id) {
+	int group_id = p_split_container->get_meta("group_id");
+	if (group_id == p_group_id) {
+		return;
+	}
+
+	p_split_container->set_meta("group_id", p_group_id);
+	_set_tabs_rearrange_group(p_split_container, p_group_id);
+}
+
+int ContainerManager::get_tabs_rearrange_group(MultiSplitContainer *p_split_container) const {
+	MultiSplitContainer *split_container = MultiSplitContainer::get_root_split_container(p_split_container);
+	return split_container->get_meta("group_id");
+}
+
 ContainerManager::ContainerManager() {
 	ERR_FAIL_NULL_MSG(PaneFactory::get_singleton(), "PaneFactory doesn't exist.");
 	singleton = this;
+
+	popup_menu = memnew(PopupMenu);
+	popup_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
+	popup_menu->add_item(RTR("Split Down"), SPLIT_MENU_DOWN);
+	popup_menu->add_item(RTR("Split Left"), SPLIT_MENU_LEFT);
+	popup_menu->add_item(RTR("Split Right"), SPLIT_MENU_RIGHT);
+	popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &ContainerManager::_menu_id_pressed));
+	add_child(popup_menu);
 
 	List<PaneFactory::PaneInfo> panes;
 	PaneFactory::get_singleton()->get_pane_list(&panes);
