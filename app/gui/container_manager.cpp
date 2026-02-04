@@ -244,14 +244,21 @@ AppTabContainer *ContainerManager::get_prev_tab_container() const {
 }
 
 void ContainerManager::new_tab() {
-	if (current_tab_container && !pane_type.is_empty()) {
-		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent());
-		if (!get_tab_closable(split_container)) {
-			return;
-		}
-
-		callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, current_tab_container);
+	if (pane_type.is_empty()) {
+		return;
 	}
+
+	// TODO: Fix
+	AppTabContainer *tab_container = nullptr;
+	if (current_tab_container && get_tab_closable(Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent()))) {
+		tab_container = current_tab_container;
+	} else if (prev_tab_container && get_tab_closable(Object::cast_to<MultiSplitContainer>(prev_tab_container->get_parent()))) {
+		tab_container = prev_tab_container;
+	} else {
+		return;
+	}
+
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container);
 }
 
 void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container) {
@@ -274,15 +281,22 @@ void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p
 }
 
 void ContainerManager::close_current_tab() {
-	if (current_tab_container && current_tab_container->get_tab_count() > 0) {
-		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent());
-		if (!get_tab_closable(split_container)) {
-			return;
-		}
-
-		int tab = current_tab_container->get_current_tab();
-		current_tab_container->close_tab(tab);
+	// TODO: Fix
+	AppTabContainer *tab_container = nullptr;
+	if (current_tab_container &&
+			current_tab_container->get_tab_count() > 0 &&
+			get_tab_closable(Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent()))) {
+		tab_container = current_tab_container;
+	} else if (prev_tab_container &&
+			prev_tab_container->get_tab_count() > 0 &&
+			get_tab_closable(Object::cast_to<MultiSplitContainer>(prev_tab_container->get_parent()))) {
+		tab_container = prev_tab_container;
+	} else {
+		return;
 	}
+
+	int tab = tab_container->get_current_tab();
+	tab_container->close_tab(tab);
 }
 
 void ContainerManager::_set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable) {
