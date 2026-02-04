@@ -1,32 +1,47 @@
 # Daily Engine
 
-包含文件管理及文本编辑功能的 Windows 桌面应用。
+[简体中文](README_zh.md) | English
 
-基于[Godot 源码 4.5-stable](https://github.com/godotengine/godot/tree/4.5-stable)。
+A Windows desktop application based on the [Godot 4.5-stable source code](https://github.com/godotengine/godot/tree/4.5-stable).
+
+## Features
+
+**核心功能**
+
+- 文件管理
+	- 文件浏览
+	- 基础文件操作
+
+**界面布局**
+
+- 多标签页
+- 可拆分视图
+	- 拖放标签页拆分
+
+## Roadmap
+
+- 文件管理
+	- 状态信息
+	- 详细信息
+	- 文件搜索
+	- 图片预览
+- 文本编辑器
 
 ---
 
-A Windows desktop application integrating file management and text editing functions.
-
-Based on [Godot source 4.5-stable](https://github.com/godotengine/godot/tree/4.5-stable).
-
-## 编译 Building
+## Building
 
 ```
 scons
 ```
 
-## 单元测试 Unit testing
-
-使用`tests`编译选项进行编译：
+## Unit testing
 
 Compile with the `tests` build option:
 
 ```
 scons tests=yes
 ```
-
-运行测试：
 
 Run the tests:
 
