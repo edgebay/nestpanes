@@ -9,12 +9,15 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
+#include "core/string/translation_server.h"
 #include "core/templates/rb_set.h"
 #include "core/version.h"
 
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
+
+#include "app/translations/app_translation.h"
 
 Ref<AppSettings> AppSettings::singleton = nullptr;
 
@@ -25,6 +28,10 @@ bool AppSettings::_set(const StringName &p_name, const Variant &p_value) {
 	if (changed && initialized) {
 		changed_settings.insert(p_name);
 		emit_signal(SNAME("settings_changed"));
+
+		if (p_name == SNAME("interface/app/language")) {
+			setup_language();
+		}
 	}
 	return true;
 }
@@ -325,6 +332,45 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 #define EDITOR_SETTING_BASIC APP_SETTING_BASIC
 #define EDITOR_SETTING_USAGE APP_SETTING_USAGE
 
+	/* Languages */
+
+	{
+		String lang_hint = "en";
+		String host_lang = OS::get_singleton()->get_locale();
+
+		// Skip locales if Text server lack required features.
+		Vector<String> locales_to_skip;
+		if (!locales_to_skip.is_empty()) {
+			WARN_PRINT("Some locales are not properly supported by selected Text Server and are disabled.");
+		}
+
+		String best;
+		int best_score = 0;
+		for (const String &locale : get_locales()) {
+			// Skip locales which we can't render properly (see above comment).
+			// Test against language code without regional variants (e.g. ur_PK).
+			String lang_code = locale.get_slicec('_', 0);
+			if (locales_to_skip.has(lang_code)) {
+				continue;
+			}
+
+			lang_hint += ",";
+			lang_hint += locale;
+
+			int score = TranslationServer::get_singleton()->compare_locales(host_lang, locale);
+			if (score > 0 && score >= best_score) {
+				best = locale;
+				best_score = score;
+			}
+		}
+		if (best_score == 0) {
+			best = "en";
+		}
+
+		best = "zh_CN"; // TODO: Remove
+		EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_ENUM, "interface/app/language", best, lang_hint, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING);
+	}
+
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
 
 	// Display what the Auto display scale setting effectively corresponds to.
@@ -614,8 +660,9 @@ void AppSettings::create() {
 
 		print_verbose("AppSettings: Load OK!");
 
+		singleton->setup_language();
+
 		// TODO
-		// singleton->setup_language();
 		// singleton->list_text_editor_themes();
 
 		success = true;
@@ -629,14 +676,27 @@ void AppSettings::create() {
 		singleton->set_path(config_file_path, true);
 		singleton->save_changed_setting = true;
 		singleton->_load_defaults();
+		singleton->setup_language();
 
 		// TODO
-		// singleton->setup_language();
 		// singleton->list_text_editor_themes();
 
 		singleton->set_manually("app_version", vformat("%d.%d.%d", APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH));
 		singleton->save();
 	}
+}
+
+void AppSettings::setup_language() {
+	String lang = _EDITOR_GET("interface/app/language");
+
+	if (lang == "en") {
+		TranslationServer::get_singleton()->set_locale(lang);
+		return; // Default, nothing to do.
+	}
+	// Load translation for configured/detected locale.
+	load_translations(lang);
+
+	TranslationServer::get_singleton()->set_locale(lang);
 }
 
 void AppSettings::save() {

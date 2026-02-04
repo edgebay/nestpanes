@@ -70,6 +70,7 @@ public:
 	static String get_settings_path();
 
 	static void create();
+	void setup_language();
 	static void save();
 	static void destroy();
 	void set_optimize_save(bool p_optimize);
@@ -137,6 +138,7 @@ Ref<Shortcut> APP_GET_SHORTCUT(const String &p_path);
 #define EDITOR_DEF APP_DEF
 
 #define EDITOR_GET APP_GET
+#define _EDITOR_GET APP_GET
 
 #define ED_IS_SHORTCUT APP_IS_SHORTCUT
 #define ED_SHORTCUT APP_SHORTCUT
