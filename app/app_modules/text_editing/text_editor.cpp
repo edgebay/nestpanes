@@ -6,6 +6,7 @@
 #include "app/themes/app_scale.h"
 
 #include "core/io/file_access.h"
+#include "core/io/resource_loader.h"
 
 /*** CODE EDITOR ****/
 

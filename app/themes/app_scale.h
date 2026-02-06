@@ -9,3 +9,6 @@ public:
 };
 
 #define APP_SCALE (AppScale::get_scale())
+
+// TODO: Remove
+#define EDSCALE APP_SCALE

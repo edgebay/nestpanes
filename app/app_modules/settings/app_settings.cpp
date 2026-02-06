@@ -17,9 +17,13 @@
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 
+#include "main/main.h"
+
 #include "app/translations/app_translation.h"
 
 Ref<AppSettings> AppSettings::singleton = nullptr;
+
+// Properties
 
 bool AppSettings::_set(const StringName &p_name, const Variant &p_value) {
 	_THREAD_SAFE_METHOD_
@@ -30,7 +34,7 @@ bool AppSettings::_set(const StringName &p_name, const Variant &p_value) {
 		emit_signal(SNAME("settings_changed"));
 
 		if (p_name == SNAME("interface/app/language")) {
-			setup_language();
+			setup_language(false);
 		}
 	}
 	return true;
@@ -50,7 +54,7 @@ bool AppSettings::_set_only(const StringName &p_name, const Variant &p_value) {
 			Ref<Shortcut> sc;
 			sc.instantiate();
 			sc->set_events(shortcut_events);
-			add_shortcut(shortcut_name, sc);
+			_add_shortcut_default(shortcut_name, sc);
 		}
 
 		return false;
@@ -312,6 +316,28 @@ void AppSettings::_set_initialized() {
 	initialized = true;
 }
 
+static LocalVector<String> _get_skipped_locales() {
+	// Skip locales if Text server lack required features.
+	LocalVector<String> locales_to_skip;
+	if (!TS->has_feature(TextServer::FEATURE_BIDI_LAYOUT) || !TS->has_feature(TextServer::FEATURE_SHAPING)) {
+		locales_to_skip.push_back("ar"); // Arabic.
+		locales_to_skip.push_back("fa"); // Persian.
+		locales_to_skip.push_back("ur"); // Urdu.
+	}
+	if (!TS->has_feature(TextServer::FEATURE_BIDI_LAYOUT)) {
+		locales_to_skip.push_back("he"); // Hebrew.
+	}
+	if (!TS->has_feature(TextServer::FEATURE_SHAPING)) {
+		locales_to_skip.push_back("bn"); // Bengali.
+		locales_to_skip.push_back("hi"); // Hindi.
+		locales_to_skip.push_back("ml"); // Malayalam.
+		locales_to_skip.push_back("si"); // Sinhala.
+		locales_to_skip.push_back("ta"); // Tamil.
+		locales_to_skip.push_back("te"); // Telugu.
+	}
+	return locales_to_skip;
+}
+
 void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_THREAD_SAFE_METHOD_
 // Sets up the setting with a default value and hint PropertyInfo.
@@ -335,27 +361,27 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	/* Languages */
 
 	{
-		String lang_hint = "en";
-		String host_lang = OS::get_singleton()->get_locale();
+		String lang_hint;
+		const String host_lang = OS::get_singleton()->get_locale();
 
-		// Skip locales if Text server lack required features.
-		Vector<String> locales_to_skip;
+		// Skip locales which we can't render properly.
+		const LocalVector<String> locales_to_skip = _get_skipped_locales();
 		if (!locales_to_skip.is_empty()) {
 			WARN_PRINT("Some locales are not properly supported by selected Text Server and are disabled.");
 		}
 
-		String best;
+		String best = "en";
 		int best_score = 0;
 		for (const String &locale : get_locales()) {
-			// Skip locales which we can't render properly (see above comment).
 			// Test against language code without regional variants (e.g. ur_PK).
 			String lang_code = locale.get_slicec('_', 0);
 			if (locales_to_skip.has(lang_code)) {
 				continue;
 			}
 
-			lang_hint += ",";
-			lang_hint += locale;
+			lang_hint += ";";
+			const String lang_name = TranslationServer::get_singleton()->get_locale_name(locale);
+			lang_hint += vformat("%s/[%s] %s", locale, locale, lang_name);
 
 			int score = TranslationServer::get_singleton()->compare_locales(host_lang, locale);
 			if (score > 0 && score >= best_score) {
@@ -363,12 +389,9 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 				best_score = score;
 			}
 		}
-		if (best_score == 0) {
-			best = "en";
-		}
+		lang_hint = vformat(";auto/Auto (%s);en/[en] English", TranslationServer::get_singleton()->get_locale_name(best)) + lang_hint;
 
-		best = "zh_CN"; // TODO: Remove
-		EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_ENUM, "interface/app/language", best, lang_hint, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING);
+		EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_ENUM, "interface/editor/editor_language", "auto", lang_hint, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING);
 	}
 
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
@@ -378,13 +401,14 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING_USAGE(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/display_scale", 0, display_scale_hint_string, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	APP_SETTING_USAGE(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/app/custom_display_scale", 1.0, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 
-	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_embedded_menu", false, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_embedded_menu", false, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_native_file_dialogs", false, "", PROPERTY_USAGE_DEFAULT)
 	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/expand_to_title", true, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 
 	// Font
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/main_font_size", 14, "8,48,1")
 	APP_SETTING_BASIC(Variant::INT, PROPERTY_HINT_RANGE, "interface/app/code_font_size", 14, "8,48,1")
+	_initial_set("interface/app/main_font_custom_opentype_features", "");
 	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/code_font_contextual_ligatures", 1, "Enabled,Disable Contextual Alternates (Coding Ligatures),Use Custom OpenType Feature Set")
 	_initial_set("interface/app/code_font_custom_opentype_features", "");
 	_initial_set("interface/app/code_font_custom_variations", "");
@@ -397,26 +421,29 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/main_font_bold", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/app/code_font", "", "*.ttf,*.otf,*.woff,*.woff2,*.pfb,*.pfm")
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/app/dragging_hover_wait_seconds", 0.5, "0.01,10,0.01,or_greater,suffix:s");
 
 	APP_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/collapse_main_menu", false, "")
 
 	// Theme
-	APP_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_ENUM, "interface/theme/follow_system_theme", false, "")
-	APP_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/preset", "Default", "Default,Breeze Dark,Godot 2,Gray,Light,Solarized (Dark),Solarized (Light),Black (OLED),Custom")
-	APP_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/spacing_preset", "Default", "Compact,Default,Spacious,Custom")
-	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/icon_and_font_color", 0, "Auto,Dark,Light")
-	APP_SETTING_BASIC(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/base_color", Color(0.2, 0.23, 0.31), "")
-	APP_SETTING_BASIC(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/accent_color", Color(0.41, 0.61, 0.91), "")
-	APP_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "interface/theme/use_system_accent_color", false, "")
-	APP_SETTING_BASIC(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/contrast", 0.3, "-1,1,0.01")
-	APP_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/theme/draw_extra_borders", false, "")
-	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/icon_saturation", 1.0, "0,2,0.01")
-	APP_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/relationship_line_opacity", 0.1, "0.00,1,0.01")
-	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/border_size", 0, "0,2,1")
-	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/corner_radius", 3, "0,6,1")
-	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/base_spacing", 4, "0,8,1")
-	APP_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/additional_spacing", 0, "0,8,1")
-	APP_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/theme/custom_theme", "", "*.res,*.tres,*.theme", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED)
+	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_ENUM, "interface/theme/follow_system_theme", false, "")
+	EDITOR_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/style", "Modern", "Modern,Classic")
+	EDITOR_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/color_preset", "Default", "Default,Breeze Dark,Godot 2,Godot 3,Gray,Light,Solarized (Dark),Solarized (Light),Black (OLED),Custom")
+	EDITOR_SETTING_BASIC(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/spacing_preset", "Default", "Compact,Default,Spacious,Custom")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/icon_and_font_color", 0, "Auto,Dark,Light")
+	EDITOR_SETTING_BASIC(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/base_color", Color(0.14, 0.14, 0.14), "")
+	EDITOR_SETTING_BASIC(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/accent_color", Color(0.34, 0.62, 1.0), "")
+	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "interface/theme/use_system_accent_color", false, "")
+	EDITOR_SETTING_BASIC(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/contrast", 0.3, "-1,1,0.01")
+	EDITOR_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/theme/draw_extra_borders", false, "")
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/icon_saturation", 2.0, "0,2,0.01")
+	// EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/draw_relationship_lines", (int32_t)AppThemeManager::RELATIONSHIP_SELECTED_ONLY, "None,Selected Only,All")
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/relationship_line_opacity", 0.1, "0.00,1,0.01")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/border_size", 0, "0,2,1")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/corner_radius", 4, "0,6,1")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/base_spacing", 4, "0,8,1")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/additional_spacing", 0, "0,8,1")
+	EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_GLOBAL_FILE, "interface/theme/custom_theme", "", "*.res,*.tres,*.theme", PROPERTY_USAGE_DEFAULT)
 
 	// Tabs
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/tabs/display_close_button", 1, "Never,If Tab Active,Always"); // TabBar::CloseButtonDisplayPolicy
@@ -463,7 +490,7 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	};
 
 	// TODO: text editor theme
-	// // These values will be overwritten by EditorThemeManager, but can still be seen in some edge cases.
+	// // These values will be overwritten by AppThemeManager, but can still be seen in some edge cases.
 	// const HashMap<StringName, Color> text_colors = get_godot2_text_editor_theme();
 	// for (const KeyValue<StringName, Color> &text_color : text_colors) {
 	// 	if (basic_text_editor_settings.has(text_color.key)) {
@@ -619,6 +646,8 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	}
 }
 
+// PUBLIC METHODS
+
 AppSettings *AppSettings::get_singleton() {
 	return singleton.ptr();
 }
@@ -660,7 +689,7 @@ void AppSettings::create() {
 
 		print_verbose("AppSettings: Load OK!");
 
-		singleton->setup_language();
+		singleton->setup_language(true);
 
 		// TODO
 		// singleton->list_text_editor_themes();
@@ -676,7 +705,7 @@ void AppSettings::create() {
 		singleton->set_path(config_file_path, true);
 		singleton->save_changed_setting = true;
 		singleton->_load_defaults();
-		singleton->setup_language();
+		singleton->setup_language(true);
 
 		// TODO
 		// singleton->list_text_editor_themes();
@@ -686,14 +715,20 @@ void AppSettings::create() {
 	}
 }
 
-void AppSettings::setup_language() {
-	String lang = _EDITOR_GET("interface/app/language");
+void EditorSettings::setup_language(bool p_initial_setup) {
+	// String lang = _EDITOR_GET("interface/app/language");
+	String lang = get_language();
+	if (p_initial_setup) {
+		String lang_ov = Main::get_locale_override();
+		if (!lang_ov.is_empty()) {
+			lang = lang_ov;
+		}
+	}
 
 	if (lang == "en") {
 		TranslationServer::get_singleton()->set_locale(lang);
 		return; // Default, nothing to do.
 	}
-	// Load translation for configured/detected locale.
 	load_translations(lang);
 
 	TranslationServer::get_singleton()->set_locale(lang);
@@ -739,31 +774,6 @@ void AppSettings::mark_setting_changed(const String &p_setting) {
 	changed_settings.insert(p_setting);
 }
 
-float AppSettings::get_auto_display_scale() {
-	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
-
-	if (DisplayServer::get_singleton()->screen_get_size(screen) == Vector2i()) {
-		// Invalid screen size, skip.
-		return 1.0;
-	}
-
-	// Use the smallest dimension to use a correct display scale on portrait displays.
-	const int smallest_dimension = MIN(DisplayServer::get_singleton()->screen_get_size(screen).x, DisplayServer::get_singleton()->screen_get_size(screen).y);
-	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && smallest_dimension >= 1400) {
-		// hiDPI display.
-		return 2.0;
-	} else if (smallest_dimension >= 1700) {
-		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
-		// Use an intermediate scale to handle this situation.
-		return 1.5;
-	} else if (smallest_dimension <= 800) {
-		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
-		// Icons won't look great, but this is better than having editor elements overflow from its window.
-		return 0.75;
-	}
-	return 1.0;
-}
-
 void AppSettings::destroy() {
 	if (!singleton.ptr()) {
 		return;
@@ -776,6 +786,8 @@ void AppSettings::set_optimize_save(bool p_optimize) {
 	optimize_save = p_optimize;
 }
 
+// Properties
+
 void AppSettings::set_setting(const String &p_setting, const Variant &p_value) {
 	_THREAD_SAFE_METHOD_
 	set(p_setting, p_value);
@@ -783,6 +795,7 @@ void AppSettings::set_setting(const String &p_setting, const Variant &p_value) {
 
 Variant AppSettings::get_setting(const String &p_setting) const {
 	_THREAD_SAFE_METHOD_
+	// TODO
 	// if (ProjectSettings::get_singleton()->has_editor_setting_override(p_setting)) {
 	// 	return ProjectSettings::get_singleton()->get_editor_setting_override(p_setting);
 	// }
@@ -859,8 +872,9 @@ Variant _APP_DEF(const String &p_setting, const Variant &p_default, bool p_resta
 }
 
 Variant _APP_GET(const String &p_setting) {
-	ERR_FAIL_COND_V(!AppSettings::get_singleton() || !AppSettings::get_singleton()->has_setting(p_setting), Variant());
-	return AppSettings::get_singleton()->get(p_setting);
+	ERR_FAIL_NULL_V_MSG(EditorSettings::get_singleton(), Variant(), vformat(R"(EditorSettings not instantiated yet when getting setting "%s".)", p_setting));
+	ERR_FAIL_COND_V_MSG(!EditorSettings::get_singleton()->has_setting(p_setting), Variant(), vformat(R"(Editor setting "%s" does not exist.)", p_setting));
+	return EditorSettings::get_singleton()->get_setting(p_setting);
 }
 
 bool AppSettings::_property_can_revert(const StringName &p_name) const {
@@ -886,26 +900,117 @@ void AppSettings::add_property_hint(const PropertyInfo &p_hint) {
 	hints[p_hint.name] = p_hint;
 }
 
+float AppSettings::get_auto_display_scale() {
+	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
+
+	if (DisplayServer::get_singleton()->screen_get_size(screen) == Vector2i()) {
+		// Invalid screen size, skip.
+		return 1.0;
+	}
+
+#if defined(WINDOWS_ENABLED)
+	return DisplayServer::get_singleton()->screen_get_dpi(screen) / 96.0;
+#else
+	// Use the smallest dimension to use a correct display scale on portrait displays.
+	const int smallest_dimension = MIN(DisplayServer::get_singleton()->screen_get_size(screen).x, DisplayServer::get_singleton()->screen_get_size(screen).y);
+	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && smallest_dimension >= 1400) {
+		// hiDPI display.
+		return 2.0;
+	} else if (smallest_dimension >= 1700) {
+		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+		// Use an intermediate scale to handle this situation.
+		return 1.5;
+	} else if (smallest_dimension <= 800) {
+		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+		// Icons won't look great, but this is better than having editor elements overflow from its window.
+		return 0.75;
+	}
+	return 1.0;
+#endif // defined(WINDOWS_ENABLED)
+}
+
+String EditorSettings::get_language() const {
+	const String language = has_setting("interface/editor/editor_language") ? get("interface/editor/editor_language") : "auto";
+	if (language != "auto") {
+		return language;
+	}
+
+	if (auto_language.is_empty()) {
+		// Skip locales which we can't render properly.
+		const LocalVector<String> locales_to_skip = _get_skipped_locales();
+		const String host_lang = OS::get_singleton()->get_locale();
+
+		String best = "en";
+		int best_score = 0;
+		for (const String &locale : get_locales()) {
+			// Test against language code without regional variants (e.g. ur_PK).
+			String lang_code = locale.get_slicec('_', 0);
+			if (locales_to_skip.has(lang_code)) {
+				continue;
+			}
+
+			int score = TranslationServer::get_singleton()->compare_locales(host_lang, locale);
+			if (score > 0 && score >= best_score) {
+				best = locale;
+				best_score = score;
+			}
+		}
+		auto_language = best;
+	}
+	return auto_language;
+}
+
 // Shortcuts
 
-void AppSettings::_add_shortcut_default(const String &p_name, const Ref<Shortcut> &p_shortcut) {
-	shortcuts[p_name] = p_shortcut;
+void EditorSettings::_add_shortcut_default(const String &p_path, const Ref<Shortcut> &p_shortcut) {
+	shortcuts[p_path] = p_shortcut;
 }
 
-void AppSettings::add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut) {
-	shortcuts[p_name] = p_shortcut;
-	shortcuts[p_name]->set_meta("customized", true);
+void EditorSettings::add_shortcut(const String &p_path, const Ref<Shortcut> &p_shortcut) {
+	ERR_FAIL_COND_MSG(p_shortcut.is_null(), "Cannot add a null shortcut for path: " + p_path);
+
+	Array use_events = p_shortcut->get_events();
+	if (shortcuts.has(p_path)) {
+		Ref<Shortcut> existing = shortcuts.get(p_path);
+		if (!existing->has_meta("original")) {
+			// Loaded from editor settings, but plugin not loaded yet.
+			// Keep the events from editor settings but still override the shortcut in the shortcuts map
+			use_events = existing->get_events();
+		} else if (!Shortcut::is_event_array_equal(existing->get_events(), existing->get_meta("original"))) {
+			// Shortcut exists and is customized - don't override with default.
+			return;
+		}
+	}
+
+	p_shortcut->set_meta("original", p_shortcut->get_events());
+	p_shortcut->set_events(use_events);
+	if (p_shortcut->get_name().is_empty()) {
+		String shortcut_name = p_path.get_slicec('/', 1);
+		if (shortcut_name.is_empty()) {
+			shortcut_name = p_path;
+		}
+		p_shortcut->set_name(shortcut_name);
+	}
+	shortcuts[p_path] = p_shortcut;
 }
 
-bool AppSettings::is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const {
-	HashMap<String, Ref<Shortcut>>::ConstIterator E = shortcuts.find(p_name);
-	ERR_FAIL_COND_V_MSG(!E, false, "Unknown Shortcut: " + p_name + ".");
+void EditorSettings::remove_shortcut(const String &p_path) {
+	shortcuts.erase(p_path);
+}
+
+bool EditorSettings::is_shortcut(const String &p_path, const Ref<InputEvent> &p_event) const {
+	HashMap<String, Ref<Shortcut>>::ConstIterator E = shortcuts.find(p_path);
+	ERR_FAIL_COND_V_MSG(!E, false, "Unknown Shortcut: " + p_path + ".");
 
 	return E->value->matches_event(p_event);
 }
 
-Ref<Shortcut> AppSettings::get_shortcut(const String &p_name) const {
-	HashMap<String, Ref<Shortcut>>::ConstIterator SC = shortcuts.find(p_name);
+bool EditorSettings::has_shortcut(const String &p_path) const {
+	return get_shortcut(p_path).is_valid();
+}
+
+Ref<Shortcut> EditorSettings::get_shortcut(const String &p_path) const {
+	HashMap<String, Ref<Shortcut>>::ConstIterator SC = shortcuts.find(p_path);
 	if (SC) {
 		return SC->value;
 	}
@@ -914,30 +1019,40 @@ Ref<Shortcut> AppSettings::get_shortcut(const String &p_name) const {
 	// Use the first item in the action list for the shortcut event, since a shortcut can only have 1 linked event.
 
 	Ref<Shortcut> sc;
-	HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_override = builtin_action_overrides.find(p_name);
+	HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_override = builtin_action_overrides.find(p_path);
 	if (builtin_override) {
 		sc.instantiate();
 		sc->set_events_list(&builtin_override->value);
-		sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
+		sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_path));
 	}
 
 	// If there was no override, check the default builtins to see if it has an InputEvent for the provided name.
 	if (sc.is_null()) {
-		HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_default = InputMap::get_singleton()->get_builtins_with_feature_overrides_applied().find(p_name);
+		HashMap<String, List<Ref<InputEvent>>>::ConstIterator builtin_default = InputMap::get_singleton()->get_builtins_with_feature_overrides_applied().find(p_path);
 		if (builtin_default) {
 			sc.instantiate();
 			sc->set_events_list(&builtin_default->value);
-			sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
+			sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_path));
 		}
 	}
 
 	if (sc.is_valid()) {
 		// Add the shortcut to the list.
-		shortcuts[p_name] = sc;
+		shortcuts[p_path] = sc;
 		return sc;
 	}
 
 	return Ref<Shortcut>();
+}
+
+Vector<String> EditorSettings::_get_shortcut_list() {
+	List<String> shortcut_list;
+	get_shortcut_list(&shortcut_list);
+	Vector<String> ret;
+	for (const String &shortcut : shortcut_list) {
+		ret.push_back(shortcut);
+	}
+	return ret;
 }
 
 void AppSettings::get_shortcut_list(List<String> *r_shortcuts) {
@@ -990,7 +1105,7 @@ void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, 
 	for (int i = 0; i < p_keycodes.size(); i++) {
 		Key keycode = (Key)p_keycodes[i];
 
-		if (OS::get_singleton()->has_feature("macos") || OS::get_singleton()->has_feature("web_macos") || OS::get_singleton()->has_feature("web_ios")) {
+		if (OS::prefer_meta_over_ctrl()) {
 			// Use Cmd+Backspace as a general replacement for Delete shortcuts on macOS
 			if (keycode == Key::KEY_DELETE) {
 				keycode = KeyModifierMask::META | Key::BACKSPACE;
@@ -1005,7 +1120,7 @@ void APP_SHORTCUT_OVERRIDE_ARRAY(const String &p_path, const String &p_feature, 
 	}
 
 	// Override the existing shortcut only if it wasn't customized by the user.
-	if (!sc->has_meta("customized")) {
+	if (Shortcut::is_event_array_equal(sc->get_events(), sc->get_meta("original"))) {
 		sc->set_events(events);
 	}
 
@@ -1024,7 +1139,7 @@ Ref<Shortcut> APP_SHORTCUT_ARRAY(const String &p_path, const String &p_name, con
 	for (int i = 0; i < p_keycodes.size(); i++) {
 		Key keycode = (Key)p_keycodes[i];
 
-		if (OS::get_singleton()->has_feature("macos") || OS::get_singleton()->has_feature("web_macos") || OS::get_singleton()->has_feature("web_ios")) {
+		if (OS::prefer_meta_over_ctrl()) {
 			// Use Cmd+Backspace as a general replacement for Delete shortcuts on macOS
 			if (keycode == Key::KEY_DELETE) {
 				keycode = KeyModifierMask::META | Key::BACKSPACE;

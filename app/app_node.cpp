@@ -1,5 +1,7 @@
 #include "app_node.h"
 
+#include "core/io/resource_loader.h"
+#include "core/io/resource_saver.h"
 #include "core/string/translation.h"
 #include "core/string/ustring.h"
 #include "core/version.h"
@@ -21,7 +23,7 @@
 
 #include "scene/theme/theme_db.h"
 
-#include "servers/display_server.h"
+#include "servers/display/display_server.h"
 
 #include "app/app_core/app_paths.h"
 #include "app/app_modules/settings/app_settings.h"

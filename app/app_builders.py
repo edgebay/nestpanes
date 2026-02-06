@@ -9,8 +9,10 @@ import uuid
 import methods
 
 
-def make_translations_header(target, source, env):
-    category = os.path.basename(str(target[0])).split("_")[0]
+def make_translations(target, source, env):
+    target_h, target_cpp = str(target[0]), str(target[1])
+
+    category = os.path.basename(target_h).split("_")[0]
     sorted_paths = sorted([src.abspath for src in source], key=lambda path: os.path.splitext(os.path.basename(path))[0])
 
     xl_names = []
@@ -18,7 +20,7 @@ def make_translations_header(target, source, env):
     if not msgfmt:
         methods.print_warning("msgfmt not found, using .po files instead of .mo")
 
-    with methods.generated_wrapper(str(target[0])) as file:
+    with methods.generated_wrapper(target_cpp) as file:
         for path in sorted_paths:
             name = os.path.splitext(os.path.basename(path))[0]
             # msgfmt erases non-translated messages, so avoid using it if exporting the POT.
@@ -61,14 +63,9 @@ inline constexpr const unsigned char _{category}_translation_{name}_compressed[]
             xl_names.append([name, len(buffer), decomp_size])
 
         file.write(f"""\
-struct {category.capitalize()}TranslationList {{
-	const char* lang;
-	int comp_size;
-	int uncomp_size;
-	const unsigned char* data;
-}};
+#include "{target_h}"
 
-inline constexpr {category.capitalize()}TranslationList _{category}_translations[] = {{
+const AppTranslationList _{category}_translations[] = {{
 """)
 
         for x in xl_names:
@@ -77,4 +74,22 @@ inline constexpr {category.capitalize()}TranslationList _{category}_translations
         file.write("""\
 	{ nullptr, 0, 0, nullptr },
 };
+""")
+
+    with methods.generated_wrapper(target_h) as file:
+        file.write(f"""\
+
+#ifndef APP_TRANSLATION_LIST
+#define APP_TRANSLATION_LIST
+
+struct AppTranslationList {{
+	const char* lang;
+	int comp_size;
+	int uncomp_size;
+	const unsigned char* data;
+}};
+
+#endif // APP_TRANSLATION_LIST
+
+extern const AppTranslationList _{category}_translations[];
 """)

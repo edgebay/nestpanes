@@ -92,11 +92,12 @@ void DropOverlay::_notification(int p_what) {
 
 bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
 	Dictionary d = p_data;
-	if (!d.has("type")) {
+	if (d.get("type", "").operator String() != "tab") {
 		return false;
 	}
 
-	if (String(d["type"]) == "tab_container_tab") {
+	const String tab_type = d.get("tab_type", "");
+	if (tab_type == "tab_container_tab") {
 		return true;
 	}
 
@@ -105,11 +106,12 @@ bool DropOverlay::can_drop_data(const Point2 &p_point, const Variant &p_data) co
 
 void DropOverlay::drop_data(const Point2 &p_point, const Variant &p_data) {
 	Dictionary d = p_data;
-	if (!d.has("type")) {
+	if (d.get("type", "").operator String() != "tab") {
 		return;
 	}
 
-	if (String(d["type"]) == "tab_container_tab") {
+	const String tab_type = d.get("tab_type", "");
+	if (tab_type == "tab_container_tab") {
 		emit_signal(SNAME("dropped"), p_point, p_data, drop_position);
 	}
 }
@@ -363,8 +365,9 @@ void AppTabContainer::_notification(int p_what) {
 
 				// Check if we are dragging a tab.
 				const String type = drop_data.get("type", "");
-				print_line("drag type: ", type, drop_overlay->get_rect());
-				if (type == "tab_container_tab") { // TODO: type
+				const String tab_type = drop_data.get("tab_type", "");
+				print_line("drag type: ", type, tab_type, drop_overlay->get_rect());
+				if (type == "tab" && tab_type == "tab_container_tab") { // TODO: type
 					NodePath from_path = drop_data.get("from_path", NodePath());
 					Node *from_node = get_node(from_path);
 					TabBar *from_tabs = Object::cast_to<TabBar>(from_node);
@@ -496,6 +499,11 @@ void AppTabContainer::_on_theme_changed() {
 	tab_bar->add_theme_color_override(SNAME("font_unselected_color"), theme_cache.font_unselected_color);
 	tab_bar->add_theme_color_override(SNAME("font_disabled_color"), theme_cache.font_disabled_color);
 	tab_bar->add_theme_color_override(SNAME("font_outline_color"), theme_cache.font_outline_color);
+
+	tab_bar->add_theme_color_override(SNAME("icon_selected_color"), theme_cache.icon_selected_color);
+	tab_bar->add_theme_color_override(SNAME("icon_hovered_color"), theme_cache.icon_hovered_color);
+	tab_bar->add_theme_color_override(SNAME("icon_unselected_color"), theme_cache.icon_unselected_color);
+	tab_bar->add_theme_color_override(SNAME("icon_disabled_color"), theme_cache.icon_disabled_color);
 
 	tab_bar->add_theme_font_override(SceneStringName(font), theme_cache.tab_font);
 	tab_bar->add_theme_font_size_override(SceneStringName(font_size), theme_cache.tab_font_size);
@@ -681,11 +689,12 @@ void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_inde
 void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position) {
 	print_line("on drop data: ", p_position);
 	Dictionary d = p_data;
-	if (!d.has("type")) {
+	if (d.get("type", "").operator String() != "tab") {
 		return;
 	}
 
-	if (String(d["type"]) == "tab_container_tab") {
+	const String tab_type = d.get("tab_type", "");
+	if (tab_type == "tab_container_tab") {
 		NodePath from_path = d["from_path"];
 		Node *from_node = get_node(from_path);
 		if (p_position == DropPosition::DROP_CENTER && from_node == get_tab_bar()) {
@@ -1508,6 +1517,11 @@ void AppTabContainer::_bind_methods() {
 	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, font_unselected_color);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, font_disabled_color);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, font_outline_color);
+
+	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, icon_selected_color);
+	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, icon_hovered_color);
+	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, icon_unselected_color);
+	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, AppTabContainer, icon_disabled_color);
 
 	BIND_THEME_ITEM_CUSTOM(Theme::DATA_TYPE_FONT, AppTabContainer, tab_font, "font");
 	BIND_THEME_ITEM_CUSTOM(Theme::DATA_TYPE_FONT_SIZE, AppTabContainer, tab_font_size, "font_size");

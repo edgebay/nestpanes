@@ -32,6 +32,7 @@ private:
 	static Ref<AppSettings> singleton;
 
 	HashSet<String> changed_settings;
+	mutable String auto_language;
 
 	mutable Ref<ConfigFile> project_metadata;
 	HashMap<String, PropertyInfo> hints;
@@ -58,6 +59,9 @@ private:
 	void _set_initialized();
 	void _load_defaults(Ref<ConfigFile> p_extra_config = Ref<ConfigFile>());
 
+	// Bind helpers.
+	Vector<String> _get_shortcut_list();
+
 protected:
 	static void _bind_methods();
 
@@ -70,7 +74,7 @@ public:
 	static String get_settings_path();
 
 	static void create();
-	void setup_language();
+	void setup_language(bool p_initial_setup);
 	static void save();
 	static void destroy();
 	void set_optimize_save(bool p_optimize);
@@ -97,12 +101,15 @@ public:
 	void mark_setting_changed(const String &p_setting);
 
 	static float get_auto_display_scale();
+	String get_language() const;
 
 	// Shortcuts
-	void _add_shortcut_default(const String &p_name, const Ref<Shortcut> &p_shortcut);
-	void add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut);
-	bool is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const;
-	Ref<Shortcut> get_shortcut(const String &p_name) const;
+	void _add_shortcut_default(const String &p_path, const Ref<Shortcut> &p_shortcut);
+	void add_shortcut(const String &p_path, const Ref<Shortcut> &p_shortcut);
+	void remove_shortcut(const String &p_path);
+	bool is_shortcut(const String &p_path, const Ref<InputEvent> &p_event) const;
+	bool has_shortcut(const String &p_path) const;
+	Ref<Shortcut> get_shortcut(const String &p_path) const;
 	void get_shortcut_list(List<String> *r_shortcuts);
 
 	void set_builtin_action_override(const String &p_name, const TypedArray<InputEvent> &p_events);

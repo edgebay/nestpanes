@@ -5,6 +5,8 @@
 #include "app/themes/app_scale.h"
 #include "app/themes/builtin_fonts.gen.h"
 #include "core/io/dir_access.h"
+#include "core/os/os.h"
+#include "core/string/translation_server.h"
 #include "scene/resources/font.h"
 #include "scene/scene_string_names.h"
 
@@ -123,18 +125,44 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 	const int default_font_size = int(APP_GET("interface/app/main_font_size")) * APP_SCALE;
 	const float embolden_strength = 0.6;
 
-	Ref<Font> default_font = load_internal_font(_font_NotoSans_Regular, _font_NotoSans_Regular_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false);
-	Ref<Font> default_font_msdf = load_internal_font(_font_NotoSans_Regular, _font_NotoSans_Regular_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, font_allow_msdf);
+	Ref<Font> default_font = load_internal_font(_font_Inter_Regular, _font_Inter_Regular_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false);
+	Ref<Font> default_font_msdf = load_internal_font(_font_Inter_Regular, _font_Inter_Regular_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, font_allow_msdf);
+
+	Dictionary default_features;
+	default_features["calt"] = false; // Disable contextual alternates by default.
+	default_features["ss04"] = true; // Serifed I, tailed l for better distinction.
+	default_features["tnum"] = true; // Tabular numbers for better alignment.
 
 	String noto_cjk_path;
 	String noto_cjk_bold_path;
-	String var_suffix[] = { "HK", "KR", "SC", "TC", "JP" }; // Note: All Noto Sans CJK versions support all glyph variations, it should not match current locale.
-	for (size_t i = 0; i < std::size(var_suffix); i++) {
-		if (noto_cjk_path.is_empty()) {
-			noto_cjk_path = OS::get_singleton()->get_system_font_path("Noto Sans CJK " + var_suffix[i], 400, 100);
+	{
+		Vector<String> var_suffix;
+
+		// Note: Most Noto Sans CJK versions support all glyph variations, but select the best matching one in case it's not.
+		String locale = TranslationServer::get_singleton()->get_tool_locale();
+		if (!locale.begins_with("zh") && !locale.begins_with("ja") && !locale.begins_with("ko")) {
+			locale = OS::get_singleton()->get_locale();
 		}
-		if (noto_cjk_bold_path.is_empty()) {
-			noto_cjk_bold_path = OS::get_singleton()->get_system_font_path("Noto Sans CJK " + var_suffix[i], 800, 100);
+		if (locale.begins_with("zh") && (locale.contains("Hans") || locale.contains("CN") || locale.contains("SG"))) {
+			var_suffix = { "SC", "TC", "HK", "KR", "JP" };
+		} else if (locale.begins_with("zh") && locale.contains("HK")) {
+			var_suffix = { "HK", "TC", "SC", "KR", "JP" };
+		} else if (locale.begins_with("zh") && (locale.contains("Hant") || locale.contains("MO") || locale.contains("TW"))) {
+			var_suffix = { "TC", "HK", "SC", "KR", "JP" };
+		} else if (locale.begins_with("ko")) {
+			var_suffix = { "KR", "HK", "SC", "TC", "JP" };
+		} else if (locale.begins_with("ko")) {
+			var_suffix = { "JP", "HK", "KR", "SC", "TC" };
+		} else {
+			var_suffix = { "HK", "KR", "SC", "TC", "JP" };
+		}
+		for (int64_t i = 0; i < var_suffix.size(); i++) {
+			if (noto_cjk_path.is_empty()) {
+				noto_cjk_path = OS::get_singleton()->get_system_font_path("Noto Sans CJK " + var_suffix[i], 400, 100);
+			}
+			if (noto_cjk_bold_path.is_empty()) {
+				noto_cjk_bold_path = OS::get_singleton()->get_system_font_path("Noto Sans CJK " + var_suffix[i], 800, 100);
+			}
 		}
 	}
 
@@ -154,12 +182,20 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 		load_external_font(noto_cjk_path, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false, &fallbacks);
 	}
 	Ref<FontFile> fallback_font = load_internal_font(_font_DroidSansFallback, _font_DroidSansFallback_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false, &fallbacks);
+	fallback_font->set_language_support_override("ja", false);
+	fallback_font->set_language_support_override("zh", true);
+	fallback_font->set_language_support_override("ko", true);
+	fallback_font->set_language_support_override("*", false);
 	Ref<FontFile> japanese_font = load_internal_font(_font_DroidSansJapanese, _font_DroidSansJapanese_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false, &fallbacks);
+	japanese_font->set_language_support_override("ja", true);
+	japanese_font->set_language_support_override("zh", false);
+	japanese_font->set_language_support_override("ko", false);
+	japanese_font->set_language_support_override("*", false);
 	default_font->set_fallbacks(fallbacks);
 	default_font_msdf->set_fallbacks(fallbacks);
 
-	Ref<FontFile> default_font_bold = load_internal_font(_font_NotoSans_Bold, _font_NotoSans_Bold_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false);
-	Ref<FontFile> default_font_bold_msdf = load_internal_font(_font_NotoSans_Bold, _font_NotoSans_Bold_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, font_allow_msdf);
+	Ref<FontFile> default_font_bold = load_internal_font(_font_Inter_Bold, _font_Inter_Bold_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false);
+	Ref<FontFile> default_font_bold_msdf = load_internal_font(_font_Inter_Bold, _font_Inter_Bold_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, font_allow_msdf);
 
 	TypedArray<Font> fallbacks_bold;
 	Ref<FontFile> arabic_font_bold = load_internal_font(_font_Vazirmatn_Bold, _font_Vazirmatn_Bold_size, font_hinting, font_antialiasing, true, font_subpixel_positioning, font_disable_embedded_bitmaps, false, &fallbacks_bold);
@@ -215,6 +251,7 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 		default_fc->set_base_font(custom_font);
 	} else {
 		AppSettings::get_singleton()->set_manually("interface/app/main_font", "");
+		default_fc->set_opentype_features(default_features);
 		default_fc->set_base_font(default_font);
 	}
 	default_fc->set_spacing(TextServer::SPACING_TOP, -APP_SCALE);
@@ -234,6 +271,7 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 		default_fc_msdf->set_base_font(custom_font);
 	} else {
 		AppSettings::get_singleton()->set_manually("interface/app/main_font", "");
+		default_fc_msdf->set_opentype_features(default_features);
 		default_fc_msdf->set_base_font(default_font_msdf);
 	}
 	default_fc_msdf->set_spacing(TextServer::SPACING_TOP, -APP_SCALE);
@@ -256,9 +294,12 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 			custom_font->set_fallbacks(fallback_custom);
 		}
 		bold_fc->set_base_font(custom_font);
-		bold_fc->set_variation_embolden(embolden_strength);
+		if (!custom_font->get_supported_variation_list().has(TS->name_to_tag("wght"))) {
+			bold_fc->set_variation_embolden(embolden_strength);
+		}
 	} else {
 		AppSettings::get_singleton()->set_manually("interface/app/main_font_bold", "");
+		bold_fc->set_opentype_features(default_features);
 		bold_fc->set_base_font(default_font_bold);
 	}
 	bold_fc->set_spacing(TextServer::SPACING_TOP, -APP_SCALE);
@@ -283,14 +324,36 @@ void app_register_fonts(const Ref<Theme> &p_theme) {
 			custom_font->set_fallbacks(fallback_custom);
 		}
 		bold_fc_msdf->set_base_font(custom_font);
-		bold_fc_msdf->set_variation_embolden(embolden_strength);
+		if (!custom_font->get_supported_variation_list().has(TS->name_to_tag("wght"))) {
+			bold_fc_msdf->set_variation_embolden(embolden_strength);
+		}
 	} else {
 		AppSettings::get_singleton()->set_manually("interface/app/main_font_bold", "");
+		bold_fc_msdf->set_opentype_features(default_features);
 		bold_fc_msdf->set_base_font(default_font_bold_msdf);
 	}
 	bold_fc_msdf->set_spacing(TextServer::SPACING_TOP, -APP_SCALE);
 	bold_fc_msdf->set_spacing(TextServer::SPACING_BOTTOM, -APP_SCALE);
 	bold_fc_msdf->set_variation_opentype(bold_fc_opentype);
+
+	if (!String(APP_GET("interface/app/main_font_custom_opentype_features")).is_empty()) {
+		Vector<String> subtag = String(APP_GET("interface/app/main_font_custom_opentype_features")).split(",");
+		if (!subtag.is_empty()) {
+			Dictionary ftrs;
+			for (int i = 0; i < subtag.size(); i++) {
+				Vector<String> subtag_a = subtag[i].split("=");
+				if (subtag_a.size() == 2) {
+					ftrs[TS->name_to_tag(subtag_a[0])] = subtag_a[1].to_int();
+				} else if (subtag_a.size() == 1) {
+					ftrs[TS->name_to_tag(subtag_a[0])] = 1;
+				}
+			}
+			default_fc->set_opentype_features(ftrs);
+			default_fc_msdf->set_opentype_features(ftrs);
+			bold_fc->set_opentype_features(ftrs);
+			bold_fc_msdf->set_opentype_features(ftrs);
+		}
+	}
 
 	Ref<FontVariation> mono_fc;
 	mono_fc.instantiate();
