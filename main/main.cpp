@@ -1053,8 +1053,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	register_core_settings(); //here globals are present
 
 #ifdef APP_ENABLED
-	String app_name = String(APP_VERSION_NAME).to_snake_case();
-	String dir_name = String(APP_VERSION_SHORT_NAME).to_pascal_case().path_join("app_userdata").path_join(app_name);
+	String app_name = String(APP_VERSION_NAME);
+	String dir_name = String(APP_VERSION_NAME).path_join("userdata");
 #endif // APP_ENABLED
 
 	translation_server = memnew(TranslationServer);

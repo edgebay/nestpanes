@@ -289,8 +289,11 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		// case HELP_FORUM: {
 		// 	OS::get_singleton()->shell_open("https://forum.godotengine.org/");
 		// } break;
+		case HELP_GITHUB: {
+			OS::get_singleton()->shell_open("https://github.com/edgebay/nestpanes");
+		} break;
 		case HELP_REPORT_A_BUG: {
-			OS::get_singleton()->shell_open("https://github.com/edgebay/daily-engine/issues");
+			OS::get_singleton()->shell_open("https://github.com/edgebay/nestpanes/issues");
 		} break;
 		// case HELP_COPY_SYSTEM_INFO: {
 		// 	String info = _get_system_info();
@@ -903,7 +906,8 @@ void AppNode::_init_main_menu() {
 	// help_menu->add_separator();
 	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/online_docs", TTRC("Online Documentation")), HELP_DOCS);
 	// help_menu->add_separator();
-	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/report_a_bug", TTRC("Report a Bug")), HELP_REPORT_A_BUG);
+	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/github", "GitHub"), HELP_GITHUB);
+	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/report_a_bug", TTRC("Report a Bug")), HELP_REPORT_A_BUG);
 	help_menu->add_separator();
 	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/about", TTRC("About")), HELP_ABOUT);
 	// // Do not set icon.

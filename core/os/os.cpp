@@ -290,12 +290,6 @@ String OS::get_safe_dir_name(const String &p_dir_name, bool p_allow_paths) const
 // Path to data, config, cache, etc. OS-specific folders
 
 // Get properly capitalized engine name for system paths
-#ifdef APP_ENABLED
-String OS::get_app_dir_name() const {
-	return String(APP_VERSION_SHORT_NAME).to_lower();
-}
-#endif // APP_ENABLED
-
 String OS::get_godot_dir_name() const {
 	// Default to lowercase, so only override when different case is needed
 	return String(GODOT_VERSION_SHORT_NAME).to_lower();
@@ -342,22 +336,6 @@ String OS::get_user_data_dir(const String &p_user_dir) const {
 
 String OS::get_user_data_dir() const {
 	String appname = get_safe_dir_name(GLOBAL_GET("application/config/name"));
-#ifdef APP_ENABLED // TODO: Remove test
-	if (!appname.is_empty()) {
-		bool use_custom_dir = GLOBAL_GET("application/config/use_custom_user_dir");
-		if (use_custom_dir) {
-			String custom_dir = get_safe_dir_name(GLOBAL_GET("application/config/custom_user_dir_name"), true);
-			if (custom_dir.is_empty()) {
-				custom_dir = appname;
-			}
-			return get_user_data_dir(custom_dir);
-		} else {
-			return get_user_data_dir(get_app_dir_name().path_join("app_userdata").path_join(appname));
-		}
-	} else {
-		return get_user_data_dir(get_app_dir_name().path_join("app_userdata").path_join("[unnamed project]"));
-	}
-#else
 	if (!appname.is_empty()) {
 		bool use_custom_dir = GLOBAL_GET("application/config/use_custom_user_dir");
 		if (use_custom_dir) {
@@ -372,7 +350,6 @@ String OS::get_user_data_dir() const {
 	} else {
 		return get_user_data_dir(get_godot_dir_name().path_join("app_userdata").path_join("[unnamed project]"));
 	}
-#endif // APP_ENABLED
 }
 
 // Absolute path to res://

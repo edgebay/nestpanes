@@ -4,6 +4,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/os/os.h"
+#include "core/version.h"
 #include "main/main.h"
 
 AppPaths *AppPaths::singleton = nullptr;
@@ -43,8 +44,10 @@ AppPaths::AppPaths() {
 	ERR_FAIL_COND(singleton != nullptr);
 	singleton = this;
 
-	// Paths
-	String app_dir_name = OS::get_singleton()->get_app_dir_name();
+	// Paths.
+
+	// @ref "application/config/custom_user_dir_name"
+	String app_dir_name = String(APP_VERSION_NAME);
 
 	String config_path = OS::get_singleton()->get_config_path();
 	config_dir = config_path.path_join(app_dir_name);

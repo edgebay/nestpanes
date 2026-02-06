@@ -11,11 +11,11 @@ Comment:
  Licenses are given with their debian/copyright short name (or SPDX identifier
  if no standard short name exists) and are all included in plain text at the
  end of this file (in alphabetical order).
-Upstream-Name: Daily Engine
+Upstream-Name: NestPanes
 Upstream-Contact: Bay <edgebay025@gmail.com>
-Source: https://github.com/edgebay/daily-engine
+Source: https://github.com/edgebay/nestpanes
 
 Files: app/*
-Comment: Daily Engine
+Comment: NestPanes
 Copyright: 2025-2026, Bay
 License: Expat

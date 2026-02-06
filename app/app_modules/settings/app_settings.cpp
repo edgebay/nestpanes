@@ -2,6 +2,8 @@
 
 #include "app/app_core/app_paths.h"
 #include "app/app_core/io/file_system_access.h"
+#include "app/themes/app_theme_manager.h"
+#include "app/translations/app_translation.h"
 
 #include "core/input/input_event.h"
 #include "core/input/input_map.h"
@@ -18,8 +20,6 @@
 #include "scene/main/window.h"
 
 #include "main/main.h"
-
-#include "app/translations/app_translation.h"
 
 Ref<AppSettings> AppSettings::singleton = nullptr;
 
@@ -437,7 +437,7 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	EDITOR_SETTING_BASIC(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/contrast", 0.3, "-1,1,0.01")
 	EDITOR_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/theme/draw_extra_borders", false, "")
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/icon_saturation", 2.0, "0,2,0.01")
-	// EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/draw_relationship_lines", (int32_t)AppThemeManager::RELATIONSHIP_SELECTED_ONLY, "None,Selected Only,All")
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/draw_relationship_lines", (int32_t)AppThemeManager::RELATIONSHIP_SELECTED_ONLY, "None,Selected Only,All")
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/theme/relationship_line_opacity", 0.1, "0.00,1,0.01")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/border_size", 0, "0,2,1")
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/theme/corner_radius", 4, "0,6,1")
