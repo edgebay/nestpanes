@@ -4,7 +4,6 @@ from misc.utility.scons_hints import *
 Import("env")
 
 SConscript("file_management/SCsub")
-SConscript("settings/SCsub")
 SConscript("text_editing/SCsub")
 SConscript("workspaces/SCsub")
 

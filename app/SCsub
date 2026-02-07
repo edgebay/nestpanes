@@ -27,6 +27,7 @@ env.add_source_files(env.app_sources, translation_targets.keys())
 SConscript("app_core/SCsub")
 SConscript("app_modules/SCsub")
 SConscript("gui/SCsub")
+SConscript("settings/SCsub")
 SConscript("themes/SCsub")
 SConscript("translations/SCsub")
 

@@ -13,8 +13,8 @@
 
 #include "servers/display/display_server.h"
 
-#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
+#include "app/settings/app_settings.h"
 #include "app/themes/app_fonts.h"
 #include "app/themes/app_icons.h"
 #include "app/themes/app_scale.h"

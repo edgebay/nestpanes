@@ -9,10 +9,9 @@
 
 #include "scene/theme/theme_db.h"
 
-// TODO: app/gui/* should not depend on app/app_modules/*
-#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
 #include "app/gui/app_control.h"
+#include "app/settings/app_settings.h"
 #include "app/themes/app_scale.h"
 
 DropOverlay::DropPosition DropOverlay::_get_position(const Point2 &p_point) const {

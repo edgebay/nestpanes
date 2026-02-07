@@ -3,15 +3,15 @@
 #include "core/os/os.h"
 
 #include "app/app_core/app_paths.h"
-#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
+#include "app/settings/app_settings.h"
 
 #include "app/gui/app_tab_container.h"
 #include "app/gui/multi_split_container.h"
 
 #include "app/gui/welcome_pane.h"
 
-// #include "app/app_modules/settings/gui/settings_pane.h"
+// #include "app/settings/gui/settings_pane.h"
 // #include "app/gui/inspector/object_inspector.h"
 // #include "app/gui/inspector/sectioned_inspector.h"
 

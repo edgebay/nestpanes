@@ -1,7 +1,7 @@
 #include "theme_modern.h"
 
-#include "app/app_modules/settings/app_settings.h"
 #include "app/app_string_names.h"
+#include "app/settings/app_settings.h"
 #include "app/themes/app_scale.h"
 #include "app/themes/app_theme_manager.h"
 #include "core/math/math_defs.h"
