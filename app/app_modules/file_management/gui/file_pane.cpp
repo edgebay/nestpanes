@@ -1,14 +1,144 @@
 #include "file_pane.h"
 
-#include "app/app_modules/file_management/file_system_list.h" // TODO: FileSystemItemList
 #include "app/app_modules/file_management/gui/address_bar.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
+#include "scene/gui/item_list.h"
+#include "scene/gui/line_edit.h"
+#include "scene/gui/popup_menu.h"
 
 #include "app/gui/app_control.h"
 #include "app/themes/app_scale.h"
 
 #include "app/app_modules/file_management/file_system.h"
+
+Control *FileSystemItemList::make_custom_tooltip(const String &p_text) const {
+	int idx = get_item_at_position(get_local_mouse_position());
+	if (idx == -1) {
+		return nullptr;
+	}
+	// TODO
+	return nullptr; // FileSystemDock::get_singleton()->create_tooltip_for_path(get_item_metadata(idx));
+}
+
+void FileSystemItemList::_line_editor_submit(const String &p_text) {
+	if (popup_edit_committed) {
+		return; // Already processed by _text_editor_popup_modal_close
+	}
+
+	if (popup_editor->get_hide_reason() == Popup::HIDE_REASON_CANCELED) {
+		return; // ESC pressed, app focus lost, or forced close from code.
+	}
+
+	popup_edit_committed = true; // End edit popup processing.
+	popup_editor->hide();
+
+	emit_signal(SNAME("item_edited"));
+	queue_redraw();
+}
+
+bool FileSystemItemList::edit_selected() {
+	ERR_FAIL_COND_V_MSG(!is_anything_selected(), false, "No item selected.");
+	int s = get_current();
+	ERR_FAIL_COND_V_MSG(s < 0, false, "No current item selected.");
+	ensure_current_is_visible();
+
+	Rect2 rect;
+	Rect2 popup_rect;
+	Vector2 ofs;
+
+	Vector2 icon_size = get_fixed_icon_size() * get_icon_scale();
+
+	// Handles the different icon modes (TOP/LEFT).
+	switch (get_icon_mode()) {
+		case ItemList::ICON_MODE_LEFT:
+			rect = get_item_rect(s, true);
+			if (get_v_scroll_bar()->is_visible()) {
+				rect.position.y -= get_v_scroll_bar()->get_value();
+			}
+			if (get_h_scroll_bar()->is_visible()) {
+				rect.position.x -= get_h_scroll_bar()->get_value();
+			}
+			ofs = Vector2(0, Math::floor((MAX(line_editor->get_minimum_size().height, rect.size.height) - rect.size.height) / 2));
+			popup_rect.position = rect.position - ofs;
+			popup_rect.size = rect.size;
+
+			// Adjust for icon position and size.
+			popup_rect.size.x -= MAX(theme_cache.h_separation, 0) / 2 + icon_size.x;
+			popup_rect.position.x += MAX(theme_cache.h_separation, 0) / 2 + icon_size.x;
+			break;
+		case ItemList::ICON_MODE_TOP:
+			rect = get_item_rect(s, false);
+			if (get_v_scroll_bar()->is_visible()) {
+				rect.position.y -= get_v_scroll_bar()->get_value();
+			}
+			if (get_h_scroll_bar()->is_visible()) {
+				rect.position.x -= get_h_scroll_bar()->get_value();
+			}
+			popup_rect.position = rect.position;
+			popup_rect.size = rect.size;
+
+			// Adjust for icon position and size.
+			popup_rect.size.y -= MAX(theme_cache.v_separation, 0) / 2 + theme_cache.icon_margin + icon_size.y;
+			popup_rect.position.y += MAX(theme_cache.v_separation, 0) / 2 + theme_cache.icon_margin + icon_size.y;
+			break;
+	}
+	if (is_layout_rtl()) {
+		popup_rect.position.x = get_size().width - popup_rect.position.x - popup_rect.size.x;
+	}
+	popup_rect.position += get_screen_position();
+
+	popup_editor->set_position(popup_rect.position);
+	popup_editor->set_size(popup_rect.size);
+
+	String name = get_item_text(s);
+	line_editor->set_text(name);
+	line_editor->select(0, name.rfind_char('.'));
+
+	popup_edit_committed = false; // Start edit popup processing.
+	popup_editor->popup();
+	popup_editor->child_controls_changed();
+	line_editor->grab_focus();
+	return true;
+}
+
+String FileSystemItemList::get_edit_text() {
+	return line_editor->get_text();
+}
+
+void FileSystemItemList::_text_editor_popup_modal_close() {
+	if (popup_edit_committed) {
+		return; // Already processed by _text_editor_popup_modal_close
+	}
+
+	if (popup_editor->get_hide_reason() == Popup::HIDE_REASON_CANCELED) {
+		return; // ESC pressed, app focus lost, or forced close from code.
+	}
+
+	_line_editor_submit(line_editor->get_text());
+}
+
+void FileSystemItemList::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("item_edited"));
+}
+
+FileSystemItemList::FileSystemItemList() {
+	set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+
+	popup_editor = memnew(Popup);
+	add_child(popup_editor);
+
+	popup_editor_vb = memnew(VBoxContainer);
+	popup_editor_vb->add_theme_constant_override("separation", 0);
+	popup_editor_vb->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
+	popup_editor->add_child(popup_editor_vb);
+
+	line_editor = memnew(LineEdit);
+	line_editor->set_v_size_flags(SIZE_EXPAND_FILL);
+	popup_editor_vb->add_child(line_editor);
+	line_editor->connect(SceneStringName(text_submitted), callable_mp(this, &FileSystemItemList::_line_editor_submit));
+	popup_editor->connect("popup_hide", callable_mp(this, &FileSystemItemList::_text_editor_popup_modal_close));
+}
 
 String FilePane::_get_pane_title() const {
 	return "Folder";

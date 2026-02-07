@@ -20,9 +20,6 @@ class PaneFactory;
 class PaneBase;
 
 class FileSystem;
-class FileSystemControl;
-class FileSystemTree;
-class FileSystemList;
 
 class Timer;
 
@@ -161,9 +158,6 @@ private:
 
 	List<AppTabContainer *> tab_containers;
 
-	List<FileSystemTree *> file_system_trees;
-	List<FileSystemList *> file_system_lists;
-
 	Ref<Theme> theme;
 
 	FileSystem *file_system;
@@ -196,12 +190,6 @@ private:
 	void _on_navigation_pane_create(PaneBase *p_pane);
 	void _on_file_pane_create(PaneBase *p_pane);
 
-	///
-	int _new_tab(AppTabContainer *p_parent); // TODO: new file list?
-	int _new_editor(AppTabContainer *p_parent, const String &p_path);
-
-	// void _on_tab_path_changed(const String &p_path);
-	void _on_tab_path_changed(FileSystemControl *p_fs);
 	void _on_tree_item_activated(const String &p_path, bool is_dir);
 	// void _on_tree_item_selected(TreeItem *p_item);
 	void _on_tree_item_selected(const String &p_path, bool is_dir);

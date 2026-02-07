@@ -32,6 +32,6 @@ public:
 	void set_icon(const Ref<Texture2D> &p_icon);
 	Ref<Texture2D> get_icon() const;
 
-	PaneBase(const StringName &p_type);
+	PaneBase(const StringName &p_type = StringName());
 	virtual ~PaneBase();
 };

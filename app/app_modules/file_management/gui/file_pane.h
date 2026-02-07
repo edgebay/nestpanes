@@ -2,15 +2,40 @@
 
 #include "app/gui/pane_base.h"
 
+#include "scene/gui/item_list.h"
+
 class AddressBar;
 class Button;
-class FileSystemItemList;
 class HBoxContainer;
+class LineEdit;
+class Popup;
 class VBoxContainer;
 
 struct FileInfo;
 class FileSystem;
 class FileSystemDirectory;
+
+class FileSystemItemList : public ItemList {
+	GDCLASS(FileSystemItemList, ItemList);
+
+	bool popup_edit_committed = true;
+	VBoxContainer *popup_editor_vb = nullptr;
+	Popup *popup_editor = nullptr;
+	LineEdit *line_editor = nullptr;
+
+	virtual Control *make_custom_tooltip(const String &p_text) const override;
+	void _line_editor_submit(const String &p_text);
+	void _text_editor_popup_modal_close();
+
+protected:
+	static void _bind_methods();
+
+public:
+	bool edit_selected();
+	String get_edit_text();
+
+	FileSystemItemList();
+};
 
 class FilePane : public PaneBase {
 	GDCLASS(FilePane, PaneBase);

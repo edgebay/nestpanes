@@ -18,6 +18,7 @@
 #include "scene/gui/tab_container.h"
 
 #include "scene/main/scene_tree.h"
+#include "scene/main/timer.h"
 
 #include "scene/resources/packed_scene.h"
 
@@ -32,12 +33,7 @@
 #include "app/themes/app_theme_manager.h"
 
 #include "app/app_core/io/file_system_access.h"
-#include "app/gui/inspector/object_properties.h"
-#include "app/gui/inspector/property_name_processor.h"
 
-#include "app/app_modules/file_management/file_system_list.h"
-#include "app/app_modules/file_management/file_system_tree.h"
-#include "app/app_modules/text_editing/text_editor.h"
 #include "app/gui/app_about.h"
 #include "app/gui/app_tab_container.h"
 #include "app/gui/container_manager.h"
@@ -339,7 +335,7 @@ void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
 	NavigationPane *pane = Object::cast_to<NavigationPane>(p_pane);
 	if (pane) {
 		pane->set_file_system(file_system);
-		// pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
+		pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
 		pane->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
 	}
 }
@@ -351,85 +347,6 @@ void AppNode::_on_file_pane_create(PaneBase *p_pane) {
 	}
 }
 
-int AppNode::_new_tab(AppTabContainer *p_parent) {
-	int tab_index = p_parent->get_tab_count();
-
-	FileSystemList *file_system_list = memnew(FileSystemList);
-	file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
-	p_parent->add_child(file_system_list);
-	file_system_list->set_owner(gui_main);
-	file_system_lists.push_back(file_system_list);
-
-	// Update tab.
-	String path = file_system_list->get_current_path();
-	String title = path.get_file();
-	if (title.is_empty()) {
-		title = path;
-	}
-	p_parent->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
-	p_parent->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
-	p_parent->set_tab_title(tab_index, title);
-	p_parent->set_current_tab(tab_index);
-
-	container_manager->set_current_tab_container(p_parent);
-
-	return tab_index;
-}
-
-int AppNode::_new_editor(AppTabContainer *p_parent, const String &p_path) {
-	int tab_index = p_parent->get_tab_count();
-
-	TextEditor *editor = memnew(TextEditor);
-	// editor->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
-	p_parent->add_child(editor);
-	editor->set_owner(gui_main);
-	// editors.push_back(editor);
-
-	// Ref<TextFile> text_file = edited_res;
-	// editor->get_text_editor()->set_text(text_file->get_text());
-	editor->open_file(p_path);
-
-	// Update tab.
-	String path = p_path;
-	String title = path.get_file();
-	if (title.is_empty()) {
-		title = path;
-	}
-	p_parent->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
-	p_parent->set_tab_icon(tab_index, editor->get_app_theme_icon(SNAME("File")));
-	p_parent->set_tab_title(tab_index, title);
-	p_parent->set_current_tab(tab_index);
-
-	container_manager->set_current_tab_container(p_parent);
-
-	return tab_index;
-}
-
-// void AppNode::_on_tab_path_changed(const String &p_path) {
-// 	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_fs->get_parent());
-// 	if (tab_container) {
-// 		String title = p_path.get_file();
-// 		if (title.is_empty()) {
-// 			title = p_path;
-// 		}
-// 		int tab_index = tab_container->get_current_tab();
-// 		tab_container->set_tab_title(tab_index, title);
-// 	}
-// }
-
-void AppNode::_on_tab_path_changed(FileSystemControl *p_fs) {
-	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_fs->get_parent());
-	if (tab_container) {
-		String title = p_fs->get_current_dir_name();
-		int tab_index = tab_container->get_current_tab();
-		tab_container->set_tab_icon(tab_index, p_fs->get_current_dir_icon());
-		tab_container->set_tab_title(tab_index, title);
-
-		container_manager->set_current_tab_container(tab_container); // TODO: when tab activated/foucsed?
-	}
-	_save_layout();
-}
-
 void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 	if (!is_dir) {
 		AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
@@ -437,9 +354,9 @@ void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 			return;
 		}
 
-		// TODO: Open file
-		// TODO: FileSystemList::_item_dc_selected
-		_new_editor(current_tab_container, p_path);
+		// TODO: open_file()/run_file()
+		print_line("run: " + p_path);
+		OS::get_singleton()->shell_open(p_path);
 	}
 }
 
@@ -452,11 +369,6 @@ void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 			return;
 		}
 
-		// FileSystemList *file_system_list = Object::cast_to<FileSystemList>(tab_container->get_current_tab_control());
-		// // TODO: handle file item
-		// if (file_system_list) {
-		// 	file_system_list->set_current_path(p_path);
-		// }
 		FilePane *pane = Object::cast_to<FilePane>(tab_container->get_current_tab_control());
 		if (pane) {
 			pane->set_path(p_path);
@@ -596,13 +508,7 @@ void AppNode::_save_layout() {
 	// Load and amend existing config if it exists.
 	config->load(config_path);
 
-	for (auto control : file_system_trees) { // TODO: file_system_lists
-		control->save_layout_to_config(config, "docks");
-	}
-	// for (int i = 0; i < file_system_controls.size(); i++) {
-	// 	FileSystemControl *control = file_system_controls[i];
-	// 	control->save_layout_to_config(config, "file_system_" + itos(i));
-	// }
+	// TODO: save_layout_to_config(config, "docks");
 
 	// _save_open_scenes_to_config(config);
 	// _save_central_editor_layout_to_config(config);
@@ -637,9 +543,6 @@ void AppNode::_load_layout() {
 	} else {
 		// ep.step(TTR("Loading docks..."), 1, true);
 		// editor_dock_manager->load_docks_from_config(config, "docks", true);
-		for (auto control : file_system_trees) {
-			control->load_layout_from_config(config, "docks");
-		}
 
 		// ep.step(TTR("Reopening scenes..."), 2, true);
 		// _load_open_scenes_from_config(config);
@@ -673,12 +576,6 @@ Error AppNode::_parse_node(Node *p_node) {
 		// TODO: handle left_tab_container, right_tab_container
 		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
 		tab_containers.push_back(container);
-	} else if (Object::cast_to<FileSystemTree>(p_node)) {
-		FileSystemTree *control = Object::cast_to<FileSystemTree>(p_node);
-		file_system_trees.push_back(control);
-	} else if (Object::cast_to<FileSystemList>(p_node)) {
-		FileSystemList *control = Object::cast_to<FileSystemList>(p_node);
-		file_system_lists.push_back(control);
 	}
 
 	for (int i = 0; i < p_node->get_child_count(); i++) {
@@ -690,8 +587,6 @@ Error AppNode::_parse_node(Node *p_node) {
 			right_sidebar = nullptr;
 
 			tab_containers.clear();
-			file_system_trees.clear();
-			file_system_lists.clear();
 			return err;
 		}
 	}
@@ -727,30 +622,10 @@ bool AppNode::_load_main_scene() {
 		// container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
 
 		// TODO: 1. Other classes, 2. use metadata/_tab_name
-		// Update tab icon and text
 		for (int i = 0; i < container->get_child_count(); i++) {
 			Node *control = container->get_child(i);
-			if (Object::cast_to<FileSystemList>(control)) {
-				FileSystemList *file_system_list = Object::cast_to<FileSystemList>(control);
-				int tab_index = container->get_tab_idx_from_control(file_system_list);
-				String path = file_system_list->get_current_path();
-				String title = path.get_file();
-				if (title.is_empty()) {
-					title = path;
-				}
-				container->set_tab_icon_max_width(tab_index, theme->get_constant(SNAME("class_icon_size"), AppStringName(App)));
-				container->set_tab_icon(tab_index, file_system_list->get_current_dir_icon());
-				container->set_tab_title(tab_index, title);
-			}
+			// TODO: Update tab icon and text
 		}
-	}
-	for (auto control : file_system_trees) {
-		control->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-		control->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-		control->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
-	}
-	for (auto control : file_system_lists) {
-		control->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
 	}
 
 	gui_main = new_scene;
@@ -1134,16 +1009,7 @@ AppNode::AppNode() {
 		gui_main = left_hsplit;
 
 		// Left sidebar.
-		// FileSystemTree *file_system_tree = memnew(FileSystemTree);
-		// // left_tab_container->add_child(file_system_tree);
-		// file_system_tree->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-		// file_system_tree->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-		// file_system_tree->connect("item_collapsed", callable_mp(this, &AppNode::save_layout_delayed));
-		// // file_system_tree->set_owner(gui_main);
-		// file_system_trees.push_back(file_system_tree);
-		// left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main, file_system_tree);
 		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main);
-		// container_manager->new_tab(NavigationPane::get_class_static(), Object::cast_to<AppTabContainer>(left_sidebar->get_child(0, false)));
 		container_manager->new_tab(NavigationPane::get_class_static());
 
 		HSplitContainer *right_hsplit = memnew(HSplitContainer);
@@ -1153,11 +1019,6 @@ AppNode::AppNode() {
 		right_hsplit->set_owner(gui_main);
 
 		// Tabs.
-		// // _new_tab(tab_container);
-		// FileSystemList *file_system_list = memnew(FileSystemList);
-		// file_system_list->connect("path_changed", callable_mp(this, &AppNode::_on_tab_path_changed));
-		// file_system_lists.push_back(file_system_list);
-		// central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main, file_system_list);
 		central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main);
 		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
