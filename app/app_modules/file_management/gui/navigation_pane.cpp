@@ -353,6 +353,8 @@ NavigationPane::NavigationPane() :
 	tree = memnew(Tree);
 	add_child(tree);
 	tree->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	tree->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
 	tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	tree->set_hide_root(true);

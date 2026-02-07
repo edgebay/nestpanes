@@ -271,11 +271,13 @@ void FilePane::_bind_methods() {
 
 FilePane::FilePane() :
 		PaneBase(get_class_static()) {
-	set_custom_minimum_size(Size2(320, 320) * APP_SCALE);
+	set_custom_minimum_size(Size2(320, 240) * APP_SCALE);
 
 	vbox = memnew(VBoxContainer);
 	add_child(vbox);
 	vbox->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	vbox->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	vbox->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
 	toolbar = memnew(HBoxContainer);
 	vbox->add_child(toolbar);

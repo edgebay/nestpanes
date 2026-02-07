@@ -1001,15 +1001,6 @@ void ThemeClassic::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThe
 		p_theme->set_constant("minimum_grab_thickness", "HSplitContainer", p_config.increased_margin * EDSCALE);
 		p_theme->set_constant("minimum_grab_thickness", "VSplitContainer", p_config.increased_margin * EDSCALE);
 
-		// MultiSplitContainer.
-		p_theme->set_icon("h_grabber", "MultiSplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), EditorStringName(EditorIcons)));
-		p_theme->set_icon("v_grabber", "MultiSplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), EditorStringName(EditorIcons)));
-		p_theme->set_constant("separation", "MultiSplitContainer", p_config.separation_margin);
-		p_theme->set_constant("minimum_grab_thickness", "MultiSplitContainer", p_config.increased_margin * EDSCALE);
-		Ref<StyleBox> style(memnew(StyleBoxEmpty));
-		style->set_content_margin_individual(0, 0, 0, 0);
-		p_theme->set_stylebox("split_bar_background", "MultiSplitContainer", style);
-
 		// GridContainer.
 		p_theme->set_constant("v_separation", "GridContainer", Math::round(p_config.widget_margin.y - 2 * EDSCALE));
 
