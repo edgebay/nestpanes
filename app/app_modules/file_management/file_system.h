@@ -37,6 +37,7 @@ protected:
 public:
 	String get_name() const;
 	String get_path() const;
+	// TODO
 	// String get_directory_path() const;
 	Ref<Texture2D> get_icon() const;
 	bool is_hidden() const;
@@ -72,6 +73,7 @@ protected:
 
 public:
 	static bool is_valid_path(const String &p_path);
+	// TODO
 	// static String normalize_path(const String &p_path);
 
 	FileSystemDirectory *get_root() const;

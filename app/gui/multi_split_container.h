@@ -18,7 +18,6 @@ private:
 	void _remove_sub_split(Control *p_control, Control *p_parent);
 
 protected:
-	void _notification(int p_what);
 	static void _bind_methods();
 
 public:

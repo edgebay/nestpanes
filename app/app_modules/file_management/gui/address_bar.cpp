@@ -3,6 +3,7 @@
 #include "scene/gui/popup_menu.h"
 
 void AddressBar::_notification(int p_what) {
+	// TODO
 	// switch (p_what) {
 	// 	case NOTIFICATION_ENTER_TREE: {
 	// 		connect("editing_toggled", callable_mp(this, &AddressBar::_on_editing_toggled));
@@ -32,6 +33,7 @@ void AddressBar::_select(int p_which, bool p_emit) {
 }
 
 void AddressBar::_on_editing_toggled(bool p_toggled_on) {
+	// TODO
 	// if (p_toggled_on) {
 	// 	if (!popup->is_visible()) {
 	// 		show_popup();
@@ -84,6 +86,7 @@ void AddressBar::_bind_methods() {
 }
 
 AddressBar::AddressBar() {
+	// TODO: his
 	// popup = memnew(PopupMenu);
 	// popup->hide();
 	// add_child(popup, false, INTERNAL_MODE_FRONT);

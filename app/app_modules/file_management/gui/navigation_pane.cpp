@@ -30,7 +30,6 @@ void NavigationPane::_notification(int p_what) {
 void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, bool p_uncollapse_root, bool p_scroll_to_selected) {
 	ERR_FAIL_NULL(file_system);
 
-	print_line("update tree: ", p_uncollapsed_paths);
 	if (tree->has_connections("item_collapsed")) {
 		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 	}
@@ -53,7 +52,6 @@ void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, boo
 
 	updating_tree = false;
 	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
-	print_line("update tree end");
 }
 
 void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
@@ -65,7 +63,6 @@ void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirecto
 		return;
 	}
 
-	print_line("update subtree: ", path);
 	if (tree->has_connections("item_collapsed")) {
 		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 	}
@@ -86,7 +83,6 @@ void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirecto
 
 	updating_tree = false;
 	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
-	print_line("update subtree end");
 }
 
 void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
@@ -97,8 +93,8 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 
 	subdirectory_item->set_text(0, dname);
 	subdirectory_item->set_structured_text_bidi_override(0, TextServer::STRUCTURED_TEXT_FILE);
-	// subdirectory_item->set_icon(0, get_app_theme_icon(SNAME("Folder")));
 	subdirectory_item->set_icon(0, p_dir->get_icon());
+	// TODO
 	// if (da->is_link(lpath)) {
 	// 	subdirectory_item->set_icon_overlay(0, get_app_theme_icon(SNAME("LinkOverlay")));
 	// 	subdirectory_item->set_tooltip_text(0, vformat(RTR("Link to: %s"), da->read_link(lpath)));
@@ -120,6 +116,7 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	}
 
 	bool uncollapsed = p_uncollapsed_paths.has(lpath);
+	// TODO
 	// if (p_unfold_path && selected_path.begins_with(lpath) && selected_path != lpath) {
 	// 	subdirectory_item->set_collapsed(false);
 	// } else {
@@ -150,12 +147,14 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 	file_item->set_text(0, p_file_info->name);
 	file_item->set_structured_text_bidi_override(0, TextServer::STRUCTURED_TEXT_FILE);
 	file_item->set_icon(0, p_file_info->icon);
+	// TODO
 	// if (da->is_link(file_metadata)) {
 	// 	file_item->set_icon_overlay(0, get_app_theme_icon(SNAME("LinkOverlay")));
 	// 	// TRANSLATORS: This is a tooltip for a file that is a symbolic link to another file.
 	// 	file_item->set_tooltip_text(0, vformat(RTR("Link to: %s"), da->read_link(file_metadata)));
 	// }
 	file_item->set_icon_max_width(0, icon_size);
+	// TODO
 	// Color parent_bg_color = p_parent->get_custom_bg_color(0);
 	// if (has_custom_color) {
 	// 	file_item->set_custom_bg_color(0, parent_bg_color.darkened(ITEM_BG_DARK_SCALE));
@@ -210,18 +209,7 @@ void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_s
 	emit_signal(SceneStringName(item_selected), path, is_dir);
 }
 
-// void NavigationPane::_tree_item_mouse_select(const Vector2 &p_pos, MouseButton p_button) {
-// 	if (p_button == MouseButton::LEFT) {
-// 		_tree_lmb_select(p_pos, p_button);
-// 	} else if (p_button == MouseButton::RIGHT) {
-// 		_tree_rmb_select(p_pos, p_button);
-// 	}
-// }
-
 void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
-	// emit_signal(SNAME("item_collapsed"));
-
-	print_line("item collapsed changed: " + String(p_item->get_metadata(0)));
 	if (!p_item->is_collapsed()) {
 		Dictionary d = p_item->get_metadata(0);
 		FileSystemDirectory *dir = Object::cast_to<FileSystemDirectory>(d["data"]);
@@ -247,7 +235,6 @@ TreeItem *NavigationPane::_search_item(const String &p_path) {
 
 void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 	TreeItem *item = _search_item(p_dir->get_path());
-	print_line("on fs changed: ", p_dir->get_path(), item);
 	if (!item) {
 		return;
 	}
@@ -255,6 +242,7 @@ void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 	callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
 }
 
+// TODO: menu
 // void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
 // 	if (p_button != MouseButton::RIGHT) {
 // 		return;
@@ -285,6 +273,7 @@ Vector<String> NavigationPane::get_selected_paths() const {
 	// Build a list of selected items with the active one at the first position.
 	Vector<String> selected_strings;
 
+	// TODO
 	// TreeItem *cursor_item = tree->get_selected();
 	// if (cursor_item) {
 	// 	selected_strings.push_back(cursor_item->get_metadata(0));
@@ -341,9 +330,7 @@ void NavigationPane::set_file_system(FileSystem *p_file_system) {
 
 void NavigationPane::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_activated", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
-	// ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::OBJECT, "item", PROPERTY_HINT_RESOURCE_TYPE, "TreeItem")));
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
-	// ADD_SIGNAL(MethodInfo("item_collapsed"));
 }
 
 NavigationPane::NavigationPane() :
@@ -368,13 +355,10 @@ NavigationPane::NavigationPane() :
 	// double-clicking selected.
 	tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
 	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_tree_multi_selected));
-	// // tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_tree_rmb_select));	// multi_selected already contains left mouse button select
-	// // tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_tree_empty_click));
-	// tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked));
+	// TODO: menu
+	// tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked));	// multi_selected already contains left mouse button select
 	// tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_empty_clicked));
-	// // tree->connect("nothing_selected", callable_mp(this, &NavigationPane::_tree_empty_selected));
-	// // tree->connect(SceneStringName(gui_input), callable_mp(this, &NavigationPane::_tree_gui_input));
-	// // tree->connect(SceneStringName(mouse_exited), callable_mp(this, &NavigationPane::_tree_mouse_exited));
+	// TODO: edit
 	// tree->connect("item_edited", callable_mp(this, &NavigationPane::_item_edited));
 }
 

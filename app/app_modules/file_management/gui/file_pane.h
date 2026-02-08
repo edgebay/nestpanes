@@ -61,6 +61,7 @@ private:
 	Vector<String> local_history;
 	int local_history_pos = -1;
 
+	// TODO
 	// bool show_hidden_files = false;
 
 	virtual String _get_pane_title() const override;
@@ -72,6 +73,7 @@ private:
 	void _add_item(const FileInfo &p_fi, bool p_is_dir = false);
 	void _update_item_list();
 
+	// TODO: menu
 	// void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 	// void _item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button);
 

@@ -295,7 +295,6 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 		if (mask & (1 << i)) { //DRIVE EXISTS
 			char drive = 'A' + i;
 			String name = String::chr(drive) + ":";
-			// print_line("drive name: " + name);
 
 			FileInfo file_info;
 			file_info.name = name;
@@ -309,8 +308,6 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 
 			file_info.type = FOLDER_TYPE;
 			file_info.size = 0;
-
-			// _fill_file_info(file_info, true);
 
 			r_drives.push_back(file_info);
 		}
@@ -405,8 +402,6 @@ bool FileSystemAccessWindows::_cut(const Vector<String> &p_files) {
 	// 计算 DROPFILES 结构 + 所有文件路径所需内存大小
 	size_t totalSize = sizeof(DROPFILES);
 	for (const auto &path : p_files) {
-		// print_line("cut: " + path);
-
 		Char16String tmpfile_utf16 = path.replace("/", "\\").utf16();
 		files.push_back(tmpfile_utf16);
 
@@ -509,8 +504,6 @@ bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
 	// 计算 DROPFILES 结构 + 所有文件路径所需内存大小
 	size_t totalSize = sizeof(DROPFILES);
 	for (const auto &path : p_files) {
-		// print_line("copy: " + path);
-
 		Char16String tmpfile_utf16 = path.replace("/", "\\").utf16();
 		files.push_back(tmpfile_utf16);
 
@@ -600,7 +593,6 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL,
 			IID_PPV_ARGS(&pfo));
 	if (FAILED(hr)) {
-		print_line("COM init failed: " + itos(hr));
 		return false;
 	}
 
@@ -651,9 +643,8 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 
 		// 构造目标路径（保留原文件名）
 		String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
-		print_line("paste: " + src_path + " to: " + dir);
 
-#if 1
+#if 1 // TODO
 		IShellItem *pItem = nullptr;
 		hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
 		if (SUCCEEDED(hr)) {
@@ -671,8 +662,6 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 #else
 		String filename = src_path.get_file();
 		String dest_path = p_dir + "\\" + filename;
-
-		// print_line("paste: " + src_path + "\nto: " + dest_path);
 
 		// 执行操作
 		BOOL result = FALSE;
@@ -697,7 +686,7 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 		// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
 		hr = pfo->PerformOperations();
 		if (FAILED(hr)) {
-			print_line("perform operations failed: " + itos(hr));
+			// TODO
 		}
 
 		// 8. 检查是否成功完成
@@ -728,7 +717,6 @@ Error FileSystemAccessWindows::_rename(const String &p_path, const String &p_new
 	bool success = false;
 	String old_path = p_path.replace("/", "\\");
 	String new_path = p_new_path.replace("/", "\\");
-	print_line("rename: " + old_path + " to: " + new_path);
 
 	DWORD fileAttr;
 	fileAttr = GetFileAttributesW((LPCWSTR)(new_path.utf16().get_data()));
@@ -767,14 +755,13 @@ Error FileSystemAccessWindows::_rename(const String &p_path, const String &p_new
 				if (SUCCEEDED(hr)) {
 					hr = pFileOp->PerformOperations();
 					if (FAILED(hr)) {
-						print_line("perform operations failed: " + itos(hr));
+						// TODO
 					}
 
 					// 8. 检查是否成功完成
 					BOOL anyOperationsAborted = FALSE;
 					hr = pFileOp->GetAnyOperationsAborted(&anyOperationsAborted);
 					if (SUCCEEDED(hr) && !anyOperationsAborted) {
-						print_line("rename success");
 						success = true;
 					}
 				}
@@ -825,6 +812,7 @@ bool FileSystemAccessWindows::is_path_invalid(const String &p_path) {
 
 Error FileSystemAccessWindows::change_path(const String &p_dir) {
 	Error err = FAILED;
+	// TODO
 	// if (p_dir == COMPUTER_PATH) {
 	// 	err = OK;
 	// 	path = p_dir;

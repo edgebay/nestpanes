@@ -29,16 +29,11 @@ private:
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
 
-	// // void _select_file(const String &p_path, bool p_navigate = true);
 	void _tree_activate_file();
 	void _tree_multi_selected(Object *p_item, int p_column, bool p_selected);
-	// void _tree_item_mouse_select(const Vector2 &p_pos, MouseButton p_button);
-	// // void _tree_lmb_select(const Vector2 &p_pos, MouseButton p_button);
-	// // void _tree_rmb_select(const Vector2 &p_pos, MouseButton p_button);
 	void _tree_item_collapsed(TreeItem *p_item);
 
-	// // virtual Vector<String> _get_selected() const override;
-
+	// TODO: menu
 	// void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 	// void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
 
@@ -46,18 +41,19 @@ private:
 	void _on_file_system_changed(FileSystemDirectory *p_dir);
 
 protected:
-	// virtual void _update_file_ui() override;
-
+	// TODO: menu
 	// virtual void _set_empty_menu_item(PopupMenu *p_popup) override;
 	// virtual void _set_file_menu_item(PopupMenu *p_popup) override;
 	// virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
 
+	// TODO: edit
 	// void _item_edited();
 
 	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
+	// TODO: edit
 	// virtual bool edit_selected(const FileOrFolder &p_selected) override;
 
 	Vector<String> get_selected_paths() const;

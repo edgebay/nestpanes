@@ -14,8 +14,6 @@ private:
 	Ref<Texture2D> pane_icon;
 
 protected:
-	void _notification(int p_what);
-
 	virtual String _get_pane_title() const;
 	virtual Ref<Texture2D> _get_pane_icon() const;
 

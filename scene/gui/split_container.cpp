@@ -537,14 +537,15 @@ void SplitContainer::_update_default_dragger_positions() {
 		stretch_data.push_back(sdata);
 	}
 
-#ifndef DISABLE_DEPRECATED
+	// Note: Defining DISABLE_DEPRECATED(deprecated=no) causes test failures in [SceneTree][SplitContainer].
+	// #ifndef DISABLE_DEPRECATED
 	if (expand_count == 2 && valid_children.size() == 2u) {
 		// Special case when there are 2 expanded children, ignore minimum sizes.
 		const real_t ratio = stretch_data[0].stretch_ratio / (stretch_data[0].stretch_ratio + stretch_data[1].stretch_ratio);
 		default_dragger_positions[0] = (int)(size * ratio - sep * 0.5);
 		return;
 	}
-#endif // DISABLE_DEPRECATED
+	// #endif // DISABLE_DEPRECATED
 
 	// Determine final sizes if stretching.
 	while (stretch_total > 0.0 && stretchable_space > 0.0) {

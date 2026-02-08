@@ -181,8 +181,6 @@ void FilePane::_update_icons() {
 void FilePane::_update_ui() {
 	ERR_FAIL_NULL(file_system);
 
-	print_line("update ui: ", current_path);
-
 	dir_prev->set_disabled(local_history_pos <= 0);
 	dir_next->set_disabled(local_history_pos == local_history.size() - 1);
 	if (current_path != file_system->get_root()->get_path()) {
@@ -197,8 +195,6 @@ void FilePane::_update_ui() {
 	// histories->select(local_history_pos);
 
 	_update_item_list();
-
-	print_line("update ui end");
 }
 
 void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
@@ -219,8 +215,6 @@ void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
 }
 
 void FilePane::_update_item_list() {
-	print_line("update item list");
-
 	item_list->clear();
 
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
@@ -260,8 +254,7 @@ void FilePane::_item_dc_selected(int p_item) {
 		// TODO: signal
 
 		// TODO: open_file()/run_file()
-		const String file = d["path"]; // _get_path().path_join(d["name"]);
-		print_line("run: " + file);
+		const String file = d["path"];
 		OS::get_singleton()->shell_open(file);
 	}
 }
@@ -360,7 +353,6 @@ void FilePane::_set_path(FileSystemDirectory *p_dir, bool p_update_history) {
 				local_history_pos = current_history_size; // (current_history_size - 1) + 1
 			}
 			local_history.push_back(current_path);
-			// print_line(vformat("his %d, sel %d, %s", histories->get_item_count(), local_history_pos, histories->get_item_text(local_history_pos)));
 		}
 	}
 
@@ -416,21 +408,17 @@ FilePane::FilePane() :
 	dir_prev->set_theme_type_variation(SceneStringName(FlatButton));
 	dir_prev->set_tooltip_text(RTR("Previous folder"));
 	dir_prev->set_disabled(true);
-	// dir_prev->set_focus_mode(FOCUS_NONE);
 	dir_next = memnew(Button);
 	dir_next->set_theme_type_variation(SceneStringName(FlatButton));
 	dir_next->set_tooltip_text(RTR("Next folder"));
 	dir_next->set_disabled(true);
-	// dir_next->set_focus_mode(FOCUS_NONE);
 	dir_up = memnew(Button);
 	dir_up->set_theme_type_variation(SceneStringName(FlatButton));
 	dir_up->set_tooltip_text(RTR("Parent folder"));
 	dir_up->set_disabled(true);
-	// dir_up->set_focus_mode(FOCUS_NONE);
 	refresh = memnew(Button);
 	refresh->set_theme_type_variation(SceneStringName(FlatButton));
 	refresh->set_tooltip_text(RTR("Refresh"));
-	// refresh->set_focus_mode(FOCUS_NONE);
 
 	dir_prev->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_back));
 	dir_next->connect(SceneStringName(pressed), callable_mp(this, &FilePane::_go_forward));
@@ -464,15 +452,14 @@ FilePane::FilePane() :
 
 	vbox->add_child(item_list);
 
-	// // item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_list_item_rmb_clicked));
-	// // item_list->connect("empty_clicked", callable_mp(this, &FilePane::_item_list_empty_clicked));
+	// TODO: menu
 	// item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
 	// item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
-	// // item_list->connect(SceneStringName(gui_input), callable_mp(this, &FilePane::_item_list_gui_input));
-	// // item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
-	// // item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);
+	// TODO: preview?
+	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
+	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
-	// // item_list->connect("empty_clicked", callable_mp(this, &FilePane::_items_clear_selection));
+	// TODO: edit
 	// item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
 
 	address_bar->connect(SceneStringName(text_submitted), callable_mp(this, &FilePane::_on_address_submitted));

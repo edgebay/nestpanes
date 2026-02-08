@@ -4,6 +4,7 @@ from misc.utility.scons_hints import *
 Import("env")
 
 # SConscript("gui/SCsub")
-SConscript("tests/SCsub")
+if env["tests"]:
+	SConscript("tests/SCsub")
 
 env.add_source_files(env.app_sources, "*.cpp")

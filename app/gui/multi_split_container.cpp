@@ -7,18 +7,10 @@ void MultiSplitContainer::_create_sub_split(Control *p_control, Control *p_from,
 	split_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	split_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	// List<StringName> meta_list;
-	// get_meta_list(&meta_list);
-	// for (const StringName &meta_key : meta_list) {
-	// 	Variant meta_value = get_meta(meta_key);
-	// 	split_container->set_meta(meta_key, meta_value);
-	// }
-
 	int control_index = p_from->get_index(false);
 	remove_child(p_from);
 	add_child(split_container);
 	move_child(split_container, control_index);
-	print_line("- sub split ", control_index, p_from, p_control);
 
 	Node *owner = get_owner();
 	split_container->set_owner(owner);
@@ -40,7 +32,6 @@ void MultiSplitContainer::_remove_sub_split(Control *p_control, Control *p_paren
 	remove_child(c);
 
 	int index_in_parent = get_index(false);
-	// this->disconnect(SceneStringName(mouse_exited), callable_mp(p_parent, &MultiSplitContainer::_on_child_mouse_exited));
 	p_parent->remove_child(this);
 	p_parent->add_child(c);
 	p_parent->move_child(c, index_in_parent);
@@ -54,25 +45,6 @@ void MultiSplitContainer::_remove_sub_split(Control *p_control, Control *p_paren
 		child->set_owner(owner);
 	}
 	queue_free();
-
-	print_line("- sub child ", index_in_parent, this, c);
-}
-
-void MultiSplitContainer::_notification(int p_what) {
-	switch (p_what) {
-		// case NOTIFICATION_SORT_CHILDREN: {
-		// 	_resort();
-		// } break;
-
-		// case NOTIFICATION_THEME_CHANGED: {
-		// 	update_minimum_size();
-		// } break;
-
-		// case NOTIFICATION_TRANSLATION_CHANGED:
-		// case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
-		// 	queue_sort();
-		// } break;
-	}
 }
 
 MultiSplitContainer *MultiSplitContainer::get_root_split_container(MultiSplitContainer *p_split) {
@@ -96,7 +68,6 @@ MultiSplitContainer *MultiSplitContainer::get_root_split_container(MultiSplitCon
  */
 void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirection p_direction) {
 	int prev_child_count = get_child_count(false);
-	print_line("split: ", prev_child_count, p_control, p_from, p_direction);
 
 	// No child.
 	if (prev_child_count == 0) {
@@ -117,7 +88,6 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 	}
 	ERR_FAIL_COND_MSG(p_from == nullptr, vformat("Split failed, from 0x%08X, new 0x%08X.", p_from, p_control));
 
-	// Add control and dragger.
 	int control_index = -1;
 	for (int i = 0; i < get_child_count(false); i++) {
 		Control *c = as_sortable_control(get_child(i, false), SortableVisibilityMode::VISIBLE);
@@ -158,11 +128,8 @@ void MultiSplitContainer::split(Control *p_control, Control *p_from, SplitDirect
 
 void MultiSplitContainer::remove(Control *p_control) {
 	int child_count = get_child_count(false); // TODO: sortable
-	print_line("remove child, count ", child_count, p_control);
 	if (child_count == 1) {
-		// No dragger
 		remove_child(p_control);
-		print_line("remove last child ", this);
 
 		// TODO: use child_order_changed
 		emit_signal(SNAME("emptied"));
@@ -179,7 +146,6 @@ void MultiSplitContainer::remove(Control *p_control) {
 	remove_child(p_control);
 }
 
-// TODO: NestSplitContainer
 void MultiSplitContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("emptied"));
 }

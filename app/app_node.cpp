@@ -13,7 +13,7 @@
 #include "scene/gui/menu_bar.h"
 #include "scene/gui/menu_button.h"
 #include "scene/gui/panel.h"
-// #include "scene/gui/popup_menu.h"
+#include "scene/gui/popup_menu.h"
 #include "scene/gui/split_container.h"
 #include "scene/gui/tab_container.h"
 
@@ -43,8 +43,9 @@
 #include "app/app_modules/file_management/file_system.h"
 #include "app/app_modules/file_management/gui/file_pane.h"
 #include "app/app_modules/file_management/gui/navigation_pane.h"
+// TODO: SettingsPane, WelcomePane
 // #include "app/settings/gui/settings_pane.h"
-#include "app/gui/welcome_pane.h"
+// #include "app/gui/welcome_pane.h"
 
 #define LEFT_SIDEBAR_NAME "left_sidebar"
 #define CENTRAL_AREA_NAME "central_area"
@@ -92,18 +93,7 @@ void AppNode::_update_theme(bool p_skip_creation) {
 			main_menu_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), EditorStringName(EditorIcons)));
 		}
 
-		// editor_main_screen->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("Content"), EditorStringName(EditorStyles)));
-		// bottom_panel->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("BottomPanel"), EditorStringName(EditorStyles)));
-		// distraction_free->set_button_icon(theme->get_icon(SNAME("DistractionFree"), EditorStringName(EditorIcons)));
-		// distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
-
-		// // Do not set icon.
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
-
-		// _update_renderer_color();
+		// TODO: Set menu icon?
 	}
 }
 
@@ -140,21 +130,12 @@ void AppNode::_check_system_theme_changed() {
 		// Update system menus.
 		bool dark_mode = DisplayServer::get_singleton()->is_dark_mode();
 
-		// // Do not set icon.
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), get_app_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_ABOUT), get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode));
-		// help_menu->set_item_icon(help_menu->get_item_index(HELP_SUPPORT_GODOT_DEVELOPMENT), get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode));
-		// editor_dock_manager->update_docks_menu();
+		// TODO: Set menu icon?
 	}
 }
 
 void AppNode::_menu_option(int p_option) {
 	_menu_option_confirm(p_option, false);
-}
-
-void AppNode::_menu_confirm_current() {
-	// _menu_option_confirm(current_menu_option, true);
 }
 
 void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
@@ -167,103 +148,6 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		} break;
 		case FILE_QUIT: {
 			_exit(EXIT_SUCCESS);
-			// if (p_confirmed && plugin_to_save) {
-			// 	plugin_to_save->save_external_data();
-			// 	p_confirmed = false;
-			// }
-
-			// if (p_confirmed && stop_project_confirmation && project_run_bar->is_playing()) {
-			// 	project_run_bar->stop_playing();
-			// 	stop_project_confirmation = false;
-			// 	p_confirmed = false;
-			// }
-
-			// if (!p_confirmed) {
-			// 	if (!stop_project_confirmation && project_run_bar->is_playing()) {
-			// 		if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
-			// 			confirmation->set_text(TTR("Stop running project before reloading the current project?"));
-			// 			confirmation->set_ok_button_text(TTR("Stop & Reload"));
-			// 		} else {
-			// 			confirmation->set_text(TTR("Stop running project before exiting the editor?"));
-			// 			confirmation->set_ok_button_text(TTR("Stop & Quit"));
-			// 		}
-			// 		confirmation->reset_size();
-			// 		confirmation->popup_centered();
-			// 		confirmation_button->hide();
-			// 		stop_project_confirmation = true;
-			// 		break;
-			// 	}
-
-			// 	bool save_each = EDITOR_GET("interface/app/save_each_scene_on_quit");
-			// 	if (_next_unsaved_scene(!save_each) == -1) {
-			// 		if (EditorUndoRedoManager::get_singleton()->is_history_unsaved(EditorUndoRedoManager::GLOBAL_HISTORY)) {
-			// 			if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
-			// 				save_confirmation->set_ok_button_text(TTR("Save & Reload"));
-			// 				save_confirmation->set_text(TTR("Save modified resources before reloading?"));
-			// 			} else {
-			// 				save_confirmation->set_ok_button_text(TTR("Save & Quit"));
-			// 				save_confirmation->set_text(TTR("Save modified resources before closing?"));
-			// 			}
-			// 			save_confirmation->reset_size();
-			// 			save_confirmation->popup_centered();
-			// 			break;
-			// 		}
-
-			// 		plugin_to_save = nullptr;
-			// 		for (int i = 0; i < editor_data.get_editor_plugin_count(); i++) {
-			// 			const String unsaved_status = editor_data.get_editor_plugin(i)->get_unsaved_status();
-			// 			if (!unsaved_status.is_empty()) {
-			// 				if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
-			// 					save_confirmation->set_ok_button_text(TTR("Save & Reload"));
-			// 					save_confirmation->set_text(unsaved_status);
-			// 				} else {
-			// 					save_confirmation->set_ok_button_text(TTR("Save & Quit"));
-			// 					save_confirmation->set_text(unsaved_status);
-			// 				}
-			// 				save_confirmation->reset_size();
-			// 				save_confirmation->popup_centered();
-			// 				plugin_to_save = editor_data.get_editor_plugin(i);
-			// 				break;
-			// 			}
-			// 		}
-
-			// 		if (plugin_to_save) {
-			// 			break;
-			// 		}
-
-			// 		_discard_changes();
-			// 		break;
-			// 	}
-
-			// 	if (save_each) {
-			// 		tab_closing_menu_option = current_menu_option;
-			// 		for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
-			// 			tabs_to_close.push_back(editor_data.get_scene_path(i));
-			// 		}
-			// 		_proceed_closing_scene_tabs();
-			// 	} else {
-			// 		String unsaved_scenes;
-			// 		int i = _next_unsaved_scene(true, 0);
-			// 		while (i != -1) {
-			// 			unsaved_scenes += "\n            " + editor_data.get_edited_scene_root(i)->get_scene_file_path();
-			// 			i = _next_unsaved_scene(true, ++i);
-			// 		}
-			// 		if (p_option == PROJECT_RELOAD_CURRENT_PROJECT) {
-			// 			save_confirmation->set_ok_button_text(TTR("Save & Reload"));
-			// 			save_confirmation->set_text(TTR("Save changes to the following scene(s) before reloading?") + unsaved_scenes);
-			// 		} else {
-			// 			save_confirmation->set_ok_button_text(TTR("Save & Quit"));
-			// 			save_confirmation->set_text((p_option == FILE_QUIT ? TTR("Save changes to the following scene(s) before quitting?") : TTR("Save changes to the following scene(s) before opening Project Manager?")) + unsaved_scenes);
-			// 		}
-			// 		save_confirmation->reset_size();
-			// 		save_confirmation->popup_centered();
-			// 	}
-
-			// 	DisplayServer::get_singleton()->window_request_attention();
-			// 	break;
-			// }
-			// _save_external_resources();
-			// _discard_changes();
 		} break;
 
 			// case EDITOR_COMMAND_PALETTE: {
@@ -349,18 +233,11 @@ void AppNode::_on_file_pane_create(PaneBase *p_pane) {
 
 void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
 	if (!is_dir) {
-		AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
-		if (current_tab_container == nullptr) {
-			return;
-		}
-
 		// TODO: open_file()/run_file()
-		print_line("run: " + p_path);
 		OS::get_singleton()->shell_open(p_path);
 	}
 }
 
-// void AppNode::_on_tree_item_selected(TreeItem *p_item) {
 void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 	if (is_dir) {
 		// Current tab container is NavigationPane
@@ -373,26 +250,13 @@ void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
 		if (pane) {
 			pane->set_path(p_path);
 		}
-
-		// print_line("current file_pane: ", current_file_pane);
-		// if (current_file_pane) {
-		// 	current_file_pane->set_path(p_path);
-		// }
 	}
 }
 
 void AppNode::_exit(int p_exit_code) {
 	exiting = true;
-	// waiting_for_first_scan = false;
-	// resource_preview->stop(); // Stop early to avoid crashes.
-	// _save_editor_layout();
+
 	_save_layout();
-
-	// // Dim the editor window while it's quitting to make it clearer that it's busy.
-	// dim_editor(true);
-
-	// // Unload addons before quitting to allow cleanup.
-	// unload_editor_addons();
 
 	get_tree()->quit(p_exit_code);
 }
@@ -409,55 +273,17 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 			if (tab_count > 0) {
 				int next_tab = current_tab_container->get_current_tab() + 1;
 				next_tab %= tab_count;
-				print_line(current_tab_container->get_current_tab(), ", next_tab: ", next_tab);
 				current_tab_container->set_current_tab(next_tab);
 			}
-			// else {
-			// 	is_handled = false;
-			// }
 		} else if (ED_IS_SHORTCUT("app/prev_tab", p_event)) {
 			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
 			if (tab_count > 0) {
 				int next_tab = current_tab_container->get_current_tab() - 1;
 				next_tab = next_tab >= 0 ? next_tab : tab_count - 1;
-				print_line(current_tab_container->get_current_tab(), ", next_tab: ", next_tab);
 				current_tab_container->set_current_tab(next_tab);
 			}
-			// else {
-			// 	is_handled = false;
-			// }
-
-			// TODO: handled in menu option
-			// } else if (ED_IS_SHORTCUT("app/new_tab", p_event)) {
-			// 	container_manager->new_tab();
-			// } else if (ED_IS_SHORTCUT("app/close_tab", p_event)) {
-			// 	container_manager->close_current_tab();
-		}
-
-		// if (ED_IS_SHORTCUT("app/filter_files", p_event)) {
-		// 	FileSystemDock::get_singleton()->focus_on_filter();
-		// } else if (ED_IS_SHORTCUT("app/editor_2d", p_event)) {
-		// 	editor_main_screen->select(EditorMainScreen::EDITOR_2D);
-		// } else if (ED_IS_SHORTCUT("app/editor_3d", p_event)) {
-		// 	editor_main_screen->select(EditorMainScreen::EDITOR_3D);
-		// } else if (ED_IS_SHORTCUT("app/editor_script", p_event)) {
-		// 	editor_main_screen->select(EditorMainScreen::EDITOR_SCRIPT);
-		// } else if (ED_IS_SHORTCUT("app/editor_game", p_event)) {
-		// 	editor_main_screen->select(EditorMainScreen::EDITOR_GAME);
-		// } else if (ED_IS_SHORTCUT("app/editor_help", p_event)) {
-		// 	emit_signal(SNAME("request_help_search"), "");
-		// } else if (ED_IS_SHORTCUT("app/editor_assetlib", p_event) && AssetLibraryEditorPlugin::is_available()) {
-		// 	editor_main_screen->select(EditorMainScreen::EDITOR_ASSETLIB);
-		// } else if (ED_IS_SHORTCUT("app/editor_next", p_event)) {
-		// 	editor_main_screen->select_next();
-		// } else if (ED_IS_SHORTCUT("app/editor_prev", p_event)) {
-		// 	editor_main_screen->select_prev();
-		// } else if (ED_IS_SHORTCUT("app/command_palette", p_event)) {
-		// 	_open_command_palette();
-		// } else if (ED_IS_SHORTCUT("app/toggle_last_opened_bottom_panel", p_event)) {
-		// 	bottom_panel->toggle_last_opened_bottom_panel();
-		else {
+		} else {
 			is_handled = false;
 		}
 
@@ -476,10 +302,12 @@ void AppNode::_save_layout() {
 		return;
 	}
 
+	// Save layout.
 	Ref<PackedScene> sdata;
 	sdata.instantiate();
 	Error err = sdata->pack(gui_main);
 	if (err != OK) {
+		// TODO: hint
 		// show_accept(TTR("Couldn't save scene. Likely dependencies (instances or inheritance) couldn't be satisfied."), TTR("OK"));
 		return;
 	}
@@ -489,19 +317,11 @@ void AppNode::_save_layout() {
 
 	String scene_path = _get_main_scene_path();
 	err = ResourceSaver::save(sdata, scene_path, flg);
-	// if (err == OK) {
-	// 	scene->set_scene_file_path(ProjectSettings::get_singleton()->localize_path(p_file));
-	// 	editor_data.set_scene_as_saved(idx);
-	// 	editor_data.set_scene_modified_time(idx, FileAccess::get_modified_time(p_file));
+	// TODO
+	if (err == OK) {
+	}
 
-	// 	editor_folding.save_scene_folding(scene, p_file);
-
-	// 	_update_title();
-	// 	scene_tabs->update_scene_tabs();
-	// } else {
-	// 	_dialog_display_save_error(p_file, err);
-	// }
-
+	// Save config.
 	Ref<ConfigFile> config;
 	String config_path = _get_config_path();
 	config.instantiate();
@@ -510,50 +330,17 @@ void AppNode::_save_layout() {
 
 	// TODO: save_layout_to_config(config, "docks");
 
-	// _save_open_scenes_to_config(config);
-	// _save_central_editor_layout_to_config(config);
-	// _save_window_settings_to_config(config, "EditorWindow");
-	// editor_data.get_plugin_window_layout(config);
-
 	config->save(config_path);
 }
 
 void AppNode::_load_layout() {
-	// EditorProgress ep("loading_editor_layout", TTR("Loading editor"), 5);
-	// ep.step(TTR("Loading editor layout..."), 0, true);
 	Ref<ConfigFile> config;
 	String config_path = _get_config_path();
 	config.instantiate();
 	Error err = config->load(config_path);
+	// TODO
 	if (err != OK) { // No config.
-		// // If config is not found, expand the res:// folder and favorites by default.
-		// TreeItem *root = FileSystemDock::get_singleton()->get_tree_control()->get_item_with_metadata("res://", 0);
-		// if (root) {
-		// 	root->set_collapsed(false);
-		// }
-
-		// TreeItem *favorites = FileSystemDock::get_singleton()->get_tree_control()->get_item_with_metadata("Favorites", 0);
-		// if (favorites) {
-		// 	favorites->set_collapsed(false);
-		// }
-
-		// if (overridden_default_layout >= 0) {
-		// 	_layout_menu_option(overridden_default_layout);
-		// }
 	} else {
-		// ep.step(TTR("Loading docks..."), 1, true);
-		// editor_dock_manager->load_docks_from_config(config, "docks", true);
-
-		// ep.step(TTR("Reopening scenes..."), 2, true);
-		// _load_open_scenes_from_config(config);
-
-		// ep.step(TTR("Loading central editor layout..."), 3, true);
-		// _load_central_editor_layout_from_config(config);
-
-		// ep.step(TTR("Loading plugin window layout..."), 4, true);
-		// editor_data.set_plugin_window_layout(config);
-
-		// ep.step(TTR("Editor layout ready."), 5, true);
 	}
 	load_layout_done = true;
 }
@@ -577,6 +364,8 @@ Error AppNode::_parse_node(Node *p_node) {
 		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
 		tab_containers.push_back(container);
 	}
+
+	// TODO: panes
 
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		Node *c = p_node->get_child(i);
@@ -614,19 +403,7 @@ bool AppNode::_load_main_scene() {
 		return false;
 	}
 
-	for (auto container : tab_containers) {
-		// TODO
-		// container->set_popup(split_menu);
-		// container->connect("pre_popup_pressed", callable_mp(this, &AppNode::_select_tab_container).bind(container));
-		// container->connect("new_tab", callable_mp(this, &AppNode::_new_tab).bind(container));
-		// container->connect("emptied", callable_mp(this, &AppNode::_tab_container_emptied).bind(container));
-
-		// TODO: 1. Other classes, 2. use metadata/_tab_name
-		for (int i = 0; i < container->get_child_count(); i++) {
-			Node *control = container->get_child(i);
-			// TODO: Update tab icon and text
-		}
-	}
+	// TODO: restore the layout
 
 	gui_main = new_scene;
 	return true;
@@ -719,7 +496,6 @@ void AppNode::_add_to_main_menu(const String &p_name, PopupMenu *p_menu) {
 void AppNode::_init_main_menu() {
 	bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 	bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
-	// bool can_expand = bool(EDITOR_GET("interface/app/expand_to_title")) && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_EXTEND_TO_TITLE);
 	bool can_expand = false; // Windows is not supported.
 
 	_update_main_menu_type();
@@ -732,20 +508,7 @@ void AppNode::_init_main_menu() {
 	// TODO: Use Ctrl+T to create new tab, Ctrl+N to create new file.
 	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", TTRC("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::N), FILE_NEW_TAB);
 	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", TTRC("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::T), FILE_NEW_TAB);
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_inherited_scene", TTRC("New Inherited Scene..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::N), SCENE_NEW_INHERITED_SCENE);
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/open_scene", TTRC("Open Scene..."), KeyModifierMask::CMD_OR_CTRL + Key::O), SCENE_OPEN_SCENE);
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/reopen_closed_scene", TTRC("Reopen Closed Scene"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::T), SCENE_OPEN_PREV);
-
-	// recent_scenes = memnew(PopupMenu);
-	// recent_scenes->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
-	// file_menu->add_submenu_node_item(TTRC("Open Recent"), recent_scenes, SCENE_OPEN_RECENT);
-	// recent_scenes->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_open_recent_scene));
-
 	file_menu->add_separator();
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/save_scene", TTRC("Save Scene"), KeyModifierMask::CMD_OR_CTRL + Key::S), SCENE_SAVE_SCENE);
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/save_scene_as", TTRC("Save Scene As..."), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::S), SCENE_SAVE_AS_SCENE);
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/save_all_scenes", TTRC("Save All Scenes"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + KeyModifierMask::ALT + Key::S), SCENE_SAVE_ALL_SCENES);
-
 	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/close_tab", TTRC("Close Tab"), KeyModifierMask::CTRL + Key::W), FILE_CLOSE_TAB);
 
 	file_menu->add_separator();
@@ -758,13 +521,6 @@ void AppNode::_init_main_menu() {
 
 	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", TTRC("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
 	view_menu->set_item_checked(-1, true); // Note: The left sidebar is visible by default.
-
-	// tool_menu = memnew(PopupMenu);
-	// tool_menu->connect("index_pressed", callable_mp(this, &AppNode::_tool_menu_option));
-	// project_menu->add_submenu_node_item(TTRC("Tools"), tool_menu);
-	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/orphan_resource_explorer", TTRC("Orphan Resource Explorer...")), TOOLS_ORPHAN_RESOURCES);
-	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/engine_compilation_configuration_editor", TTRC("Engine Compilation Configuration Editor...")), TOOLS_BUILD_PROFILE_MANAGER);
-	// tool_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/upgrade_project", TTRC("Upgrade Project Files...")), TOOLS_PROJECT_UPGRADE);
 
 	help_menu = memnew(PopupMenu);
 	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
@@ -785,35 +541,12 @@ void AppNode::_init_main_menu() {
 	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/report_a_bug", TTRC("Report a Bug")), HELP_REPORT_A_BUG);
 	help_menu->add_separator();
 	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/about", TTRC("About")), HELP_ABOUT);
-	// // Do not set icon.
-	// if (!global_menu || !OS::get_singleton()->has_feature("macos")) {
-	// 	// On macOS  "Quit" and "About" options are in the "app" menu.
-	// 	help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Godot"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/about", TTRC("About")), HELP_ABOUT);
-	// }
 	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
 }
-
-// void AppNode::_gui_focus_changed(Control *p_control) {
-// 	PaneBase *pane = PaneBase::get_control_parent_pane(p_control);
-// 	if (!pane) {
-// 		return;
-// 	}
-
-// 	FilePane *file_pane = Object::cast_to<FilePane>(pane);
-// 	if (!file_pane) {
-// 		return;
-// 	}
-
-// 	current_file_pane = file_pane;
-// }
 
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
-			// Viewport *viewport = get_viewport();
-			// ERR_FAIL_NULL(viewport);
-			// viewport->connect("gui_focus_changed", callable_mp(this, &AppNode::_gui_focus_changed));
-
 			_load_layout();
 		} break;
 
@@ -837,15 +570,9 @@ AppNode::AppNode() {
 	DEV_ASSERT(!singleton);
 	singleton = this;
 
-	// TODO: main.cpp DisplayServer::get_singleton()->window_set_title(appname);
-	SceneTree::get_singleton()->get_root()->set_title(APP_VERSION_NAME);
-
 	// File system.
 	FileSystemAccess::create();
 	file_system = memnew(FileSystem);
-
-	// PropertyNameProcessor *pnp = memnew(PropertyNameProcessor);
-	// add_child(pnp);
 
 	// Load settings.
 	if (!AppSettings::get_singleton()) {
@@ -887,16 +614,12 @@ AppNode::AppNode() {
 	// Define a minimum window size to prevent UI elements from overlapping or being cut off.
 	Window *w = Object::cast_to<Window>(SceneTree::get_singleton()->get_root());
 	if (w) {
-		const Size2 minimum_size = Size2(1024, 600) * APP_SCALE;
+		// TODO: Determine the minimum size based on the layout?
+		// const Size2 minimum_size = Size2(1024, 600) * APP_SCALE;
+		const Size2 minimum_size = Size2(640, 400) * APP_SCALE;
 		w->set_min_size(minimum_size); // Calling it this early doesn't sync the property with DS.
 		DisplayServer::get_singleton()->window_set_min_size(minimum_size);
 	}
-
-	// {
-	// 	Ref<ObjectInspectorDefaultPlugin> plugin;
-	// 	plugin.instantiate();
-	// 	EditorInspector::add_inspector_plugin(plugin);
-	// }
 
 	AppThemeManager::initialize();
 	theme = AppThemeManager::generate_theme();
@@ -916,7 +639,7 @@ AppNode::AppNode() {
 	gui_base->add_child(main_vbox);
 	main_vbox->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT, Control::PRESET_MODE_MINSIZE);
 
-	// Title Bar
+	// Title Bar.
 	title_bar = memnew(HBoxContainer);
 	main_vbox->add_child(title_bar);
 
@@ -925,6 +648,7 @@ AppNode::AppNode() {
 	spacer->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	title_bar->add_child(spacer);
 
+	// TODO
 	// HBoxContainer *button_hbox = memnew(HBoxContainer);
 	// title_bar->add_child(button_hbox);
 
@@ -950,13 +674,13 @@ AppNode::AppNode() {
 	gui_base->add_child(about);
 	_init_main_menu();
 
-	// Body
+	// Body.
 	HBoxContainer *hbox = memnew(HBoxContainer);
 	hbox->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	hbox->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	main_vbox->add_child(hbox);
 
-	// // Ribbon
+	// // Ribbon.
 	// ribbon = memnew(VBoxContainer);
 	// hbox->add_child(ribbon);
 	// // ribbon->set_custom_minimum_size(Size2(20, 20));
@@ -968,58 +692,52 @@ AppNode::AppNode() {
 	// actions->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	// actions->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	// actions->add_tab("1");
-	// actions->add_tab("2");
+	// actions->add_tab("action 1");
+	// actions->add_tab("action 2");
 
 	// Button *settings_button = memnew(Button);
 	// ribbon->add_child(settings_button);
-	// settings_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	// settings_button->set_button_icon(theme->get_icon(SNAME("Settings"), SNAME("AppIcons"))); // TODO: Settings icon
 
 	pane_factory = memnew(PaneFactory);
 	pane_factory->register_pane<FilePane>(
 			FilePane::get_class_static(),
-			theme->get_icon(SNAME("Folder"), SNAME("AppIcons")), // TODO
+			theme->get_icon(SNAME("Folder"), SNAME("AppIcons")),
 			callable_mp(this, &AppNode::_on_file_pane_create));
 	pane_factory->register_pane<NavigationPane>(
 			NavigationPane::get_class_static(),
-			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")), // TODO
+			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")),
 			callable_mp(this, &AppNode::_on_navigation_pane_create));
 
+	// TODO: SettingsPane, WelcomePane
 	// pane_factory->register_pane<SettingsPane>(
 	// 		SettingsPane::get_class_static(),
-	// 		theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
-
-	pane_factory->register_pane<WelcomePane>(
-			WelcomePane::get_class_static(),
-			theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
+	// 		theme->get_icon(SNAME("Settings"), SNAME("AppIcons"))); // TODO: icon
+	// pane_factory->register_pane<WelcomePane>(
+	// 		WelcomePane::get_class_static(),
+	// 		theme->get_icon(SNAME("Welcome"), SNAME("AppIcons"))); // TODO: icon
 
 	container_manager = memnew(ContainerManager);
 	gui_base->add_child(container_manager);
 
-#define LOAD_SCENE 0
+#define LOAD_SCENE 0 // TODO: load layout
 	if (LOAD_SCENE && _load_main_scene()) {
 		hbox->add_child(gui_main);
 	} else {
 		// Default layout.
-		HSplitContainer *left_hsplit = memnew(HSplitContainer);
-		hbox->add_child(left_hsplit);
-		left_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		left_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+		HSplitContainer *hsplit = memnew(HSplitContainer);
+		hbox->add_child(hsplit);
+		hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-		gui_main = left_hsplit;
+		gui_main = hsplit;
 
 		// Left sidebar.
-		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, left_hsplit, gui_main);
+		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, hsplit, gui_main);
 		container_manager->new_tab(NavigationPane::get_class_static());
 
-		HSplitContainer *right_hsplit = memnew(HSplitContainer);
-		left_hsplit->add_child(right_hsplit);
-		right_hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		right_hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		right_hsplit->set_owner(gui_main);
-
-		// Tabs.
-		central_area = container_manager->create_container(CENTRAL_AREA_NAME, right_hsplit, gui_main);
+		// Central content area.
+		central_area = container_manager->create_container(CENTRAL_AREA_NAME, hsplit, gui_main);
 		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 		container_manager->set_tab_closable(central_area, true);
@@ -1027,18 +745,14 @@ AppNode::AppNode() {
 		container_manager->new_tab(FilePane::get_class_static());
 
 		// Right sidebar.
-		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, right_hsplit, gui_main);
+		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, hsplit, gui_main);
+		right_sidebar->hide();
 	}
 
 	ED_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
 	ED_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
-	// ED_SHORTCUT("app/new_tab", TTRC("New Tab"), KeyModifierMask::CTRL + Key::T);
-	// ED_SHORTCUT("app/close_tab", TTRC("Close Tab"), KeyModifierMask::CTRL + Key::W);
-	// ED_SHORTCUT("app/filter_files", TTRC("Focus FileSystem Filter"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::ALT + Key::P);
 
-	// command_palette = EditorCommandPalette::get_singleton();
-	// command_palette->set_title(TTR("Command Palette"));
-	// gui_base->add_child(command_palette);
+	// TODO: command_palette
 
 	layout_save_delay_timer = memnew(Timer);
 	add_child(layout_save_delay_timer);
@@ -1047,17 +761,7 @@ AppNode::AppNode() {
 	layout_save_delay_timer->connect("timeout", callable_mp(this, &AppNode::_save_layout));
 
 	set_process(true);
-
 	set_process_shortcut_input(true);
-
-	// follow_system_theme = EDITOR_GET("interface/theme/follow_system_theme");
-	// use_system_accent_color = EDITOR_GET("interface/theme/use_system_accent_color");
-	// system_theme_timer = memnew(Timer);
-	// system_theme_timer->set_wait_time(1.0);
-	// system_theme_timer->connect("timeout", callable_mp(this, &AppNode::_check_system_theme_changed));
-	// add_child(system_theme_timer);
-	// system_theme_timer->set_owner(get_owner());
-	// system_theme_timer->set_autostart(true);
 }
 
 AppNode::~AppNode() {

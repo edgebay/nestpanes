@@ -50,8 +50,8 @@ class AppTabContainer : public Container {
 
 public:
 	enum MenuOptions {
-		// Scene menu.
-		FILE_NEW_SCENE, // TODO: Pane/Tab
+		// File menu.
+		FILE_NEW_TAB,
 	};
 
 	enum TabPosition {
@@ -137,9 +137,6 @@ private:
 
 	void _menu_option_confirm(int p_option, bool p_confirmed);
 	void _update_context_menu();
-	void _custom_menu_option(int p_option);
-
-	void _reposition_active_tab(int p_to_index);
 
 	Rect2 _get_tab_rect() const;
 	int _get_tab_height() const;

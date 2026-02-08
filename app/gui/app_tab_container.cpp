@@ -18,7 +18,7 @@ DropOverlay::DropPosition DropOverlay::_get_position(const Point2 &p_point) cons
 	DropPosition position = DropPosition::DROP_CENTER;
 	Size2 size = get_size();
 
-	// TODO: 3.0
+	// TODO: 3.0 use constant definitions
 	double h_margin = size.width / 3.0;
 	double v_margin = size.height / 3.0;
 
@@ -50,13 +50,11 @@ void DropOverlay::_notification(int p_what) {
 		case NOTIFICATION_MOUSE_ENTER: {
 			is_hovering = true;
 			queue_redraw();
-			print_line("DropOverlay enter", this);
 		} break;
 
 		case NOTIFICATION_MOUSE_EXIT: {
 			is_hovering = false;
 			queue_redraw();
-			print_line("DropOverlay exit", this);
 		} break;
 
 		case NOTIFICATION_DRAW: {
@@ -126,7 +124,6 @@ void DropOverlay::gui_input(const Ref<InputEvent> &p_event) {
 			current_drop_position = _get_position(mm->get_position());
 		}
 
-		// print_line("in_parent_pos: ", get_transform().xform(mm->get_position()), mm->get_position(), current_drop_position, drop_position);
 		if (current_drop_position != drop_position) {
 			drop_position = current_drop_position;
 			queue_redraw();
@@ -333,6 +330,7 @@ void AppTabContainer::_notification(int p_what) {
 
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
 			if (EditorSettings::get_singleton()->check_changed_settings_in_group("interface/tabs")) {
+				// TODO
 				// tab_bar->set_tab_close_display_policy((TabBar::CloseButtonDisplayPolicy)EDITOR_GET("interface/tabs/display_close_button").operator int());
 				tab_bar->set_max_tab_width(int(EDITOR_GET("interface/tabs/maximum_width")) * APP_SCALE);
 				_on_tab_resized();
@@ -348,7 +346,6 @@ void AppTabContainer::_notification(int p_what) {
 			theme_changing = true;
 			callable_mp(this, &AppTabContainer::_on_theme_changed).call_deferred(); // Wait until all changed theme.
 
-			// tabbar_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("tabbar_background"), SNAME("AppTabContainer")));
 			tabbar_panel->add_theme_style_override(SceneStringName(panel), theme_cache.tabbar_style);
 			tab_bar->add_theme_constant_override("icon_max_width", get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor)));
 
@@ -365,7 +362,6 @@ void AppTabContainer::_notification(int p_what) {
 				// Check if we are dragging a tab.
 				const String type = drop_data.get("type", "");
 				const String tab_type = drop_data.get("tab_type", "");
-				print_line("drag type: ", type, tab_type, drop_overlay->get_rect());
 				if (type == "tab" && tab_type == "tab_container_tab") { // TODO: type
 					NodePath from_path = drop_data.get("from_path", NodePath());
 					Node *from_node = get_node(from_path);
@@ -398,79 +394,43 @@ void AppTabContainer::_menu_option_confirm(int p_option, bool p_confirmed) {
 	}
 
 	switch (p_option) {
-		case FILE_NEW_SCENE: {
+		case FILE_NEW_TAB: {
 			emit_signal(SNAME("new_tab"));
 		} break;
 	}
 }
 
 void AppTabContainer::_update_context_menu() {
+	// TODO
 	// #define DISABLE_LAST_OPTION_IF(m_condition)                   \
 	// 	if (m_condition) {                                        \
 	// 		tab_bar_context_menu->set_item_disabled(-1, true); \
 	// 	}
 
-	// 	tab_bar_context_menu->clear();
-	// 	tab_bar_context_menu->reset_size();
+	tab_bar_context_menu->clear();
+	tab_bar_context_menu->reset_size();
 
-	// 	int tab_id = tab_bar->get_hovered_tab();
-	// 	bool no_root_node = !EditorNode::get_editor_data().get_edited_scene_root(tab_id);
+	int tab_id = tab_bar->get_hovered_tab();
 
-	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_tab"), AppTabContainer::FILE_NEW_SCENE);
-	// 	if (tab_id >= 0) {
-	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene"), EditorNode::SCENE_SAVE_SCENE);
-	// 		DISABLE_LAST_OPTION_IF(no_root_node);
-	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_scene_as"), EditorNode::SCENE_SAVE_AS_SCENE);
-	// 		DISABLE_LAST_OPTION_IF(no_root_node);
-	// 	}
+	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("app/new_tab"), AppTabContainer::FILE_NEW_TAB);
 
-	// 	bool can_save_all_scenes = false;
-	// 	for (int i = 0; i < EditorNode::get_editor_data().get_edited_scene_count(); i++) {
-	// 		if (!EditorNode::get_editor_data().get_scene_path(i).is_empty() && EditorNode::get_editor_data().get_edited_scene_root(i)) {
-	// 			can_save_all_scenes = true;
-	// 			break;
-	// 		}
-	// 	}
-	// 	tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/save_all_scenes"), EditorNode::SCENE_SAVE_ALL_SCENES);
-	// 	DISABLE_LAST_OPTION_IF(!can_save_all_scenes);
+// 	if (tab_id >= 0) {
+// 		tab_bar_context_menu->add_separator();
+// 		tab_bar_context_menu->add_item(RTR("Show in FileSystem"), SCENE_SHOW_IN_FILESYSTEM);
 
-	// 	if (tab_id >= 0) {
-	// 		tab_bar_context_menu->add_separator();
-	// 		tab_bar_context_menu->add_item(RTR("Show in FileSystem"), SCENE_SHOW_IN_FILESYSTEM);
-	// 		DISABLE_LAST_OPTION_IF(!ResourceLoader::exists(EditorNode::get_editor_data().get_scene_path(tab_id)));
-	// 		tab_bar_context_menu->add_item(RTR("Play This Scene"), SCENE_RUN);
-	// 		DISABLE_LAST_OPTION_IF(no_root_node);
-
-	// 		tab_bar_context_menu->add_separator();
-	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/close_scene"), EditorNode::SCENE_CLOSE);
-	// 		tab_bar_context_menu->set_item_text(-1, RTR("Close Tab"));
-	// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/reopen_closed_scene"), EditorNode::SCENE_OPEN_PREV);
-	// 		tab_bar_context_menu->set_item_text(-1, RTR("Undo Close Tab"));
-	// 		DISABLE_LAST_OPTION_IF(!EditorNode::get_singleton()->has_previous_closed_scenes());
-	// 		tab_bar_context_menu->add_item(RTR("Close Other Tabs"), SCENE_CLOSE_OTHERS);
-	// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() <= 1);
-	// 		tab_bar_context_menu->add_item(RTR("Close Tabs to the Right"), SCENE_CLOSE_RIGHT);
-	// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() == tab_id + 1);
-	// 		tab_bar_context_menu->add_item(RTR("Close All Tabs"), SCENE_CLOSE_ALL);
-
-	// 		const PackedStringArray paths = { EditorNode::get_editor_data().get_scene_path(tab_id) };
-	// 		EditorContextMenuPluginManager::get_singleton()->add_options_from_plugins(tab_bar_context_menu, EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TABS, paths);
-	// 	} else {
-	// 		EditorContextMenuPluginManager::get_singleton()->add_options_from_plugins(tab_bar_context_menu, EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TABS, {});
-	// 	}
-	// #undef DISABLE_LAST_OPTION_IF
-
-	// last_hovered_tab = tab_id;
-}
-
-void AppTabContainer::_custom_menu_option(int p_option) {
-}
-
-void AppTabContainer::_reposition_active_tab(int p_to_index) {
-	// AppTabContainer::get_editor_data().move_edited_scene_to_index(p_to_index);
-	// update_scene_tabs();
-
-	_on_tab_resized();
+// 		tab_bar_context_menu->add_separator();
+// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/close_scene"), EditorNode::SCENE_CLOSE);
+// 		tab_bar_context_menu->set_item_text(-1, RTR("Close Tab"));
+// 		tab_bar_context_menu->add_shortcut(ED_GET_SHORTCUT("editor/reopen_closed_scene"), EditorNode::SCENE_OPEN_PREV);
+// 		tab_bar_context_menu->set_item_text(-1, RTR("Undo Close Tab"));
+// 		DISABLE_LAST_OPTION_IF(!EditorNode::get_singleton()->has_previous_closed_scenes());
+// 		tab_bar_context_menu->add_item(RTR("Close Other Tabs"), SCENE_CLOSE_OTHERS);
+// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() <= 1);
+// 		tab_bar_context_menu->add_item(RTR("Close Tabs to the Right"), SCENE_CLOSE_RIGHT);
+// 		DISABLE_LAST_OPTION_IF(EditorNode::get_editor_data().get_edited_scene_count() == tab_id + 1);
+// 		tab_bar_context_menu->add_item(RTR("Close All Tabs"), SCENE_CLOSE_ALL);
+// 	}
+#undef DISABLE_LAST_OPTION_IF
 }
 
 void AppTabContainer::_on_theme_changed() {
@@ -686,7 +646,6 @@ void AppTabContainer::_drag_move_tab_from(TabBar *p_from_tabbar, int p_from_inde
 }
 
 void AppTabContainer::_on_drop_data(const Point2 &p_point, const Variant &p_data, int p_position) {
-	print_line("on drop data: ", p_position);
 	Dictionary d = p_data;
 	if (d.get("type", "").operator String() != "tab") {
 		return;
@@ -794,7 +753,7 @@ void AppTabContainer::_on_tab_hovered(int p_tab) {
 		return;
 	}
 
-	// TODO: preview
+	// TODO: preview?
 	// // Currently the tab previews are displayed under the running game process when embed.
 	// // Right now, the easiest technique to fix that is to prevent displaying the tab preview
 	// // when the user is in the Game View.
@@ -838,7 +797,7 @@ void AppTabContainer::_on_tab_input(const Ref<InputEvent> &p_input) {
 			}
 
 			if ((is_layout_rtl() && mb->get_position().x > tab_buttons) || (!is_layout_rtl() && mb->get_position().x < tab_bar->get_size().width - tab_buttons)) {
-				trigger_menu_option(AppTabContainer::FILE_NEW_SCENE, true);
+				trigger_menu_option(AppTabContainer::FILE_NEW_TAB, true);
 			}
 		}
 		if (mb->get_button_index() == MouseButton::RIGHT && mb->is_pressed()) {
@@ -1467,6 +1426,7 @@ void AppTabContainer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("new_tab"));
 	ADD_SIGNAL(MethodInfo("tab_dropped", PropertyInfo(Variant::INT, "position"), PropertyInfo(Variant::OBJECT, "tab_bar"), PropertyInfo(Variant::INT, "from_index")));
 
+	// TODO
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_alignment", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_alignment", "get_tab_alignment");
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1"), "set_current_tab", "get_current_tab");
 	// ADD_PROPERTY(PropertyInfo(Variant::INT, "tabs_position", PROPERTY_HINT_ENUM, "Top,Bottom"), "set_tabs_position", "get_tabs_position");
@@ -1537,9 +1497,6 @@ AppTabContainer::AppTabContainer() {
 
 	tabbar_container = memnew(HBoxContainer);
 	tabbar_panel->add_child(tabbar_container);
-	// add_child(tabbar_container, false, INTERNAL_MODE_FRONT);
-	// tabbar_container->set_use_parent_material(true);
-	// tabbar_container->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
 
 	tab_bar = memnew(TabBar);
 	SET_DRAG_FORWARDING_GCDU(tab_bar, AppTabContainer);
@@ -1549,7 +1506,6 @@ AppTabContainer::AppTabContainer() {
 	tab_bar->set_drag_to_rearrange_enabled(true); // TODO: handle set_drag_to_rearrange_enabled
 	tab_bar->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	tab_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	// tab_bar->set_use_parent_material(true);
 	tab_bar->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE);
 	tab_bar->connect("tab_changed", callable_mp(this, &AppTabContainer::_on_tab_changed));
 	tab_bar->connect("tab_clicked", callable_mp(this, &AppTabContainer::_on_tab_clicked));
@@ -1566,7 +1522,6 @@ AppTabContainer::AppTabContainer() {
 	tab_bar_context_menu = memnew(PopupMenu);
 	tabbar_container->add_child(tab_bar_context_menu);
 	tab_bar_context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppTabContainer::trigger_menu_option).bind(false));
-	// tab_bar_context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppTabContainer::_custom_menu_option));
 
 	tab_add = memnew(Button);
 	tab_add->set_flat(true);
@@ -1580,7 +1535,7 @@ AppTabContainer::AppTabContainer() {
 	tab_add_ph->set_custom_minimum_size(tab_add->get_minimum_size());
 	tabbar_container->add_child(tab_add_ph);
 
-	// new_tab_enabled false
+	// new_tab_enabled default false
 	tab_bar->set_tab_close_display_policy(TabBar::CLOSE_BUTTON_SHOW_NEVER);
 	tab_add->hide();
 	tab_add_ph->hide();
@@ -1608,7 +1563,6 @@ AppTabContainer::AppTabContainer() {
 	drop_overlay->set_mouse_filter(MOUSE_FILTER_PASS);
 	drop_overlay->hide();
 	add_child(drop_overlay, false, INTERNAL_MODE_BACK);
-	// drop_overlay->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_WIDE);
 	drop_overlay->connect("dropped", callable_mp(this, &AppTabContainer::_on_drop_data));
 
 	connect(SceneStringName(mouse_exited), callable_mp(this, &AppTabContainer::_on_mouse_exited));

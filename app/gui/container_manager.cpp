@@ -61,7 +61,6 @@ void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *
 	if (type.is_empty()) {
 		type = pane_type;
 	}
-	print_line("new tab type: ", type, p_pane_type, pane_type);
 	PaneBase *pane = PaneFactory::get_singleton()->create_pane(type);
 	if (!pane) {
 		return;
@@ -83,7 +82,6 @@ void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *
 void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
 	if (p_tab_container->get_child_count(false) == 0) {
 		MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_tab_container->get_parent());
-		print_line("tab container emptied: ", p_tab_container, split_container);
 		if (split_container) {
 			// The last tab container in the main split container.
 			if (split_containers.find(split_container) && split_container->get_child_count(false) == 1) {
@@ -103,7 +101,6 @@ void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab
 }
 
 void ContainerManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container) {
-	print_line("drop tab: ", p_position, p_from_tab_bar, p_from_index, p_tab_container);
 	// Move tab.
 	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
 		p_tab_container->move_tab_from(p_from_tab_bar, p_from_index);
@@ -342,13 +339,7 @@ void ContainerManager::_set_tabs_rearrange_group(MultiSplitContainer *p_split_co
 }
 
 void ContainerManager::_gui_focus_changed(Control *p_control) {
-	// Control *focus_owner = get_viewport()->gui_get_focus_owner();
-	// if (focus_owner) {
-	// 	return;
-	// }
-
 	AppTabContainer *tab_container = AppTabContainer::get_control_parent_tab_container(p_control);
-	print_line("gui foucs: ", p_control, tab_container);
 	if (!tab_container) {
 		return;
 	}

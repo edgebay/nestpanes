@@ -1,6 +1,5 @@
 #pragma once
 
-// #include "core/object/object.h"
 #include "scene/main/node.h"
 
 class AppTabContainer;
@@ -9,9 +8,6 @@ class MultiSplitContainer;
 class PaneBase;
 class PopupMenu;
 class TabBar;
-
-// class ContainerManager : public Object {
-// 	GDCLASS(ContainerManager, Object);
 
 class ContainerManager : public Node {
 	GDCLASS(ContainerManager, Node);
@@ -39,7 +35,6 @@ private:
 
 	StringName pane_type = "";
 
-	// AppTabContainer *_create_tab_container(bool p_tab_closable = false, int p_group_id = -1);
 	AppTabContainer *_create_tab_container(bool p_tab_closable, int p_group_id);
 
 	void _menu_id_pressed(int p_option);
@@ -60,12 +55,10 @@ private:
 
 protected:
 	void _notification(int p_what);
-	// static void _bind_methods();
 
 public:
 	static ContainerManager *get_singleton() { return singleton; }
 
-	// void set_popup(PopupMenu *p_popup);
 	PopupMenu *get_popup() const;
 
 	MultiSplitContainer *create_container(const String &p_name = "", Node *p_parent = nullptr, Node *p_owner = nullptr, Node *p_child = nullptr);

@@ -10,6 +10,7 @@ String FileSystemDirectory::get_path() const {
 	return path;
 }
 
+// TODO
 // String FileSystemDirectory::get_directory_path() const {
 // 	String directory_path = name;
 // 	const FileSystemDirectory *dir = parent;
@@ -127,7 +128,6 @@ void FileSystemDirectory::scan(bool p_scan_subdirs) {
 }
 
 FileSystemDirectory *FileSystemDirectory::create_subdir(const String &p_path) {
-	print_line("create subdir: ", p_path);
 	FileSystemDirectory *subdir = get_subdir_by_path(p_path);
 	if (subdir) {
 		return subdir;
@@ -182,7 +182,6 @@ bool FileSystem::is_valid_path(const String &p_path) {
 	return FileSystemAccess::path_exists(p_path);
 }
 
-/// FileSystemDirectory
 FileSystemDirectory *FileSystem::get_root() const {
 	return file_system_root;
 }
@@ -239,7 +238,6 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 }
 
 void FileSystem::_update(FileSystemDirectory *p_dir) {
-	print_line("fs update: ", p_dir->get_path());
 	p_dir->scan();
 	emit_signal(SNAME("file_system_changed"), p_dir);
 }
@@ -263,7 +261,6 @@ void FileSystem::update_file_system() {
 }
 
 FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
-	print_line("load dir: ", p_path);
 	if (p_path == file_system_root->get_path()) {
 		return file_system_root;
 	}
