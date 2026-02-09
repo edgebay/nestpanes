@@ -1,5 +1,6 @@
 #include "navigation_pane.h"
 
+#include "app/app_modules/file_management/gui/file_context_menu.h"
 #include "scene/gui/tree.h"
 
 #include "app/gui/app_control.h"
@@ -223,6 +224,117 @@ void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
 	}
 }
 
+void NavigationPane::_build_empty_menu() {
+	context_menu->clear();
+
+	// TODO
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_EXPAND_TO_CURRENT);
+}
+
+void NavigationPane::_build_file_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+}
+
+void NavigationPane::_build_folder_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
+	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	FileContextMenu *new_menu = memnew(FileContextMenu);
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
+	context_menu->set_item_submenu_node(-1, new_menu);
+}
+
+void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	tree->deselect_all();
+
+	// TODO
+	// Vector<String> targets;
+	// targets.push_back(get_path());
+	// context_menu->set_targets(targets);
+
+	// _build_empty_menu();
+
+	// context_menu->set_position(get_screen_position() + p_pos);
+	// context_menu->reset_size();
+	// context_menu->popup();
+}
+
+void NavigationPane::_item_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	TreeItem *selected = tree->get_selected();
+	if (!selected) {
+		return;
+	}
+
+	Dictionary d = selected->get_metadata(0);
+	bool is_dir = d["is_dir"];
+	if (is_dir) {
+		_build_folder_menu();
+	} else {
+		_build_file_menu();
+	}
+
+	context_menu->set_position(get_screen_position() + p_pos);
+	context_menu->reset_size();
+	context_menu->popup();
+}
+
+void NavigationPane::_context_menu_id_pressed(int p_option) {
+	// TODO
+}
+
 TreeItem *NavigationPane::_search_item(const String &p_path) {
 	for (TreeItem *current = tree->get_root(); current; current = current->get_next_in_tree()) {
 		Dictionary d = current->get_metadata(0);
@@ -241,33 +353,6 @@ void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 
 	callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
 }
-
-// TODO: menu
-// void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
-// 	if (p_button != MouseButton::RIGHT) {
-// 		return;
-// 	}
-
-// 	tree->deselect_all();
-// 	popup_menu(p_pos, MENU_MODE_EMPTY);
-// }
-
-// void NavigationPane::_item_clicked(const Vector2 &p_pos, MouseButton p_button) {
-// 	if (p_button != MouseButton::RIGHT) {
-// 		return;
-// 	}
-
-// 	TreeItem *selected = tree->get_selected();
-// 	if (selected) {
-// 		Dictionary d = selected->get_metadata(0);
-// 		bool is_dir = d["is_dir"];
-// 		if (is_dir) {
-// 			popup_menu(p_pos, MENU_MODE_FOLDER);
-// 		} else {
-// 			popup_menu(p_pos, MENU_MODE_FILE);
-// 		}
-// 	}
-// }
 
 Vector<String> NavigationPane::get_selected_paths() const {
 	// Build a list of selected items with the active one at the first position.
@@ -355,11 +440,14 @@ NavigationPane::NavigationPane() :
 	// double-clicking selected.
 	tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
 	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_tree_multi_selected));
-	// TODO: menu
-	// tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked));	// multi_selected already contains left mouse button select
-	// tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_empty_clicked));
+	tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked)); // multi_selected already contains left mouse button select
+	tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_empty_clicked));
 	// TODO: edit
 	// tree->connect("item_edited", callable_mp(this, &NavigationPane::_item_edited));
+
+	context_menu = memnew(FileContextMenu);
+	add_child(context_menu);
+	context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &NavigationPane::_context_menu_id_pressed));
 }
 
 NavigationPane::~NavigationPane() {

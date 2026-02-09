@@ -144,10 +144,6 @@ Error FileSystemAccess::remove(const String &p_path) {
 	return FileSystemAccess::get_singleton()->_remove(p_path);
 }
 
-bool FileSystemAccess::new_file(const String &p_dir, const String &p_filename) {
-	return false;
-}
-
 void FileSystemAccess::set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon) {
 	ERR_FAIL_COND_MSG(!p_icon.is_valid(), vformat("Invalid icon, name: '%s'", p_name));
 

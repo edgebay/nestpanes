@@ -8,6 +8,38 @@
 
 #define COMPUTER_PATH "Computer"
 
+#define UNPACK(...) __VA_ARGS__
+
+#define FILE_SYSTEM_ACCESS_FUNC0_V(m_ret_type, m_retval, m_func_name)                             \
+protected:                                                                                        \
+	virtual m_ret_type _##m_func_name() = 0;                                                      \
+                                                                                                  \
+public:                                                                                           \
+	static m_ret_type m_func_name() {                                                             \
+		ERR_FAIL_NULL_V_MSG(get_singleton(), m_retval, "FileSystemAccess not instantiated yet."); \
+		return get_singleton()->_##m_func_name();                                                 \
+	}
+
+#define FILE_SYSTEM_ACCESS_FUNC1_V(m_ret_type, m_retval, m_func_name, m_arg1_type, m_arg1)        \
+protected:                                                                                        \
+	virtual m_ret_type _##m_func_name(UNPACK m_arg1_type p_##m_arg1) = 0;                         \
+                                                                                                  \
+public:                                                                                           \
+	static m_ret_type m_func_name(UNPACK m_arg1_type p_##m_arg1) {                                \
+		ERR_FAIL_NULL_V_MSG(get_singleton(), m_retval, "FileSystemAccess not instantiated yet."); \
+		return get_singleton()->_##m_func_name(p_##m_arg1);                                       \
+	}
+
+#define FILE_SYSTEM_ACCESS_FUNC2_V(m_ret_type, m_retval, m_func_name, m_arg1_type, m_arg1, m_arg2_type, m_arg2) \
+protected:                                                                                                      \
+	virtual m_ret_type _##m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2) = 0;        \
+                                                                                                                \
+public:                                                                                                         \
+	static m_ret_type m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2) {               \
+		ERR_FAIL_NULL_V_MSG(get_singleton(), m_retval, "FileSystemAccess not instantiated yet.");               \
+		return get_singleton()->_##m_func_name(p_##m_arg1, p_##m_arg2);                                         \
+	}
+
 class FileSystemAccess : public RefCounted {
 	GDCLASS(FileSystemAccess, RefCounted);
 
@@ -48,12 +80,7 @@ protected:
 	virtual Error _rename(const String &p_path, const String &p_new_path) = 0;
 	virtual Error _remove(const String &p_path) = 0;
 
-	virtual bool _new_file(const String &p_dir, const String &p_filename) = 0;
-
 public:
-	virtual Error change_path(const String &p_dir) = 0; ///< can be relative or absolute, return false on success
-	virtual String get_current_path() const = 0; ///< return current dir location
-
 	static FileSystemAccess *get_singleton();
 
 	template <typename T>
@@ -85,13 +112,13 @@ public:
 
 	static bool cut(const Vector<String> &p_files);
 	static bool copy(const Vector<String> &p_files);
-	// TODO: static bool can_paste();?
+	FILE_SYSTEM_ACCESS_FUNC0_V(bool, false, can_paste);
 	static bool paste(const String &p_dir);
 
 	static Error rename(const String &p_path, const String &p_new_path);
 	static Error remove(const String &p_path);
 
-	static bool new_file(const String &p_dir, const String &p_filename);
+	FILE_SYSTEM_ACCESS_FUNC2_V(Error, FAILED, create_file, (const String &), dir, (const String &), filename);
 
 	// Icon cache
 	static void set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon);

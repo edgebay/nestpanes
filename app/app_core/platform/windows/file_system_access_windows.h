@@ -30,17 +30,15 @@ protected:
 	virtual bool _cut(const Vector<String> &p_files) override;
 	virtual bool _copy(const Vector<String> &p_files) override;
 	virtual bool _paste(const String &p_dir) override;
+	virtual bool _can_paste() override;
 
 	virtual Error _rename(const String &p_path, const String &p_new_path) override;
 	virtual Error _remove(const String &p_path) override;
 
-	virtual bool _new_file(const String &p_dir, const String &p_filename) override;
+	virtual Error _create_file(const String &p_dir, const String &p_filename) override;
 
 public:
 	static bool is_path_invalid(const String &p_path);
-
-	virtual Error change_path(const String &p_dir) override; ///< can be relative or absolute, return false on success
-	virtual String get_current_path() const override; ///< return current dir location
 
 	static void initialize();
 	static void finalize();

@@ -2,6 +2,7 @@
 
 #include "app/gui/pane_base.h"
 
+class FileContextMenu;
 class Tree;
 class TreeItem;
 
@@ -14,6 +15,8 @@ class NavigationPane : public PaneBase {
 
 private:
 	Tree *tree = nullptr;
+
+	FileContextMenu *context_menu = nullptr;
 
 	FileSystem *file_system = nullptr;
 
@@ -33,19 +36,18 @@ private:
 	void _tree_multi_selected(Object *p_item, int p_column, bool p_selected);
 	void _tree_item_collapsed(TreeItem *p_item);
 
-	// TODO: menu
-	// void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
-	// void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
+	void _build_empty_menu();
+	void _build_file_menu();
+	void _build_folder_menu();
+	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
+	void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
+
+	void _context_menu_id_pressed(int p_option);
 
 	TreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(FileSystemDirectory *p_dir);
 
 protected:
-	// TODO: menu
-	// virtual void _set_empty_menu_item(PopupMenu *p_popup) override;
-	// virtual void _set_file_menu_item(PopupMenu *p_popup) override;
-	// virtual void _set_folder_menu_item(PopupMenu *p_popup) override;
-
 	// TODO: edit
 	// void _item_edited();
 

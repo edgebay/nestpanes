@@ -1,6 +1,7 @@
 #include "file_pane.h"
 
 #include "app/app_modules/file_management/gui/address_bar.h"
+#include "app/app_modules/file_management/gui/file_context_menu.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/item_list.h"
@@ -240,6 +241,118 @@ void FilePane::_update_item_list() {
 	}
 }
 
+void FilePane::_build_empty_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
+	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	FileContextMenu *new_menu = memnew(FileContextMenu);
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
+	context_menu->set_item_submenu_node(-1, new_menu);
+}
+
+void FilePane::_build_file_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+}
+
+void FilePane::_build_folder_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+}
+
+void FilePane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	item_list->deselect_all();
+
+	Vector<String> targets;
+	targets.push_back(get_path());
+	context_menu->set_targets(targets);
+
+	_build_empty_menu();
+
+	// get_position() is the offset within the parent.
+	context_menu->set_position(get_screen_position() + get_position() + p_pos);
+	context_menu->reset_size();
+	context_menu->popup();
+}
+
+void FilePane::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button) {
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
+
+	Dictionary d = item_list->get_item_metadata(p_item);
+
+	Vector<String> targets;
+	// TODO
+	// Vector<int> selected_items = item_list->get_selected_items();
+	// for (int i : selected_items) {
+	// 	Dictionary metadata = item_list->get_item_metadata(i);
+	// 	targets.push_back(metadata["path"]);
+	// }
+	targets.push_back(d["path"]);
+	context_menu->set_targets(targets);
+
+	if (d["is_dir"]) {
+		_build_folder_menu();
+	} else {
+		_build_file_menu();
+	}
+
+	// get_position() is the offset within the parent.
+	context_menu->set_position(get_screen_position() + get_position() + p_pos);
+	context_menu->reset_size();
+	context_menu->popup();
+}
+
 void FilePane::_item_dc_selected(int p_item) {
 	int current = p_item;
 	if (current < 0 || current >= item_list->get_item_count()) {
@@ -316,7 +429,19 @@ void FilePane::_go_up() {
 void FilePane::_refresh() {
 	refresh->release_focus();
 
+	file_system->update(current_path);
+
 	callable_mp(this, &FilePane::_update_ui).call_deferred();
+}
+
+void FilePane::_context_menu_id_pressed(int p_option) {
+	switch (p_option) {
+		// TODO
+		case FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB: {
+		} break;
+		case FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW: {
+		} break;
+	}
 }
 
 void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
@@ -452,15 +577,18 @@ FilePane::FilePane() :
 
 	vbox->add_child(item_list);
 
-	// TODO: menu
-	// item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
-	// item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
+	item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
+	item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
 	// TODO: preview?
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
 	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
 	// TODO: edit
 	// item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
+
+	context_menu = memnew(FileContextMenu);
+	add_child(context_menu);
+	context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FilePane::_context_menu_id_pressed));
 
 	address_bar->connect(SceneStringName(text_submitted), callable_mp(this, &FilePane::_on_address_submitted));
 	address_bar->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_select_history));

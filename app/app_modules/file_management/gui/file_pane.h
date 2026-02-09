@@ -6,6 +6,7 @@
 
 class AddressBar;
 class Button;
+class FileContextMenu;
 class HBoxContainer;
 class LineEdit;
 class Popup;
@@ -53,6 +54,8 @@ private:
 
 	FileSystemItemList *item_list = nullptr;
 
+	FileContextMenu *context_menu = nullptr;
+
 	// file system
 	FileSystem *file_system = nullptr;
 
@@ -73,9 +76,11 @@ private:
 	void _add_item(const FileInfo &p_fi, bool p_is_dir = false);
 	void _update_item_list();
 
-	// TODO: menu
-	// void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
-	// void _item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button);
+	void _build_empty_menu();
+	void _build_file_menu();
+	void _build_folder_menu();
+	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
+	void _item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button);
 
 	// double-clicking selected.
 	void _item_dc_selected(int p_item);
@@ -89,6 +94,8 @@ private:
 	void _go_forward();
 	void _go_up();
 	void _refresh();
+
+	void _context_menu_id_pressed(int p_option);
 
 	void _set_path(FileSystemDirectory *p_dir, bool p_update_history = true);
 

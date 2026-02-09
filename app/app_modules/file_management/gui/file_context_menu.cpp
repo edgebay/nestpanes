@@ -11,6 +11,7 @@ void FileContextMenu::_notification(int p_what) {
 }
 
 void FileContextMenu::_pressed(int p_index) {
+	print_line("ctx menu pressed: ", p_index, targets);
 	if (p_index >= FILE_MENU_MAX) {
 		emit_signal(SNAME("custom_id_pressed"), p_index);
 		return;
@@ -57,8 +58,7 @@ void FileContextMenu::_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_PASTE: {
-			String path;
-			path = targets[0];
+			String path = targets[0];
 			if (FileSystemAccess::file_exists(path)) {
 				path = path.get_base_dir();
 			}
@@ -103,20 +103,20 @@ void FileContextMenu::_pressed(int p_index) {
 void FileContextMenu::add_file_item(int p_id) {
 	switch (p_id) {
 		case FILE_MENU_OPEN: {
-			add_item(RTR("Open"), p_id, Key::O);
+			add_item(RTR("Open"), p_id); // , Key::O);
 		} break;
 
 		case FILE_MENU_OPEN_IN_NEW_TAB: {
-			add_item(RTR("Open in New Ttab"), p_id, Key::B);
+			add_item(RTR("Open in New Ttab"), p_id); // , Key::B);
 		} break;
 
 		case FILE_MENU_OPEN_IN_NEW_WINDOW: {
-			add_item(RTR("Open in New Window"), p_id, Key::E);
+			add_item(RTR("Open in New Window"), p_id); // , Key::E);
 		} break;
 
 		case FILE_MENU_OPEN_EXTERNAL: {
 			// TODO
-			// add_item(RTR("Open"), p_id, Key::O);
+			// add_item(RTR("Open"), p_id); // , Key::O);
 		} break;
 
 		case FILE_MENU_OPEN_IN_TERMINAL: {
@@ -128,50 +128,53 @@ void FileContextMenu::add_file_item(int p_id) {
 		} break;
 
 		case FILE_MENU_COPY_PATH: {
-			add_item(RTR("Copy Path"), p_id, Key::A);
+			add_item(RTR("Copy Path"), p_id); // , Key::A);
 		} break;
 
 		case FILE_MENU_UNDO: {
-			add_item(RTR("Undo"), p_id, Key::U);
+			add_item(RTR("Undo"), p_id); // , Key::U);
 			// TODO
 			// Ref<Shortcut> shortcut = APP_SHORTCUT("file_context/undo", RTR("Undo"), KeyModifierMask::CTRL + Key::Z);
 			// set_item_shortcut(-1, shortcut);
 		} break;
 
 		case FILE_MENU_REDO: {
-			add_item(RTR("Redo"), p_id, Key::R);
+			add_item(RTR("Redo"), p_id); // , Key::R);
 			// TODO
 			// Ref<Shortcut> shortcut = APP_SHORTCUT("file_context/redo", RTR("Redo"), KeyModifierMask::CTRL + Key::Y);
 			// set_item_shortcut(-1, shortcut);
 		} break;
 
 		case FILE_MENU_CUT: {
-			add_item(RTR("Cut"), p_id, Key::T);
+			add_item(RTR("Cut"), p_id); // , Key::T);
 		} break;
 
 		case FILE_MENU_COPY: {
-			add_item(RTR("Copy"), p_id, Key::C);
+			add_item(RTR("Copy"), p_id); // , Key::C);
 		} break;
 
 		case FILE_MENU_PASTE: {
-			add_item(RTR("Paste"), p_id, Key::P);
+			add_item(RTR("Paste"), p_id); // , Key::P);
+			if (!FileSystemAccess::can_paste()) {
+				set_item_disabled(-1, true);
+			}
 		} break;
 
 		case FILE_MENU_REMOVE: {
 			// FILE_MENU_DELETE
-			add_item(RTR("Delete"), p_id, Key::D);
+			add_item(RTR("Delete"), p_id); // , Key::D);
 		} break;
 
 		case FILE_MENU_RENAME: {
-			add_item(RTR("Rename"), p_id, Key::M);
+			add_item(RTR("Rename"), p_id); // , Key::M);
 		} break;
 
 		case FILE_MENU_NEW: {
-			add_item(RTR("Create New"), p_id, Key::W);
+			add_item(RTR("Create New"), p_id); // , Key::W);
 		} break;
 
 		case FILE_MENU_NEW_FOLDER: {
-			add_item(RTR("Folder..."), p_id, Key::F);
+			add_item(RTR("Folder..."), p_id); // , Key::F);
 		} break;
 
 		case FILE_MENU_NEW_TEXTFILE: {

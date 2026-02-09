@@ -39,6 +39,13 @@
 #include "editor/settings/editor_settings.h"
 #endif // TOOLS_ENABLED
 
+#ifdef APP_ENABLED
+#ifdef WINDOWS_ENABLED
+#include "app/app_core/platform/windows/file_system_access_windows.h"
+#endif
+#include "app/app_core/tests/io/test_file_system_access.h"
+#endif // APP_ENABLED
+
 #include "tests/core/config/test_project_settings.h"
 #include "tests/core/input/test_input_event.h"
 #include "tests/core/input/test_input_event_key.h"
@@ -331,7 +338,11 @@ struct GodotTestCaseListener : public doctest::IReporter {
 		String name = String(p_in.m_name);
 		String suite_name = String(p_in.m_test_suite);
 
+#ifdef APP_ENABLED
+		if (name.contains("[SceneTree]") || name.contains("[Editor]") || name.contains("[App]")) {
+#else
 		if (name.contains("[SceneTree]") || name.contains("[Editor]")) {
+#endif // APP_ENABLED
 			memnew(MessageQueue);
 
 			memnew(Input);
@@ -397,6 +408,15 @@ struct GodotTestCaseListener : public doctest::IReporter {
 			}
 #endif // TOOLS_ENABLED
 
+#ifdef APP_ENABLED
+			if (name.contains("[App]")) {
+#ifdef WINDOWS_ENABLED
+				FileSystemAccess::make_default<FileSystemAccessWindows>();
+				FileSystemAccessWindows::initialize();
+#endif
+				FileSystemAccess::create();
+			}
+#endif // APP_ENABLED
 			return;
 		}
 
@@ -440,6 +460,16 @@ struct GodotTestCaseListener : public doctest::IReporter {
 			EditorPaths::free();
 		}
 #endif // TOOLS_ENABLED
+
+#ifdef APP_ENABLED
+		if (FileSystemAccess::get_singleton()) {
+			FileSystemAccess::destroy();
+
+#ifdef WINDOWS_ENABLED
+			FileSystemAccessWindows::finalize();
+#endif
+		}
+#endif // APP_ENABLED
 
 		Engine::get_singleton()->set_editor_hint(false);
 

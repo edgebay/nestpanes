@@ -713,6 +713,18 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 	return success;
 }
 
+bool FileSystemAccessWindows::_can_paste() {
+	if (!OpenClipboard(nullptr)) {
+		return false;
+	}
+
+	bool result = IsClipboardFormatAvailable(CF_HDROP);
+
+	CloseClipboard();
+
+	return result;
+}
+
 Error FileSystemAccessWindows::_rename(const String &p_path, const String &p_new_path) {
 	bool success = false;
 	String old_path = p_path.replace("/", "\\");
@@ -795,8 +807,27 @@ Error FileSystemAccessWindows::_remove(const String &p_path) {
 	}
 }
 
-bool FileSystemAccessWindows::_new_file(const String &p_dir, const String &p_filename) {
-	return false;
+Error FileSystemAccessWindows::_create_file(const String &p_dir, const String &p_filename) {
+	String file = p_dir.path_join(p_filename);
+	if (file_exists(file)) {
+		return OK;
+	}
+
+	HANDLE hFile = CreateFile(
+			(file.utf8().get_data()),
+			GENERIC_WRITE,
+			0, // 不共享
+			nullptr, // 默认安全属性
+			CREATE_ALWAYS, // 总是创建新文件（覆盖现有文件）
+			FILE_ATTRIBUTE_NORMAL,
+			nullptr);
+
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return FAILED;
+	}
+
+	CloseHandle(hFile);
+	return OK;
 }
 
 bool FileSystemAccessWindows::is_path_invalid(const String &p_path) {
@@ -808,29 +839,6 @@ bool FileSystemAccessWindows::is_path_invalid(const String &p_path) {
 		fname = fname.substr(0, dot);
 	}
 	return invalid_files.has(fname);
-}
-
-Error FileSystemAccessWindows::change_path(const String &p_dir) {
-	Error err = FAILED;
-	// TODO
-	// if (p_dir == COMPUTER_PATH) {
-	// 	err = OK;
-	// 	path = p_dir;
-	// }
-	// else {
-	// 	err = dir_access->change_dir(p_dir);
-	// 	if (err == OK) {
-	// 		path = dir_access->get_current_dir();
-	// 	}
-	// }
-	current_path = p_dir;
-	err = OK;
-
-	return err;
-}
-
-String FileSystemAccessWindows::get_current_path() const {
-	return current_path;
 }
 
 HashSet<String> FileSystemAccessWindows::invalid_files;
