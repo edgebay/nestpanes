@@ -221,7 +221,7 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 		return _list_drives(r_subdirs);
 	}
 
-	if (!_dir_exists(p_dir)) {
+	if (!dir_exists(p_dir)) {
 		return ERR_FILE_BAD_PATH;
 	}
 
@@ -316,33 +316,6 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 	return OK;
 }
 
-Error FileSystemAccessWindows::_make_dir(const String &p_dir) {
-	GLOBAL_LOCK_FUNCTION
-
-	if (FileSystemAccessWindows::is_path_invalid(p_dir)) {
-#ifdef DEBUG_ENABLED
-		WARN_PRINT("The path :" + p_dir + " is a reserved Windows system pipe, so it can't be used for creating directories.");
-#endif
-		return ERR_INVALID_PARAMETER;
-	}
-
-	bool success;
-	int err;
-
-	success = CreateDirectoryW((LPCWSTR)(p_dir.utf16().get_data()), nullptr);
-	err = GetLastError();
-
-	if (success) {
-		return OK;
-	}
-
-	if (err == ERROR_ALREADY_EXISTS || err == ERROR_ACCESS_DENIED) {
-		return ERR_ALREADY_EXISTS;
-	}
-
-	return ERR_CANT_CREATE;
-}
-
 bool FileSystemAccessWindows::_path_exists(const String &p_path) const {
 	GLOBAL_LOCK_FUNCTION
 
@@ -353,33 +326,6 @@ bool FileSystemAccessWindows::_path_exists(const String &p_path) const {
 	}
 
 	return true;
-}
-
-bool FileSystemAccessWindows::_file_exists(const String &p_file) const {
-	GLOBAL_LOCK_FUNCTION
-
-	DWORD fileAttr;
-	fileAttr = GetFileAttributesW((LPCWSTR)(p_file.utf16().get_data()));
-	if (INVALID_FILE_ATTRIBUTES == fileAttr) {
-		return false;
-	}
-
-	return !(fileAttr & FILE_ATTRIBUTE_DIRECTORY);
-}
-
-bool FileSystemAccessWindows::_dir_exists(const String &p_dir) const {
-	GLOBAL_LOCK_FUNCTION
-
-	DWORD fileAttr;
-	fileAttr = GetFileAttributesW((LPCWSTR)(p_dir.utf16().get_data()));
-	if (INVALID_FILE_ATTRIBUTES == fileAttr) {
-		return false;
-	}
-	return (fileAttr & FILE_ATTRIBUTE_DIRECTORY);
-}
-
-bool FileSystemAccessWindows::_open_in_terminal(const String &p_path) {
-	return false;
 }
 
 bool FileSystemAccessWindows::_cut(const Vector<String> &p_files) {
@@ -563,22 +509,54 @@ bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
 }
 
 bool FileSystemAccessWindows::_paste(const String &p_dir) {
-	// 确保目标目录存在
-	if (!_dir_exists(p_dir)) {
+	if (!dir_exists(p_dir)) {
 		return false;
 	}
 
-	// 打开剪切板
+	// Retrieve the paste type and the files to be pasted.
 	if (!OpenClipboard(nullptr)) {
 		return false;
 	}
 
-	// 检查是否有 CF_HDROP 数据
 	if (!IsClipboardFormatAvailable(CF_HDROP)) {
+		CloseClipboard();
 		return false;
 	}
 
-	// IFileOperation
+	HDROP hDrop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
+	if (!hDrop) {
+		CloseClipboard();
+		return false;
+	}
+
+	UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+	if (fileCount == 0) {
+		CloseClipboard();
+		return false;
+	}
+
+	DWORD dropEffect = DROPEFFECT_COPY; // Default to copy.
+	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
+	HANDLE hEffect = GetClipboardData(cfDropEffect);
+	if (hEffect) {
+		DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
+		if (pEffect) {
+			dropEffect = *pEffect;
+			GlobalUnlock(hEffect);
+		}
+	}
+	Vector<Char16String> files;
+	for (UINT i = 0; i < fileCount; ++i) {
+		UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
+		Char16String src_file_utf16;
+		src_file_utf16.resize_uninitialized(pathLen + 1);
+		DragQueryFileW(hDrop, i, (LPWSTR)src_file_utf16.ptr(), pathLen + 1);
+
+		files.push_back(src_file_utf16);
+	}
+	CloseClipboard();
+
+	// Paste.
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr)) {
 		return false;
@@ -590,111 +568,74 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 	Vector<IShellItem *> sourceItems;
 
 	// 1. 创建 IFileOperation
-	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL,
-			IID_PPV_ARGS(&pfo));
-	if (FAILED(hr)) {
-		return false;
-	}
+	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
 
-	// 2. 设置不显示 UI（设为 TRUE 可显示进度、冲突对话框）
-	// pfo->SetOperationFlags(FOF_NO_UI); // 默认是 FOF_NO_UI = 0，即显示 UI
-	// 若希望静默操作，取消注释下一行：
-	// pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
-
-	// 3. 获取目标文件夹 IShellItem
-	String dir = p_dir.replace("/", "\\");
-	hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
-	if (FAILED(hr)) {
-		return false;
-	}
-
-	HDROP hDrop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
-	if (!hDrop) {
-		CloseClipboard();
-		return false;
-	}
-
-	// 获取文件数量
-	UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
-	if (fileCount == 0) {
-		CloseClipboard();
-		return false;
-	}
-
-	// 获取操作类型（复制 or 剪切）
-	DWORD dropEffect = DROPEFFECT_COPY; // 默认复制
-	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
-	HANDLE hEffect = GetClipboardData(cfDropEffect);
-	if (hEffect) {
-		DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
-		if (pEffect) {
-			dropEffect = *pEffect;
-			GlobalUnlock(hEffect);
-		}
-	}
-
-	// 遍历所有文件并执行操作
-	for (UINT i = 0; i < fileCount; ++i) {
-		// 获取源文件路径
-		UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
-		Char16String src_file_utf16;
-		src_file_utf16.resize_uninitialized(pathLen + 1);
-		DragQueryFileW(hDrop, i, (LPWSTR)src_file_utf16.ptr(), pathLen + 1);
-
-		// 构造目标路径（保留原文件名）
-		String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
-
-#if 1 // TODO
-		IShellItem *pItem = nullptr;
-		hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
-		if (SUCCEEDED(hr)) {
-			sourceItems.push_back(pItem);
-			if (dropEffect & DROPEFFECT_MOVE) {
-				hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
-			} else {
-				hr = pfo->CopyItem(pItem, pTargetFolder, nullptr, nullptr);
-			}
-		}
-
-		if (FAILED(hr)) {
-			break;
-		}
-#else
-		String filename = src_path.get_file();
-		String dest_path = p_dir + "\\" + filename;
-
-		// 执行操作
-		BOOL result = FALSE;
-		if (dropEffect & DROPEFFECT_MOVE) {
-			// 剪切 = 移动
-			result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
-		} else {
-			// 复制
-			result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
-		}
-
-		if (!result) {
-			DWORD err = GetLastError();
-			// 可选择继续或中止
-		} else {
-			success = true;
-		}
-#endif
+	if (SUCCEEDED(hr)) {
+		// 2. 设置不显示 UI（设为 TRUE 可显示进度、冲突对话框）
+		// hr = pfo->SetOperationFlags(FOF_NO_UI); // 默认是 FOF_NO_UI = 0，即显示 UI
+		// 若希望静默操作，取消注释下一行：
+		// hr = pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
 	}
 
 	if (SUCCEEDED(hr)) {
-		// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
-		hr = pfo->PerformOperations();
-		if (FAILED(hr)) {
-			// TODO
+		// 3. 获取目标文件夹 IShellItem
+		String dir = p_dir.replace("/", "\\");
+		hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
+	}
+
+	if (SUCCEEDED(hr)) {
+		// 遍历所有文件并执行操作
+#if 1 // TODO
+		for (const Char16String &src_file_utf16 : files) {
+			IShellItem *pItem = nullptr;
+			hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
+			if (SUCCEEDED(hr) && pItem) {
+				sourceItems.push_back(pItem);
+				if (dropEffect & DROPEFFECT_MOVE) {
+					hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
+				} else {
+					hr = pfo->CopyItem(pItem, pTargetFolder, nullptr, nullptr);
+				}
+			}
+
+			if (FAILED(hr)) {
+				break;
+			}
 		}
 
-		// 8. 检查是否成功完成
-		BOOL anyOperationsAborted = FALSE;
-		hr = pfo->GetAnyOperationsAborted(&anyOperationsAborted);
-		if (SUCCEEDED(hr) && !anyOperationsAborted) {
-			success = true;
+		if (SUCCEEDED(hr)) {
+			// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
+			hr = pfo->PerformOperations();
+			if (SUCCEEDED(hr)) {
+				// 8. 检查是否成功完成
+				BOOL anyOperationsAborted = FALSE;
+				hr = pfo->GetAnyOperationsAborted(&anyOperationsAborted);
+				if (SUCCEEDED(hr) && !anyOperationsAborted) {
+					success = true;
+				}
+			}
 		}
+#else
+		for (const Char16String &src_file_utf16 : files) {
+			String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
+			String filename = src_path.get_file();
+			String dest_path = p_dir + "\\" + filename;
+
+			BOOL result = FALSE;
+			if (dropEffect & DROPEFFECT_MOVE) {
+				result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
+			} else {
+				result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
+			}
+
+			if (!result) {
+				DWORD err = GetLastError();
+				// 可选择继续或中止
+			} else {
+				success = true;
+			}
+		}
+#endif
 	}
 
 	// 清理资源
@@ -709,7 +650,6 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 	}
 	CoUninitialize();
 
-	CloseClipboard(); // TODO: error handle
 	return success;
 }
 
@@ -723,88 +663,6 @@ bool FileSystemAccessWindows::_can_paste() {
 	CloseClipboard();
 
 	return result;
-}
-
-Error FileSystemAccessWindows::_rename(const String &p_path, const String &p_new_path) {
-	bool success = false;
-	String old_path = p_path.replace("/", "\\");
-	String new_path = p_new_path.replace("/", "\\");
-
-	DWORD fileAttr;
-	fileAttr = GetFileAttributesW((LPCWSTR)(new_path.utf16().get_data()));
-	if (INVALID_FILE_ATTRIBUTES != fileAttr) {
-		return ERR_ALREADY_EXISTS; // TODO: dialog
-	}
-
-	// 初始化COM
-	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
-		return ERR_CANT_CREATE; // TODO: ERROR
-	}
-
-	IFileOperation *pFileOp = nullptr;
-	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pFileOp));
-	if (SUCCEEDED(hr) && pFileOp) {
-		// 设置操作标志
-		DWORD flags = FOFX_REQUIREELEVATION | // 需要权限时提示
-											  // FOF_NOCONFIRMATION | // 禁用所有确认对话框
-											  // FOF_SILENT | // 静默模式
-				FOFX_NOSKIPJUNCTIONS; // 正确处理符号链接
-		hr = pFileOp->SetOperationFlags(flags);
-		if (SUCCEEDED(hr)) {
-			IShellItem *pShellItem = nullptr;
-			hr = SHCreateItemFromParsingName(
-					(PCWSTR)(old_path.utf16().get_data()),
-					nullptr,
-					IID_PPV_ARGS(&pShellItem));
-			if (SUCCEEDED(hr) && pShellItem) {
-				// 执行重命名
-				hr = pFileOp->RenameItem(
-						pShellItem,
-						(LPCWSTR)(new_path.utf16().get_data()),
-						nullptr);
-
-				if (SUCCEEDED(hr)) {
-					hr = pFileOp->PerformOperations();
-					if (FAILED(hr)) {
-						// TODO
-					}
-
-					// 8. 检查是否成功完成
-					BOOL anyOperationsAborted = FALSE;
-					hr = pFileOp->GetAnyOperationsAborted(&anyOperationsAborted);
-					if (SUCCEEDED(hr) && !anyOperationsAborted) {
-						success = true;
-					}
-				}
-
-				pShellItem->Release();
-			}
-		}
-
-		pFileOp->Release();
-	}
-
-	CoUninitialize();
-
-	return success ? OK : FAILED;
-}
-
-Error FileSystemAccessWindows::_remove(const String &p_path) {
-	String path = p_path;
-	const Char16String &path_utf16 = path.utf16();
-
-	DWORD fileAttr;
-
-	fileAttr = GetFileAttributesW((LPCWSTR)(path_utf16.get_data()));
-	if (INVALID_FILE_ATTRIBUTES == fileAttr) {
-		return FAILED;
-	}
-	if ((fileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
-		return RemoveDirectoryW((LPCWSTR)(path_utf16.get_data())) != 0 ? OK : FAILED;
-	} else {
-		return DeleteFileW((LPCWSTR)(path_utf16.get_data())) != 0 ? OK : FAILED;
-	}
 }
 
 Error FileSystemAccessWindows::_create_file(const String &p_dir, const String &p_filename) {

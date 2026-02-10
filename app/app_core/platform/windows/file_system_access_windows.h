@@ -19,21 +19,12 @@ protected:
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const override;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
 
-	virtual Error _make_dir(const String &p_dir) override;
-
 	virtual bool _path_exists(const String &p_path) const override;
-	virtual bool _file_exists(const String &p_file) const override;
-	virtual bool _dir_exists(const String &p_dir) const override;
-
-	virtual bool _open_in_terminal(const String &p_path) override;
 
 	virtual bool _cut(const Vector<String> &p_files) override;
 	virtual bool _copy(const Vector<String> &p_files) override;
 	virtual bool _paste(const String &p_dir) override;
 	virtual bool _can_paste() override;
-
-	virtual Error _rename(const String &p_path, const String &p_new_path) override;
-	virtual Error _remove(const String &p_path) override;
 
 	virtual Error _create_file(const String &p_dir, const String &p_filename) override;
 

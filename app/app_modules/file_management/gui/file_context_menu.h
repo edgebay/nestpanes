@@ -54,7 +54,7 @@ public:
 private:
 	Vector<String> targets;
 
-	void _pressed(int p_index);
+	void _id_pressed(int p_index);
 
 protected:
 	void _notification(int p_what);

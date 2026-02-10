@@ -1,49 +1,12 @@
 #include "file_system_access.h"
 
+#include "core/io/dir_access.h"
+
 HashMap<StringName, Ref<Texture2D>> FileSystemAccess::icon_map;
 
 FileSystemAccess::CreateFunc FileSystemAccess::create_func = nullptr;
 
 Ref<FileSystemAccess> FileSystemAccess::singleton = nullptr;
-
-Error FileSystemAccess::_make_dir_recursive(const String &p_dir) {
-	if (p_dir.length() < 1) {
-		return OK;
-	}
-
-	String full_dir = p_dir.replace_char('\\', '/');
-
-	String base;
-
-	if (full_dir.is_network_share_path()) {
-		int pos = full_dir.find_char('/', 2);
-		ERR_FAIL_COND_V(pos < 0, ERR_INVALID_PARAMETER);
-		pos = full_dir.find_char('/', pos + 1);
-		ERR_FAIL_COND_V(pos < 0, ERR_INVALID_PARAMETER);
-		base = full_dir.substr(0, pos + 1);
-	} else if (full_dir.begins_with("/")) {
-		base = "/";
-	} else if (full_dir.contains(":/")) {
-		base = full_dir.substr(0, full_dir.find(":/") + 2);
-	} else {
-		ERR_FAIL_V(ERR_INVALID_PARAMETER);
-	}
-
-	full_dir = full_dir.replace_first(base, "").simplify_path();
-
-	Vector<String> subdirs = full_dir.split("/");
-
-	String curpath = base;
-	for (int i = 0; i < subdirs.size(); i++) {
-		curpath = curpath.path_join(subdirs[i]);
-		Error err = _make_dir(curpath);
-		if (err != OK && err != ERR_ALREADY_EXISTS) {
-			ERR_FAIL_V_MSG(err, vformat("Could not create directory: '%s'.", curpath));
-		}
-	}
-
-	return OK;
-}
 
 FileSystemAccess *FileSystemAccess::get_singleton() {
 	return singleton.ptr();
@@ -91,13 +54,14 @@ Error FileSystemAccess::list_drives(List<FileInfo> &r_drives) {
 }
 
 Error FileSystemAccess::make_dir(const String &p_dir) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_make_dir(p_dir);
+	if (dir_exists(p_dir)) {
+		return OK;
+	}
+	return DirAccess::make_dir_absolute(p_dir);
 }
 
 Error FileSystemAccess::make_dir_recursive(const String &p_dir) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_make_dir_recursive(p_dir);
+	return DirAccess::make_dir_recursive_absolute(p_dir);
 }
 
 bool FileSystemAccess::path_exists(const String &p_path) {
@@ -106,17 +70,12 @@ bool FileSystemAccess::path_exists(const String &p_path) {
 }
 
 bool FileSystemAccess::file_exists(const String &p_file) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), false, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_file_exists(p_file);
+	Ref<DirAccess> d = DirAccess::create_for_path(p_file);
+	return d->file_exists(p_file);
 }
 
 bool FileSystemAccess::dir_exists(const String &p_dir) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), false, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_dir_exists(p_dir);
-}
-
-bool FileSystemAccess::open_in_terminal(const String &p_path) {
-	return false;
+	return DirAccess::dir_exists_absolute(p_dir);
 }
 
 bool FileSystemAccess::cut(const Vector<String> &p_files) {
@@ -134,14 +93,12 @@ bool FileSystemAccess::paste(const String &p_dir) {
 	return FileSystemAccess::get_singleton()->_paste(p_dir);
 }
 
-Error FileSystemAccess::rename(const String &p_path, const String &p_new_path) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_rename(p_path, p_new_path);
+Error FileSystemAccess::rename(const String &p_from, const String &p_to) {
+	return DirAccess::rename_absolute(p_from, p_to);
 }
 
 Error FileSystemAccess::remove(const String &p_path) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_remove(p_path);
+	return DirAccess::remove_absolute(p_path);
 }
 
 void FileSystemAccess::set_system_icon(const StringName &p_name, const Ref<Texture2D> &p_icon) {

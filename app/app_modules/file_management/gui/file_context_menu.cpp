@@ -5,12 +5,12 @@
 void FileContextMenu::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
-			connect("index_pressed", callable_mp(this, &FileContextMenu::_pressed));
+			connect(SceneStringName(id_pressed), callable_mp(this, &FileContextMenu::_id_pressed));
 		} break;
 	}
 }
 
-void FileContextMenu::_pressed(int p_index) {
+void FileContextMenu::_id_pressed(int p_index) {
 	print_line("ctx menu pressed: ", p_index, targets);
 	if (p_index >= FILE_MENU_MAX) {
 		emit_signal(SNAME("custom_id_pressed"), p_index);
@@ -21,6 +21,7 @@ void FileContextMenu::_pressed(int p_index) {
 		return;
 	}
 
+	// TODO: Emit signal on file operation.
 	switch (p_index) {
 		case FILE_MENU_OPEN: {
 		} break;
@@ -35,9 +36,94 @@ void FileContextMenu::_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_OPEN_IN_TERMINAL: {
+			String fpath = targets[0];
+
+			Vector<String> terminal_emulators;
+			const String terminal_emulator_setting = ""; // TODO: EDITOR_GET("filesystem/external_programs/terminal_emulator");
+			if (terminal_emulator_setting.is_empty()) {
+				// Figure out a default terminal emulator to use.
+#if defined(WINDOWS_ENABLED)
+				// Default to PowerShell as done by Windows 10 and later.
+				terminal_emulators.push_back("powershell");
+#endif
+			} else {
+				// Use the user-specified terminal.
+				terminal_emulators.push_back(terminal_emulator_setting);
+			}
+
+			String terminal_emulator_flags = ""; // TODO: EDITOR_GET("filesystem/external_programs/terminal_emulator_flags");
+			String arguments = terminal_emulator_flags;
+			if (arguments.is_empty()) {
+				// NOTE: This default value is ignored further below if the terminal executable is `powershell` or `cmd`,
+				// due to these terminals requiring nonstandard syntax to start in a specified folder.
+				arguments = "{directory}";
+			}
+
+			// On Windows and macOS, the first (and only) terminal emulator in the list is always available.
+			String chosen_terminal_emulator = terminal_emulators[0];
+
+			List<String> terminal_emulator_args; // Required for `execute()`, as it doesn't accept `Vector<String>`.
+			bool append_default_args = true;
+
+#ifdef WINDOWS_ENABLED
+			// Prepend default arguments based on the terminal emulator name.
+			// Use `String.get_basename().to_lower()` to handle Windows' case-insensitive paths
+			// with optional file extensions for executables in `PATH`.
+			if (chosen_terminal_emulator.get_basename().to_lower() == "powershell") {
+				terminal_emulator_args.push_back("-noexit");
+				terminal_emulator_args.push_back("-command");
+				terminal_emulator_args.push_back("cd '{directory}'");
+				append_default_args = false;
+			} else if (chosen_terminal_emulator.get_basename().to_lower() == "cmd") {
+				terminal_emulator_args.push_back("/K");
+				terminal_emulator_args.push_back("cd /d {directory}");
+				append_default_args = false;
+			}
+#endif
+
+			Vector<String> arguments_array = arguments.split(" ");
+			for (const String &argument : arguments_array) {
+				if (!append_default_args && argument == "{directory}") {
+					// Prevent appending a `{directory}` placeholder twice when using powershell or cmd.
+					// This allows users to enter the path to cmd or PowerShell in the custom terminal emulator path,
+					// and make it work without having to enter custom arguments.
+					continue;
+				}
+				terminal_emulator_args.push_back(argument);
+			}
+
+			const bool is_directory = fpath.ends_with("/");
+			for (String &terminal_emulator_arg : terminal_emulator_args) {
+				if (is_directory) {
+					terminal_emulator_arg = terminal_emulator_arg.replace("{directory}", fpath);
+				} else {
+					terminal_emulator_arg = terminal_emulator_arg.replace("{directory}", fpath.get_base_dir());
+				}
+			}
+
+			if (OS::get_singleton()->is_stdout_verbose()) {
+				// Print full command line to help with troubleshooting.
+				String command_string = chosen_terminal_emulator;
+				for (const String &arg : terminal_emulator_args) {
+					command_string += " " + arg;
+				}
+				print_line("Opening terminal emulator:", command_string);
+			}
+
+			const Error err = OS::get_singleton()->create_process(chosen_terminal_emulator, terminal_emulator_args, nullptr, true);
+			if (err != OK) {
+				String args_string;
+				for (const String &terminal_emulator_arg : terminal_emulator_args) {
+					args_string += terminal_emulator_arg;
+				}
+				// TODO: ERR_PRINT_ED(vformat(RTR("Couldn't run external terminal program (error code %d): %s %s\nCheck `filesystem/external_programs/terminal_emulator` and `filesystem/external_programs/terminal_emulator_flags` in the Editor Settings."), err, chosen_terminal_emulator, args_string));
+				ERR_PRINT_ED(vformat(RTR("Couldn't run external terminal program (error code %d): %s %s."), err, chosen_terminal_emulator, args_string));
+			}
 		} break;
 
 		case FILE_MENU_SHOW_IN_EXPLORER: {
+			String path = targets[0];
+			OS::get_singleton()->shell_show_in_file_manager(path, true);
 		} break;
 
 		case FILE_MENU_COPY_PATH: {
@@ -124,7 +210,7 @@ void FileContextMenu::add_file_item(int p_id) {
 		} break;
 
 		case FILE_MENU_SHOW_IN_EXPLORER: {
-			add_item(RTR("Show in system explorer"), p_id);
+			add_item(RTR("Show in System Explorer"), p_id);
 		} break;
 
 		case FILE_MENU_COPY_PATH: {

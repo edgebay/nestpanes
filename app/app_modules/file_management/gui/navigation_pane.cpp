@@ -242,6 +242,10 @@ void NavigationPane::_build_file_menu() {
 
 	context_menu->add_separator();
 
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
+
+	context_menu->add_separator();
+
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
 
@@ -260,11 +264,12 @@ void NavigationPane::_build_folder_menu() {
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
 
 	context_menu->add_separator();
 

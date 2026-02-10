@@ -65,20 +65,12 @@ protected:
 	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) const = 0;
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const = 0;
 	virtual Error _list_drives(List<FileInfo> &r_drives) const = 0;
-	virtual Error _make_dir(const String &p_dir) = 0;
-	virtual Error _make_dir_recursive(const String &p_dir);
-	virtual bool _path_exists(const String &p_file) const = 0;
-	virtual bool _file_exists(const String &p_file) const = 0;
-	virtual bool _dir_exists(const String &p_dir) const = 0;
 
-	virtual bool _open_in_terminal(const String &p_path) = 0;
+	virtual bool _path_exists(const String &p_file) const = 0;
 
 	virtual bool _cut(const Vector<String> &p_files) = 0;
 	virtual bool _copy(const Vector<String> &p_files) = 0;
 	virtual bool _paste(const String &p_dir) = 0;
-
-	virtual Error _rename(const String &p_path, const String &p_new_path) = 0;
-	virtual Error _remove(const String &p_path) = 0;
 
 public:
 	static FileSystemAccess *get_singleton();
@@ -108,14 +100,12 @@ public:
 	static bool dir_exists(const String &p_dir);
 
 	// TODO: return Error
-	static bool open_in_terminal(const String &p_path);
-
 	static bool cut(const Vector<String> &p_files);
 	static bool copy(const Vector<String> &p_files);
 	FILE_SYSTEM_ACCESS_FUNC0_V(bool, false, can_paste);
 	static bool paste(const String &p_dir);
 
-	static Error rename(const String &p_path, const String &p_new_path);
+	static Error rename(const String &p_from, const String &p_to);
 	static Error remove(const String &p_path);
 
 	FILE_SYSTEM_ACCESS_FUNC2_V(Error, FAILED, create_file, (const String &), dir, (const String &), filename);

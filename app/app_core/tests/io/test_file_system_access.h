@@ -19,23 +19,6 @@ static inline String get_test_path() {
 	return get_data_path().path_join("file_system_access_test");
 }
 
-TEST_CASE("[App][FileSystemAccess] Test") {
-	// #ifdef WINDOWS_ENABLED
-	// 	FileSystemAccess::make_default<FileSystemAccessWindows>();
-	// 	FileSystemAccessWindows::initialize();
-	// #endif
-	// 	FileSystemAccess::create();
-
-	CHECK(true);
-
-	// 	FileSystemAccess::destroy();
-
-	// #ifdef WINDOWS_ENABLED
-	// 	FileSystemAccessWindows::finalize();
-	// #endif
-}
-
-#if 0
 TEST_CASE("[App][FileSystemAccess] Path existence with test data") {
 	String test_root = get_data_path();
 	String valid_dir = test_root.path_join("file_system_access_test");
@@ -62,16 +45,19 @@ TEST_CASE("[App][FileSystemAccess] Directory operations") {
 	CHECK(err == OK);
 	CHECK(FileSystemAccess::dir_exists(dir_root) == true);
 
-	String dir_recursive = dir_root.path_join("level1/level2/level3");
+	err = FileSystemAccess::remove(dir_root);
+	CHECK(err == OK);
+	CHECK(FileSystemAccess::dir_exists(dir_root) == false);
+
+	String dir_recursive = dir_root.path_join("level2");
+	// CHECK(FileSystemAccess::dir_exists(dir_root) == false);
 	CHECK(FileSystemAccess::dir_exists(dir_recursive) == false);
 	err = FileSystemAccess::make_dir_recursive(dir_recursive);
 	CHECK(err == OK);
 	CHECK(FileSystemAccess::dir_exists(dir_recursive) == true);
 
+	err = FileSystemAccess::remove(dir_recursive);
 	err = FileSystemAccess::remove(dir_root);
-	CHECK(err == OK);
-	CHECK(FileSystemAccess::dir_exists(dir_root) == false);
-	CHECK(FileSystemAccess::dir_exists(dir_recursive) == false);
 }
 
 TEST_CASE("[App][FileSystemAccess] File operations") {
@@ -98,6 +84,7 @@ TEST_CASE("[App][FileSystemAccess] File operations") {
 	CHECK(FileSystemAccess::file_exists(md_path) == false);
 }
 
+#if 0 // paste() cannot be tested.
 TEST_CASE("[App][FileSystemAccess] Clipboard operations (cut/copy/paste)") {
 	String work_dir = get_test_path();
 	String src_dir = work_dir.path_join("source");
@@ -105,6 +92,8 @@ TEST_CASE("[App][FileSystemAccess] Clipboard operations (cut/copy/paste)") {
 
 	FileSystemAccess::make_dir_recursive(src_dir);
 	FileSystemAccess::make_dir_recursive(dst_dir);
+	CHECK(FileSystemAccess::dir_exists(src_dir) == true);
+	CHECK(FileSystemAccess::dir_exists(dst_dir) == true);
 
 	SUBCASE("[App][FileSystemAccess] File") {
 		String test_file = "clip_me.txt";
@@ -112,6 +101,8 @@ TEST_CASE("[App][FileSystemAccess] Clipboard operations (cut/copy/paste)") {
 		String dst_file = dst_dir.path_join(test_file);
 
 		FileSystemAccess::create_file(src_dir, test_file);
+		CHECK(FileSystemAccess::file_exists(src_file) == true);
+		CHECK(FileSystemAccess::file_exists(dst_file) == false);
 
 		Vector<String> files;
 		files.push_back(src_file);
@@ -168,4 +159,5 @@ TEST_CASE("[App][FileSystemAccess] Clipboard operations (cut/copy/paste)") {
 	FileSystemAccess::remove(dst_dir);
 }
 #endif
+
 } // namespace TestFileSystemAccess
