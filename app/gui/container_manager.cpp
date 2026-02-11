@@ -54,7 +54,7 @@ void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 	selected_tab_container = p_tab_container;
 }
 
-void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container) {
+void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container, const Callable &p_callback) {
 	int tab_index = p_tab_container->get_tab_count();
 
 	StringName type = p_pane_type;
@@ -77,6 +77,10 @@ void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *
 	p_tab_container->set_current_tab(tab_index);
 
 	set_current_tab_container(p_tab_container);
+
+	if (p_callback.is_valid()) {
+		p_callback.call(pane);
+	}
 }
 
 void ContainerManager::_tab_container_child_order_changed(AppTabContainer *p_tab_container) {
@@ -174,7 +178,7 @@ AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable, in
 	// }
 
 	tab_container->connect("pre_popup_pressed", callable_mp(this, &ContainerManager::_select_tab_container).bind(tab_container));
-	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind("", tab_container));
+	tab_container->connect("new_tab", callable_mp(this, &ContainerManager::_new_tab).bind("", tab_container, Callable()));
 	tab_container->connect("child_order_changed", callable_mp(this, &ContainerManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &ContainerManager::_on_drop_tab).bind(tab_container));
 
@@ -255,10 +259,10 @@ void ContainerManager::new_tab() {
 		return;
 	}
 
-	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container);
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container, Callable());
 }
 
-void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container) {
+void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container, const Callable &p_callback) {
 	AppTabContainer *tab_container = nullptr;
 	if (p_tab_container) {
 		tab_container = p_tab_container;
@@ -274,7 +278,7 @@ void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p
 		return;
 	}
 
-	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container);
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container, p_callback);
 }
 
 void ContainerManager::close_current_tab() {

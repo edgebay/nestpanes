@@ -11,6 +11,7 @@
 #include "app/gui/app_control.h"
 #include "app/themes/app_scale.h"
 
+#include "app/app_core/io/file_system_access.h"
 #include "app/app_modules/file_management/file_system.h"
 
 Control *FileSystemItemList::make_custom_tooltip(const String &p_text) const {
@@ -182,6 +183,24 @@ void FilePane::_update_icons() {
 void FilePane::_update_ui() {
 	ERR_FAIL_NULL(file_system);
 
+	// Return the parent directory if current_path does not exist.
+	String path = current_path;
+	while (!file_system->is_valid_path(path)) {
+		String base = path.get_base_dir();
+		if (base == path) {
+			if (!file_system->is_valid_path(base)) {
+				path = file_system->get_root()->get_path();
+				break;
+			}
+		}
+		path = base;
+	}
+	if (path != current_path) {
+		// TODO: hint
+		set_path(path);
+		return;
+	}
+
 	dir_prev->set_disabled(local_history_pos <= 0);
 	dir_next->set_disabled(local_history_pos == local_history.size() - 1);
 	if (current_path != file_system->get_root()->get_path()) {
@@ -241,6 +260,7 @@ void FilePane::_update_item_list() {
 	}
 }
 
+// TODO: menu item
 void FilePane::_build_empty_menu() {
 	context_menu->clear();
 
@@ -251,19 +271,25 @@ void FilePane::_build_empty_menu() {
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
 	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
 	FileContextMenu *new_menu = memnew(FileContextMenu);
+	new_menu->set_file_system(file_system);
 	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
 	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
 	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
 	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
 	context_menu->set_item_submenu_node(-1, new_menu);
+	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FilePane::_context_menu_id_pressed));
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
 }
 
 void FilePane::_build_file_menu() {
 	context_menu->clear();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
 
-	context_menu->add_separator();
+	// context_menu->add_separator();
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
 
@@ -278,8 +304,8 @@ void FilePane::_build_file_menu() {
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 }
 
 void FilePane::_build_folder_menu() {
@@ -287,7 +313,7 @@ void FilePane::_build_folder_menu() {
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
 
 	context_menu->add_separator();
 
@@ -306,8 +332,8 @@ void FilePane::_build_folder_menu() {
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 }
 
 void FilePane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
@@ -334,22 +360,27 @@ void FilePane::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_but
 		return;
 	}
 
-	Dictionary d = item_list->get_item_metadata(p_item);
+	if (!item_list->is_anything_selected()) {
+		return;
+	}
 
 	Vector<String> targets;
-	// TODO
-	// Vector<int> selected_items = item_list->get_selected_items();
-	// for (int i : selected_items) {
-	// 	Dictionary metadata = item_list->get_item_metadata(i);
-	// 	targets.push_back(metadata["path"]);
-	// }
-	targets.push_back(d["path"]);
+	Vector<int> selected_items = item_list->get_selected_items();
+	for (int i : selected_items) {
+		Dictionary d = item_list->get_item_metadata(i);
+		targets.push_back(d["path"]);
+	}
 	context_menu->set_targets(targets);
 
-	if (d["is_dir"]) {
-		_build_folder_menu();
+	if (targets.size() > 1) {
+		// TODO: handle multi selected
 	} else {
-		_build_file_menu();
+		Dictionary d = item_list->get_item_metadata(p_item);
+		if (d["is_dir"]) {
+			_build_folder_menu();
+		} else {
+			_build_file_menu();
+		}
 	}
 
 	// get_position() is the offset within the parent.
@@ -440,16 +471,98 @@ void FilePane::_refresh() {
 }
 
 void FilePane::_context_menu_id_pressed(int p_option) {
+	Vector<String> targets = context_menu->get_targets();
 	switch (p_option) {
-		// TODO
-		case FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB: {
+		case FileContextMenu::FILE_MENU_OPEN: {
+			String path = targets[0];
+			set_path(path);
 		} break;
-		case FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW: {
+
+		case FileContextMenu::FILE_MENU_RENAME: {
+			item_list->edit_selected();
+		} break;
+
+		case FileContextMenu::FILE_MENU_NEW_FOLDER: {
+			String new_name = RTR("new folder");
+			String name = new_name;
+			String path = current_path.path_join(name);
+			int i = 1;
+			while (FileSystemAccess::dir_exists(path)) {
+				name = vformat("%s (%d)", new_name, i);
+				path = current_path.path_join(name);
+				i++;
+			}
+			Error err = FileSystemAccess::make_dir(path);
+			print_line("make dir: ", err);
+
+			file_system->update(current_path);
+			// TODO: rename
+		} break;
+
+		case FileContextMenu::FILE_MENU_NEW_TEXTFILE: {
+			String new_name = RTR("new file");
+			String name = new_name + ".txt";
+			String path = current_path.path_join(name);
+			int i = 1;
+			while (FileSystemAccess::file_exists(path)) {
+				name = vformat("%s (%d).txt", new_name, i);
+				path = current_path.path_join(name);
+				i++;
+			}
+			Error err = FileSystemAccess::create_file(current_path, name);
+			print_line("create file: ", err);
+
+			file_system->update(current_path);
+			// TODO: rename
 		} break;
 	}
 }
 
+void FilePane::_item_edited() {
+	Vector<int> selected_ids = item_list->get_selected_items();
+	int id = selected_ids[0];
+	Dictionary d = item_list->get_item_metadata(id);
+
+	String from = d["path"];
+	String new_name = item_list->get_edit_text().strip_edges();
+	if (_rename_operation_confirm(from, new_name)) {
+		file_system->update(current_path);
+
+		// TODO: select the item after rename
+	} else {
+		item_list->set_item_text(id, d["name"]);
+	}
+}
+
+bool FilePane::_rename_operation_confirm(const String &p_from, const String &p_new_name) {
+	bool rename_error = false;
+
+	if (p_new_name.length() == 0) {
+		// TODO: hint
+		// print_line(TTRC("No name provided."));
+		rename_error = true;
+	} else if (p_new_name.contains_char('/') || p_new_name.contains_char('\\') || p_new_name.contains_char(':')) {
+		// print_line(TTRC("Name contains invalid characters."));
+		rename_error = true;
+	} else if (p_new_name[0] == '.') {
+		// print_line(TTRC("This filename begins with a dot rendering the file invisible to the editor.\nIf you want to rename it anyway, use your operating system's file manager."));
+		rename_error = true;
+	}
+
+	if (rename_error) {
+		return false;
+	}
+
+	String from = p_from;
+	String to = from.get_base_dir().path_join(p_new_name);
+	if (to == from) {
+		return false;
+	}
+	return FileSystemAccess::rename(p_from, to) == OK;
+}
+
 void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
+	// TODO: update ui when deleting the current or parent dir.
 	if (current_path != p_dir->get_path()) {
 		return;
 	}
@@ -513,6 +626,8 @@ void FilePane::set_file_system(FileSystem *p_file_system) {
 
 	file_system = p_file_system;
 	file_system->connect("file_system_changed", callable_mp(this, &FilePane::_on_file_system_changed));
+
+	context_menu->set_file_system(file_system);
 
 	_set_path(file_system->get_root());
 }
@@ -584,12 +699,11 @@ FilePane::FilePane() :
 
 	item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
 	item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
+	item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
 	// TODO: preview?
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
 	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
-	// TODO: edit
-	// item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
 
 	context_menu = memnew(FileContextMenu);
 	add_child(context_menu);

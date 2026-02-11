@@ -1,6 +1,11 @@
 #include "file_context_menu.h"
 
 #include "app/app_core/io/file_system_access.h"
+#include "app/app_modules/file_management/file_system.h"
+
+#include "app/app_modules/file_management/gui/file_pane.h"
+#include "app/gui/app_tab_container.h"
+#include "app/gui/container_manager.h"
 
 void FileContextMenu::_notification(int p_what) {
 	switch (p_what) {
@@ -21,18 +26,45 @@ void FileContextMenu::_id_pressed(int p_index) {
 		return;
 	}
 
-	// TODO: Emit signal on file operation.
+	// TODO: validate path?
 	switch (p_index) {
-		case FILE_MENU_OPEN: {
-		} break;
+			// case FILE_MENU_OPEN: { // Handle it in the parent.
+			// } break;
 
 		case FILE_MENU_OPEN_IN_NEW_TAB: {
+			String path = targets[0];
+			Control *c = Object::cast_to<Control>(get_parent());
+			AppTabContainer *tab_container = AppTabContainer::get_control_parent_tab_container(c);
+			if (!tab_container) {
+				break;
+			}
+
+			if (FileSystemAccess::dir_exists(path)) {
+				ContainerManager::get_singleton()->new_tab(FilePane::get_class_static(),
+						tab_container,
+						callable_mp(this, &FileContextMenu::_on_new_file_pane).bind(path));
+			} else if (FileSystemAccess::file_exists(path)) {
+				// TODO: txt file
+			}
 		} break;
 
 		case FILE_MENU_OPEN_IN_NEW_WINDOW: {
+			List<String> args;
+
+			// TODO: args
+			// args.push_back("--path");
+			// args.push_back(path);
+
+			Error err = OS::get_singleton()->create_instance(args);
+			if (err != OK) {
+				ERR_PRINT(vformat("Failed to start an app instance, error code %d.", err));
+				return;
+			}
 		} break;
 
 		case FILE_MENU_OPEN_EXTERNAL: {
+			String path = targets[0];
+			OS::get_singleton()->shell_open(path);
 		} break;
 
 		case FILE_MENU_OPEN_IN_TERMINAL: {
@@ -92,7 +124,7 @@ void FileContextMenu::_id_pressed(int p_index) {
 				terminal_emulator_args.push_back(argument);
 			}
 
-			const bool is_directory = fpath.ends_with("/");
+			const bool is_directory = FileSystemAccess::dir_exists(fpath);
 			for (String &terminal_emulator_arg : terminal_emulator_args) {
 				if (is_directory) {
 					terminal_emulator_arg = terminal_emulator_arg.replace("{directory}", fpath);
@@ -127,6 +159,8 @@ void FileContextMenu::_id_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_COPY_PATH: {
+			String path = targets[0];
+			DisplayServer::get_singleton()->clipboard_set(path);
 		} break;
 
 		case FILE_MENU_UNDO: {
@@ -149,40 +183,58 @@ void FileContextMenu::_id_pressed(int p_index) {
 				path = path.get_base_dir();
 			}
 
-			if (!path.is_empty()) {
-				FileSystemAccess::paste(path);
+			if (path.is_empty()) {
+				break;
+			}
+			bool ret = FileSystemAccess::paste(path);
+			print_line("paste ret: ", ret);
+			if (ret && file_system) {
+				file_system->update(path);
+
+				// TODO: Update the source directory for cut operations.
 			}
 		} break;
 
 		case FILE_MENU_REMOVE: {
 			// FILE_MENU_DELETE
-			// Remove the selected files.
+			HashSet<String> dirs;
 			for (const auto &path : targets) {
 				Error err = OS::get_singleton()->move_to_trash(path);
-				if (err != OK) {
+				if (err == OK) {
+					String dir = path.get_base_dir();
+					if (!dirs.has(dir)) {
+						dirs.insert(dir);
+					}
+				} else {
 					print_line("Cannot remove: " + path); // TODO: hint
+				}
+			}
+
+			if (file_system) {
+				for (const String &dir : dirs) {
+					file_system->update(dir);
 				}
 			}
 		} break;
 
-		case FILE_MENU_RENAME: {
-			// TODO
-			// print_line(targets[0]);
+			// case FILE_MENU_RENAME: { // Handle it in the parent.
+			// } break;
 
-			// // Set to_rename variable for callback execution.
-			// to_rename.path = targets[0];
-			// to_rename.is_file = FileSystemAccess::file_exists(to_rename.path);
-			// edit_selected(to_rename);
-		} break;
+			// case FILE_MENU_NEW: {
+			// } break;
 
-		case FILE_MENU_NEW: {
-		} break;
+			// case FILE_MENU_NEW_FOLDER: { // Handle it in the parent.
+			// } break;
 
-		case FILE_MENU_NEW_FOLDER: {
-		} break;
+			// case FILE_MENU_NEW_TEXTFILE: { // Handle it in the parent.
+			// } break;
+	}
+}
 
-		case FILE_MENU_NEW_TEXTFILE: {
-		} break;
+void FileContextMenu::_on_new_file_pane(PaneBase *p_pane, const String &p_path) {
+	FilePane *pane = Object::cast_to<FilePane>(p_pane);
+	if (pane) {
+		pane->set_path(p_path);
 	}
 }
 
@@ -305,6 +357,10 @@ Vector<String> FileContextMenu::get_targets() const {
 
 void FileContextMenu::clear_targets() {
 	targets.clear();
+}
+
+void FileContextMenu::set_file_system(FileSystem *p_file_system) {
+	file_system = p_file_system;
 }
 
 void FileContextMenu::_bind_methods() {

@@ -251,20 +251,33 @@ void NavigationPane::_build_file_menu() {
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 }
 
 void NavigationPane::_build_folder_menu() {
 	context_menu->clear();
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB); // TODO: create new tab in central area
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
 
 	context_menu->add_separator();
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
+
+	context_menu->add_separator();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
+	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	FileContextMenu *new_menu = memnew(FileContextMenu);
+	new_menu->set_file_system(file_system);
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
+	context_menu->set_item_submenu_node(-1, new_menu);
+	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &NavigationPane::_context_menu_id_pressed));
 
 	context_menu->add_separator();
 
@@ -279,19 +292,8 @@ void NavigationPane::_build_folder_menu() {
 
 	context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
-	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	FileContextMenu *new_menu = memnew(FileContextMenu);
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
-	context_menu->set_item_submenu_node(-1, new_menu);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 }
 
 void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
@@ -318,17 +320,32 @@ void NavigationPane::_item_clicked(const Vector2 &p_pos, MouseButton p_button) {
 		return;
 	}
 
-	TreeItem *selected = tree->get_selected();
-	if (!selected) {
+	TreeItem *cursor_item = tree->get_selected();
+	if (!cursor_item) {
 		return;
 	}
 
-	Dictionary d = selected->get_metadata(0);
-	bool is_dir = d["is_dir"];
-	if (is_dir) {
-		_build_folder_menu();
+	Vector<String> targets;
+	TreeItem *selected = tree->get_root();
+	selected = tree->get_next_selected(selected); // TODO: push cursor_item at first
+	while (selected) {
+		if (selected->is_visible_in_tree()) {
+			Dictionary d = selected->get_metadata(0);
+			targets.push_back(d["path"]);
+		}
+		selected = tree->get_next_selected(selected);
+	}
+	context_menu->set_targets(targets);
+
+	if (targets.size() > 1) {
+		// TODO: handle multi selected
 	} else {
-		_build_file_menu();
+		Dictionary d = cursor_item->get_metadata(0);
+		if (d["is_dir"]) {
+			_build_folder_menu();
+		} else {
+			_build_file_menu();
+		}
 	}
 
 	context_menu->set_position(get_screen_position() + p_pos);
@@ -363,21 +380,23 @@ Vector<String> NavigationPane::get_selected_paths() const {
 	// Build a list of selected items with the active one at the first position.
 	Vector<String> selected_strings;
 
-	// TODO
 	// TreeItem *cursor_item = tree->get_selected();
-	// if (cursor_item) {
+	// if (cursor_item && (p_include_unselected_cursor || cursor_item->is_selected(0)) && cursor_item != favorites_item) {
 	// 	selected_strings.push_back(cursor_item->get_metadata(0));
 	// }
 
 	// TreeItem *selected = tree->get_root();
 	// selected = tree->get_next_selected(selected);
 	// while (selected) {
-	// 	if (selected != cursor_item && selected->is_visible_in_tree()) {
+	// 	if (selected != cursor_item && selected != favorites_item && selected->is_visible_in_tree()) {
 	// 		selected_strings.push_back(selected->get_metadata(0));
 	// 	}
 	// 	selected = tree->get_next_selected(selected);
 	// }
 
+	// if (remove_self_inclusion) {
+	// 	selected_strings = _remove_self_included_paths(selected_strings);
+	// }
 	return selected_strings;
 }
 
@@ -414,6 +433,8 @@ void NavigationPane::set_file_system(FileSystem *p_file_system) {
 
 	file_system = p_file_system;
 	file_system->connect("file_system_changed", callable_mp(this, &NavigationPane::_on_file_system_changed));
+
+	context_menu->set_file_system(file_system);
 
 	callable_mp(this, &NavigationPane::_update_tree).call_deferred(Vector<String>(), true, true);
 }

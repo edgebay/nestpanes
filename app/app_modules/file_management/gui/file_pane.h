@@ -96,6 +96,8 @@ private:
 	void _refresh();
 
 	void _context_menu_id_pressed(int p_option);
+	void _item_edited();
+	bool _rename_operation_confirm(const String &p_from, const String &p_new_name);
 
 	void _set_path(FileSystemDirectory *p_dir, bool p_update_history = true);
 

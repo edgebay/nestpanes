@@ -2,6 +2,9 @@
 
 #include "scene/gui/popup_menu.h"
 
+class FileSystem;
+class PaneBase;
+
 class FileContextMenu : public PopupMenu {
 	GDCLASS(FileContextMenu, PopupMenu);
 
@@ -54,7 +57,11 @@ public:
 private:
 	Vector<String> targets;
 
+	FileSystem *file_system = nullptr;
+
 	void _id_pressed(int p_index);
+
+	void _on_new_file_pane(PaneBase *p_pane, const String &p_path);
 
 protected:
 	void _notification(int p_what);
@@ -72,6 +79,8 @@ public:
 	void set_targets(const Vector<String> &p_targets);
 	Vector<String> get_targets() const;
 	void clear_targets();
+
+	void set_file_system(FileSystem *p_file_system);
 
 	FileContextMenu();
 	~FileContextMenu();
