@@ -225,13 +225,19 @@ void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
 
 		icon = p_is_dir ? folder : file;
 	}
-	item_list->add_item(p_fi.name, icon);
+	int item_id = item_list->add_item(p_fi.name, icon);
 
 	Dictionary d;
 	d["name"] = p_fi.name;
 	d["path"] = p_fi.path;
 	d["is_dir"] = p_is_dir;
-	item_list->set_item_metadata(-1, d);
+	item_list->set_item_metadata(item_id, d);
+
+	if (!to_select.is_empty() && to_select == p_fi.path) {
+		item_list->set_current(item_id);
+		item_list->select(item_id);
+		to_select = "";
+	}
 }
 
 void FilePane::_update_item_list() {
@@ -256,7 +262,8 @@ void FilePane::_update_item_list() {
 
 	// list files
 	for (int i = 0; i < dir->get_file_count(); i++) {
-		_add_item(*dir->get_file(i));
+		const FileInfo &fi = *(dir->get_file(i));
+		_add_item(fi);
 	}
 }
 
@@ -496,7 +503,11 @@ void FilePane::_context_menu_id_pressed(int p_option) {
 			print_line("make dir: ", err);
 
 			file_system->update(current_path);
-			// TODO: rename
+
+			if (err == OK) {
+				to_select = path;
+				rename_item = true;
+			}
 		} break;
 
 		case FileContextMenu::FILE_MENU_NEW_TEXTFILE: {
@@ -513,7 +524,11 @@ void FilePane::_context_menu_id_pressed(int p_option) {
 			print_line("create file: ", err);
 
 			file_system->update(current_path);
-			// TODO: rename
+
+			if (err == OK) {
+				to_select = path;
+				rename_item = true;
+			}
 		} break;
 	}
 }
@@ -528,7 +543,7 @@ void FilePane::_item_edited() {
 	if (_rename_operation_confirm(from, new_name)) {
 		file_system->update(current_path);
 
-		// TODO: select the item after rename
+		to_select = from.get_base_dir().path_join(new_name);
 	} else {
 		item_list->set_item_text(id, d["name"]);
 	}
@@ -559,6 +574,13 @@ bool FilePane::_rename_operation_confirm(const String &p_from, const String &p_n
 		return false;
 	}
 	return FileSystemAccess::rename(p_from, to) == OK;
+}
+
+void FilePane::_item_list_draw() {
+	if (rename_item) {
+		item_list->edit_selected();
+		rename_item = false;
+	}
 }
 
 void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
@@ -700,6 +722,7 @@ FilePane::FilePane() :
 	item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
 	item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
 	item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
+	item_list->connect(SceneStringName(draw), callable_mp(this, &FilePane::_item_list_draw));
 	// TODO: preview?
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
 	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);

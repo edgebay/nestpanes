@@ -67,6 +67,9 @@ private:
 	// TODO
 	// bool show_hidden_files = false;
 
+	String to_select = "";
+	bool rename_item = false;
+
 	virtual String _get_pane_title() const override;
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
@@ -98,6 +101,7 @@ private:
 	void _context_menu_id_pressed(int p_option);
 	void _item_edited();
 	bool _rename_operation_confirm(const String &p_from, const String &p_new_name);
+	void _item_list_draw();
 
 	void _set_path(FileSystemDirectory *p_dir, bool p_update_history = true);
 
