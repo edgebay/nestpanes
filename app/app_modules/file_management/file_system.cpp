@@ -2,6 +2,8 @@
 
 #include "app/app_core/io/file_system_access.h"
 
+#include "app/settings/app_settings.h"
+
 String FileSystemDirectory::get_name() const {
 	return name;
 }
@@ -178,6 +180,7 @@ FileSystemDirectory::~FileSystemDirectory() {
 	clear();
 }
 
+/// FileSystem
 bool FileSystem::is_valid_path(const String &p_path) {
 	return FileSystemAccess::path_exists(p_path);
 }
@@ -312,6 +315,25 @@ void FileSystem::_bind_methods() {
 FileSystem::FileSystem() {
 	file_system_root = memnew(FileSystemDirectory);
 	file_system_root->setup(nullptr, COMPUTER_PATH, COMPUTER_PATH, FileSystemAccess::get_icon(COMPUTER_PATH), false, true);
+
+	APP_SHORTCUT("file_management/copy_path", TTRC("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
+
+	APP_SHORTCUT("file_management/show_in_explorer", TTRC("Open in File Manager"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::R);
+	APP_SHORTCUT("file_management/open_in_external_program", TTRC("Open in External Program"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::E);
+	APP_SHORTCUT("file_management/open_in_terminal", TTRC("Open in Terminal"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::T);
+
+	APP_SHORTCUT("file_management/undo", TTRC("Undo"), KeyModifierMask::CMD_OR_CTRL | Key::Z);
+	APP_SHORTCUT("file_management/redo", TTRC("Redo"), KeyModifierMask::CMD_OR_CTRL | Key::Y);
+
+	APP_SHORTCUT("file_management/new_folder", TTRC("New Folder..."), Key::NONE);
+	APP_SHORTCUT("file_management/new_textfile", TTRC("New TextFile..."), Key::NONE);
+
+	APP_SHORTCUT("file_management/cut", TTRC("Cut"), KeyModifierMask::CMD_OR_CTRL | Key::X);
+	APP_SHORTCUT("file_management/copy", TTRC("Copy"), KeyModifierMask::CMD_OR_CTRL | Key::C);
+	APP_SHORTCUT("file_management/paste", TTRC("Paste"), KeyModifierMask::CMD_OR_CTRL | Key::V);
+
+	APP_SHORTCUT("file_management/rename", TTRC("Rename..."), Key::F2);
+	APP_SHORTCUT("file_management/delete", TTRC("Delete"), Key::KEY_DELETE);
 }
 
 FileSystem::~FileSystem() {

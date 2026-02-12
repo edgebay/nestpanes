@@ -22,17 +22,16 @@ void FileContextMenu::_id_pressed(int p_index) {
 		return;
 	}
 
-	if (targets.is_empty()) {
-		return;
-	}
-
-	// TODO: validate path?
 	switch (p_index) {
 			// case FILE_MENU_OPEN: { // Handle it in the parent.
 			// } break;
 
 		case FILE_MENU_OPEN_IN_NEW_TAB: {
-			String path = targets[0];
+			String path = targets.is_empty() ? "" : targets[0];
+			if (!FileSystemAccess::path_exists(path)) {
+				break;
+			}
+
 			Control *c = Object::cast_to<Control>(get_parent());
 			AppTabContainer *tab_container = AppTabContainer::get_control_parent_tab_container(c);
 			if (!tab_container) {
@@ -63,12 +62,19 @@ void FileContextMenu::_id_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_OPEN_EXTERNAL: {
-			String path = targets[0];
+			String path = targets.is_empty() ? "" : targets[0];
+			if (!FileSystemAccess::path_exists(path)) {
+				break;
+			}
+
 			OS::get_singleton()->shell_open(path);
 		} break;
 
 		case FILE_MENU_OPEN_IN_TERMINAL: {
-			String fpath = targets[0];
+			String fpath = targets.is_empty() ? "" : targets[0];
+			if (!FileSystemAccess::path_exists(fpath)) {
+				break;
+			}
 
 			Vector<String> terminal_emulators;
 			const String terminal_emulator_setting = ""; // TODO: EDITOR_GET("filesystem/external_programs/terminal_emulator");
@@ -154,12 +160,18 @@ void FileContextMenu::_id_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_SHOW_IN_EXPLORER: {
-			String path = targets[0];
+			String path = targets.is_empty() ? "" : targets[0];
+			if (!FileSystemAccess::path_exists(path)) {
+				break;
+			}
 			OS::get_singleton()->shell_show_in_file_manager(path, true);
 		} break;
 
 		case FILE_MENU_COPY_PATH: {
-			String path = targets[0];
+			String path = targets.is_empty() ? "" : targets[0];
+			if (!FileSystemAccess::path_exists(path)) {
+				break;
+			}
 			DisplayServer::get_singleton()->clipboard_set(path);
 		} break;
 
@@ -170,20 +182,26 @@ void FileContextMenu::_id_pressed(int p_index) {
 		} break;
 
 		case FILE_MENU_CUT: {
+			if (targets.is_empty()) {
+				break;
+			}
 			FileSystemAccess::cut(targets);
 		} break;
 
 		case FILE_MENU_COPY: {
+			if (targets.is_empty()) {
+				break;
+			}
 			FileSystemAccess::copy(targets);
 		} break;
 
 		case FILE_MENU_PASTE: {
-			String path = targets[0];
+			String path = targets.is_empty() ? "" : targets[0];
 			if (FileSystemAccess::file_exists(path)) {
 				path = path.get_base_dir();
 			}
 
-			if (path.is_empty()) {
+			if (!FileSystemAccess::dir_exists(path)) {
 				break;
 			}
 			bool ret = FileSystemAccess::paste(path);
@@ -342,6 +360,10 @@ int FileContextMenu::calculate_custom_id(int p_id_offset) {
 
 int FileContextMenu::calculate_original_id(int p_custom_id) {
 	return (p_custom_id >= FILE_MENU_MAX) ? (p_custom_id - FILE_MENU_MAX) : -1;
+}
+
+void FileContextMenu::file_option(int p_option) {
+	_id_pressed(p_option);
 }
 
 void FileContextMenu::set_targets(const Vector<String> &p_targets) {

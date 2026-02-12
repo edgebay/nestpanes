@@ -9,6 +9,7 @@
 #include "scene/gui/popup_menu.h"
 
 #include "app/gui/app_control.h"
+#include "app/settings/app_settings.h"
 #include "app/themes/app_scale.h"
 
 #include "app/app_core/io/file_system_access.h"
@@ -148,6 +149,96 @@ String FilePane::_get_pane_title() const {
 
 Ref<Texture2D> FilePane::_get_pane_icon() const {
 	return get_app_theme_icon(SNAME("Folder"));
+}
+
+void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	Ref<InputEventKey> k = p_event;
+	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
+		bool is_handled = true;
+		int option_id = -1;
+		bool add_selected = false;
+		Vector<String> targets;
+
+		if (APP_IS_SHORTCUT("file_management/copy_path", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_COPY_PATH;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/show_in_explorer", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/open_in_external_program", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_OPEN_EXTERNAL;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/open_in_terminal", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/undo", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_UNDO;
+		} else if (APP_IS_SHORTCUT("file_management/redo", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_REDO;
+
+		} else if (APP_IS_SHORTCUT("file_management/new_folder", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_NEW_FOLDER;
+			targets.push_back(current_path);
+		} else if (APP_IS_SHORTCUT("file_management/new_textfile", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_NEW_TEXTFILE;
+			targets.push_back(current_path);
+
+		} else if (APP_IS_SHORTCUT("file_management/cut", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_CUT;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/copy", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_COPY;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/paste", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_PASTE;
+			targets.push_back(current_path);
+
+		} else if (APP_IS_SHORTCUT("file_management/rename", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_RENAME;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/delete", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_REMOVE;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/focus_path", p_event)) {
+			address_bar->edit();
+
+		} else {
+			is_handled = false;
+		}
+
+		if (option_id >= 0 && add_selected) {
+			if (item_list->is_anything_selected()) {
+				Vector<int> selected_items = item_list->get_selected_items();
+				for (int i : selected_items) {
+					Dictionary d = item_list->get_item_metadata(i);
+					targets.push_back(d["path"]);
+				}
+			} else {
+				option_id = -1;
+			}
+		}
+
+		if (option_id >= 0) {
+			callable_mp(this, &FilePane::_process_shortcut_input).call_deferred(option_id, targets);
+		}
+
+		if (is_handled) {
+			get_tree()->get_root()->set_input_as_handled();
+		}
+	}
+}
+
+void FilePane::_process_shortcut_input(int p_option, const Vector<String> &p_selected) {
+	if (!_process_id_pressed(p_option, p_selected)) {
+		context_menu->set_targets(p_selected);
+		context_menu->file_option(p_option);
+	}
 }
 
 void FilePane::_notification(int p_what) {
@@ -351,7 +442,7 @@ void FilePane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
 	item_list->deselect_all();
 
 	Vector<String> targets;
-	targets.push_back(get_path());
+	targets.push_back(current_path);
 	context_menu->set_targets(targets);
 
 	_build_empty_menu();
@@ -395,6 +486,10 @@ void FilePane::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_but
 	context_menu->reset_size();
 	context_menu->popup();
 }
+
+// void FilePane::_multi_selected(int p_index, bool p_selected) {
+// 	print_line("multi selected: ", p_index, p_selected);
+// }
 
 void FilePane::_item_dc_selected(int p_item) {
 	int current = p_item;
@@ -477,11 +572,16 @@ void FilePane::_refresh() {
 	callable_mp(this, &FilePane::_update_ui).call_deferred();
 }
 
-void FilePane::_context_menu_id_pressed(int p_option) {
-	Vector<String> targets = context_menu->get_targets();
+bool FilePane::_process_id_pressed(int p_option, const Vector<String> &p_selected) {
+	bool is_handled = true;
+
 	switch (p_option) {
 		case FileContextMenu::FILE_MENU_OPEN: {
-			String path = targets[0];
+			String path = p_selected.is_empty() ? "" : p_selected[0];
+			if (!FileSystemAccess::dir_exists(path)) {
+				break;
+			}
+
 			set_path(path);
 		} break;
 
@@ -490,19 +590,24 @@ void FilePane::_context_menu_id_pressed(int p_option) {
 		} break;
 
 		case FileContextMenu::FILE_MENU_NEW_FOLDER: {
+			String dir = p_selected.is_empty() ? "" : p_selected[0];
+			if (!FileSystemAccess::dir_exists(dir)) {
+				break;
+			}
+
 			String new_name = RTR("new folder");
 			String name = new_name;
-			String path = current_path.path_join(name);
+			String path = dir.path_join(name);
 			int i = 1;
 			while (FileSystemAccess::dir_exists(path)) {
 				name = vformat("%s (%d)", new_name, i);
-				path = current_path.path_join(name);
+				path = dir.path_join(name);
 				i++;
 			}
 			Error err = FileSystemAccess::make_dir(path);
 			print_line("make dir: ", err);
 
-			file_system->update(current_path);
+			file_system->update(dir);
 
 			if (err == OK) {
 				to_select = path;
@@ -511,26 +616,41 @@ void FilePane::_context_menu_id_pressed(int p_option) {
 		} break;
 
 		case FileContextMenu::FILE_MENU_NEW_TEXTFILE: {
+			String dir = p_selected.is_empty() ? "" : p_selected[0];
+			if (!FileSystemAccess::dir_exists(dir)) {
+				break;
+			}
+
 			String new_name = RTR("new file");
 			String name = new_name + ".txt";
-			String path = current_path.path_join(name);
+			String path = dir.path_join(name);
 			int i = 1;
 			while (FileSystemAccess::file_exists(path)) {
 				name = vformat("%s (%d).txt", new_name, i);
-				path = current_path.path_join(name);
+				path = dir.path_join(name);
 				i++;
 			}
-			Error err = FileSystemAccess::create_file(current_path, name);
+			Error err = FileSystemAccess::create_file(dir, name);
 			print_line("create file: ", err);
 
-			file_system->update(current_path);
+			file_system->update(dir);
 
 			if (err == OK) {
 				to_select = path;
 				rename_item = true;
 			}
 		} break;
+
+		default: {
+			is_handled = false;
+		}
 	}
+
+	return is_handled;
+}
+
+void FilePane::_context_menu_id_pressed(int p_option) {
+	_process_id_pressed(p_option, context_menu->get_targets());
 }
 
 void FilePane::_item_edited() {
@@ -725,7 +845,7 @@ FilePane::FilePane() :
 	item_list->connect(SceneStringName(draw), callable_mp(this, &FilePane::_item_list_draw));
 	// TODO: preview?
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
-	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected), CONNECT_DEFERRED);
+	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected));
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
 
 	context_menu = memnew(FileContextMenu);
@@ -734,6 +854,24 @@ FilePane::FilePane() :
 
 	address_bar->connect(SceneStringName(text_submitted), callable_mp(this, &FilePane::_on_address_submitted));
 	address_bar->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_select_history));
+
+	APP_SHORTCUT("file_management/focus_path", TTRC("Focus Path"), KeyModifierMask::CMD_OR_CTRL | Key::L);
+
+	// APP_SHORTCUT("file_management/prev", dir_prev->get_tooltip_text(), KeyModifierMask::ALT | Key::LEFT);
+	APP_SHORTCUT_ARRAY("file_management/prev",
+			dir_prev->get_tooltip_text(),
+			{ int32_t(KeyModifierMask::ALT | Key::LEFT), int32_t(Key::BACK) });
+	APP_SHORTCUT("file_management/next", dir_next->get_tooltip_text(), KeyModifierMask::ALT | Key::RIGHT);
+	APP_SHORTCUT("file_management/up", dir_up->get_tooltip_text(), KeyModifierMask::ALT | Key::UP);
+	APP_SHORTCUT("file_management/refresh", refresh->get_tooltip_text(), Key::F5);
+
+	dir_prev->set_shortcut(ED_GET_SHORTCUT("file_management/prev"));
+	dir_next->set_shortcut(ED_GET_SHORTCUT("file_management/next"));
+	dir_up->set_shortcut(ED_GET_SHORTCUT("file_management/up"));
+	refresh->set_shortcut(ED_GET_SHORTCUT("file_management/refresh"));
+
+	// TODO: Handle shortcut input upon receiving focus.
+	set_process_shortcut_input(true);
 }
 
 FilePane::~FilePane() {

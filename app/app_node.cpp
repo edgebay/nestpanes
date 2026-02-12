@@ -17,7 +17,6 @@
 #include "scene/gui/split_container.h"
 #include "scene/gui/tab_container.h"
 
-#include "scene/main/scene_tree.h"
 #include "scene/main/timer.h"
 
 #include "scene/resources/packed_scene.h"
@@ -267,7 +266,7 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventKey> k = p_event;
 	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
 		bool is_handled = true;
-		if (ED_IS_SHORTCUT("app/next_tab", p_event)) {
+		if (APP_IS_SHORTCUT("app/next_tab", p_event)) {
 			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
 			if (tab_count > 0) {
@@ -275,7 +274,7 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 				next_tab %= tab_count;
 				current_tab_container->set_current_tab(next_tab);
 			}
-		} else if (ED_IS_SHORTCUT("app/prev_tab", p_event)) {
+		} else if (APP_IS_SHORTCUT("app/prev_tab", p_event)) {
 			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
 			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
 			if (tab_count > 0) {
@@ -570,14 +569,14 @@ AppNode::AppNode() {
 	DEV_ASSERT(!singleton);
 	singleton = this;
 
-	// File system.
-	FileSystemAccess::create();
-	file_system = memnew(FileSystem);
-
 	// Load settings.
 	if (!AppSettings::get_singleton()) {
 		AppSettings::create();
 	}
+
+	// File system.
+	FileSystemAccess::create();
+	file_system = memnew(FileSystem);
 
 	{
 		int display_scale = EDITOR_GET("interface/app/display_scale");
@@ -749,8 +748,8 @@ AppNode::AppNode() {
 		right_sidebar->hide();
 	}
 
-	ED_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
-	ED_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
+	APP_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
+	APP_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
 
 	// TODO: command_palette
 

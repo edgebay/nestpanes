@@ -76,6 +76,8 @@ public:
 	int calculate_custom_id(int p_id_offset);
 	int calculate_original_id(int p_custom_id);
 
+	void file_option(int p_option);
+
 	void set_targets(const Vector<String> &p_targets);
 	Vector<String> get_targets() const;
 	void clear_targets();
