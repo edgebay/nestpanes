@@ -33,8 +33,6 @@ private:
 	AppTabContainer *prev_tab_container = nullptr;
 	AppTabContainer *selected_tab_container = nullptr;
 
-	StringName pane_type = "";
-
 	AppTabContainer *_create_tab_container(bool p_tab_closable, int p_group_id);
 
 	void _menu_id_pressed(int p_option);

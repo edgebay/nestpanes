@@ -37,14 +37,10 @@
 #include "app/gui/app_tab_container.h"
 #include "app/gui/container_manager.h"
 #include "app/gui/multi_split_container.h"
-#include "app/gui/pane_factory.h"
+#include "app/gui/pane_manager.h"
 
-#include "app/app_modules/file_management/file_system.h"
 #include "app/app_modules/file_management/gui/file_pane.h"
 #include "app/app_modules/file_management/gui/navigation_pane.h"
-// TODO: SettingsPane, WelcomePane
-// #include "app/settings/gui/settings_pane.h"
-// #include "app/gui/welcome_pane.h"
 
 #define LEFT_SIDEBAR_NAME "left_sidebar"
 #define CENTRAL_AREA_NAME "central_area"
@@ -211,44 +207,6 @@ void AppNode::_toggle_right_sidebar() {
 		right_sidebar->hide();
 	} else {
 		right_sidebar->show();
-	}
-}
-
-void AppNode::_on_navigation_pane_create(PaneBase *p_pane) {
-	NavigationPane *pane = Object::cast_to<NavigationPane>(p_pane);
-	if (pane) {
-		pane->set_file_system(file_system);
-		pane->connect("item_activated", callable_mp(this, &AppNode::_on_tree_item_activated));
-		pane->connect("item_selected", callable_mp(this, &AppNode::_on_tree_item_selected));
-	}
-}
-
-void AppNode::_on_file_pane_create(PaneBase *p_pane) {
-	FilePane *pane = Object::cast_to<FilePane>(p_pane);
-	if (pane) {
-		pane->set_file_system(file_system);
-	}
-}
-
-void AppNode::_on_tree_item_activated(const String &p_path, bool is_dir) {
-	if (!is_dir) {
-		// TODO: open_file()/run_file()
-		OS::get_singleton()->shell_open(p_path);
-	}
-}
-
-void AppNode::_on_tree_item_selected(const String &p_path, bool is_dir) {
-	if (is_dir) {
-		// Current tab container is NavigationPane
-		AppTabContainer *tab_container = container_manager->get_prev_tab_container();
-		if (tab_container == nullptr) {
-			return;
-		}
-
-		FilePane *pane = Object::cast_to<FilePane>(tab_container->get_current_tab_control());
-		if (pane) {
-			pane->set_path(p_path);
-		}
 	}
 }
 
@@ -569,14 +527,12 @@ AppNode::AppNode() {
 	DEV_ASSERT(!singleton);
 	singleton = this;
 
+	FileSystemAccess::create(); // Note: Before creating AppSettings.
+
 	// Load settings.
 	if (!AppSettings::get_singleton()) {
 		AppSettings::create();
 	}
-
-	// File system.
-	FileSystemAccess::create();
-	file_system = memnew(FileSystem);
 
 	{
 		int display_scale = EDITOR_GET("interface/app/display_scale");
@@ -698,23 +654,8 @@ AppNode::AppNode() {
 	// ribbon->add_child(settings_button);
 	// settings_button->set_button_icon(theme->get_icon(SNAME("Settings"), SNAME("AppIcons"))); // TODO: Settings icon
 
-	pane_factory = memnew(PaneFactory);
-	pane_factory->register_pane<FilePane>(
-			FilePane::get_class_static(),
-			theme->get_icon(SNAME("Folder"), SNAME("AppIcons")),
-			callable_mp(this, &AppNode::_on_file_pane_create));
-	pane_factory->register_pane<NavigationPane>(
-			NavigationPane::get_class_static(),
-			theme->get_icon(SNAME("Filesystem"), SNAME("AppIcons")),
-			callable_mp(this, &AppNode::_on_navigation_pane_create));
-
-	// TODO: SettingsPane, WelcomePane
-	// pane_factory->register_pane<SettingsPane>(
-	// 		SettingsPane::get_class_static(),
-	// 		theme->get_icon(SNAME("Settings"), SNAME("AppIcons"))); // TODO: icon
-	// pane_factory->register_pane<WelcomePane>(
-	// 		WelcomePane::get_class_static(),
-	// 		theme->get_icon(SNAME("Welcome"), SNAME("AppIcons"))); // TODO: icon
+	pane_manager = memnew(PaneManager);
+	gui_base->add_child(pane_manager);
 
 	container_manager = memnew(ContainerManager);
 	gui_base->add_child(container_manager);
@@ -733,7 +674,7 @@ AppNode::AppNode() {
 
 		// Left sidebar.
 		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, hsplit, gui_main);
-		container_manager->new_tab(NavigationPane::get_class_static());
+		container_manager->new_tab(NavigationPane::get_class_static()); // TODO
 
 		// Central content area.
 		central_area = container_manager->create_container(CENTRAL_AREA_NAME, hsplit, gui_main);
@@ -741,7 +682,7 @@ AppNode::AppNode() {
 		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 		container_manager->set_tab_closable(central_area, true);
 		container_manager->set_tabs_rearrange_group(central_area, 1);
-		container_manager->new_tab(FilePane::get_class_static());
+		container_manager->new_tab(FilePane::get_class_static()); // TODO
 
 		// Right sidebar.
 		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, hsplit, gui_main);
@@ -764,9 +705,6 @@ AppNode::AppNode() {
 }
 
 AppNode::~AppNode() {
-	memdelete(pane_factory);
-	memdelete(file_system);
-
 	AppSettings::destroy();
 	AppThemeManager::finalize();
 	FileSystemAccess::destroy();

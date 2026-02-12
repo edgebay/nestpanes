@@ -18,7 +18,6 @@ public:
 	};
 
 private:
-	static PaneFactory *singleton;
 	static HashMap<StringName, PaneInfo> pane_map;
 
 protected:
@@ -28,8 +27,6 @@ protected:
 	}
 
 public:
-	static PaneFactory *get_singleton() { return singleton; }
-
 	template <typename T>
 	static void register_pane(const StringName &p_type, const Ref<Texture2D> &p_icon, const Callable &p_create_callback = Callable(), CreatePaneFunc p_create_func = nullptr) {
 		ERR_FAIL_COND_MSG(pane_map.has(p_type), vformat("Pane already registered: '%s'.", p_type));
@@ -56,7 +53,5 @@ public:
 
 	static void get_pane_list(List<PaneInfo> *r_panes);
 	static bool get_pane_info(const StringName &p_type, PaneInfo *r_info);
-
-	PaneFactory();
-	~PaneFactory();
+	static void clear();
 };

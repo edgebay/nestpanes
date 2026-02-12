@@ -6,7 +6,7 @@
 #include "app/gui/multi_split_container.h"
 
 #include "app/gui/pane_base.h"
-#include "app/gui/pane_factory.h"
+#include "app/gui/pane_manager.h"
 
 ContainerManager *ContainerManager::singleton = nullptr;
 
@@ -45,7 +45,7 @@ void ContainerManager::_menu_id_pressed(int p_option) {
 	}
 
 	AppTabContainer *tab_container = _split(selected_tab_container, direction);
-	new_tab(pane_type, tab_container);
+	new_tab("", tab_container);
 
 	selected_tab_container = nullptr;
 }
@@ -55,13 +55,11 @@ void ContainerManager::_select_tab_container(AppTabContainer *p_tab_container) {
 }
 
 void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container, const Callable &p_callback) {
+	ERR_FAIL_NULL_MSG(PaneManager::get_singleton(), "PaneManager doesn't exist.");
+
 	int tab_index = p_tab_container->get_tab_count();
 
-	StringName type = p_pane_type;
-	if (type.is_empty()) {
-		type = pane_type;
-	}
-	PaneBase *pane = PaneFactory::get_singleton()->create_pane(type);
+	PaneBase *pane = PaneManager::get_singleton()->create(p_pane_type);
 	if (!pane) {
 		return;
 	}
@@ -245,10 +243,6 @@ AppTabContainer *ContainerManager::get_prev_tab_container() const {
 }
 
 void ContainerManager::new_tab() {
-	if (pane_type.is_empty()) {
-		return;
-	}
-
 	// TODO: Fix
 	AppTabContainer *tab_container = nullptr;
 	if (current_tab_container && get_tab_closable(Object::cast_to<MultiSplitContainer>(current_tab_container->get_parent()))) {
@@ -259,7 +253,7 @@ void ContainerManager::new_tab() {
 		return;
 	}
 
-	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container, Callable());
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred("", tab_container, Callable());
 }
 
 void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p_tab_container, const Callable &p_callback) {
@@ -272,13 +266,7 @@ void ContainerManager::new_tab(const StringName &p_pane_type, AppTabContainer *p
 		return;
 	}
 
-	if (!p_pane_type.is_empty()) {
-		pane_type = p_pane_type;
-	} else if (pane_type.is_empty()) {
-		return;
-	}
-
-	callable_mp(this, &ContainerManager::_new_tab).call_deferred(pane_type, tab_container, p_callback);
+	callable_mp(this, &ContainerManager::_new_tab).call_deferred(p_pane_type, tab_container, p_callback);
 }
 
 void ContainerManager::close_current_tab() {
@@ -382,7 +370,6 @@ int ContainerManager::get_tabs_rearrange_group(MultiSplitContainer *p_split_cont
 }
 
 ContainerManager::ContainerManager() {
-	ERR_FAIL_NULL_MSG(PaneFactory::get_singleton(), "PaneFactory doesn't exist.");
 	singleton = this;
 
 	popup_menu = memnew(PopupMenu);
@@ -392,13 +379,6 @@ ContainerManager::ContainerManager() {
 	popup_menu->add_item(RTR("Split Right"), SPLIT_MENU_RIGHT);
 	popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &ContainerManager::_menu_id_pressed));
 	add_child(popup_menu);
-
-	List<PaneFactory::PaneInfo> panes;
-	PaneFactory::get_singleton()->get_pane_list(&panes);
-	if (!panes.is_empty()) {
-		const PaneFactory::PaneInfo &info = panes.get(0);
-		pane_type = info.type;
-	}
 }
 
 ContainerManager::~ContainerManager() {

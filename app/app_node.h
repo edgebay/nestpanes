@@ -15,10 +15,8 @@ class PopupMenu;
 class VBoxContainer;
 
 class ContainerManager;
-class PaneFactory;
+class PaneManager;
 class PaneBase;
-
-class FileSystem;
 
 class Timer;
 
@@ -65,7 +63,7 @@ private:
 	MultiSplitContainer *right_sidebar = nullptr;
 
 	ContainerManager *container_manager = nullptr;
-	PaneFactory *pane_factory = nullptr;
+	PaneManager *pane_manager = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
 	MenuButton *main_menu_button = nullptr; // TODO: Remove?
@@ -80,8 +78,6 @@ private:
 	List<AppTabContainer *> tab_containers;
 
 	Ref<Theme> theme;
-
-	FileSystem *file_system;
 
 	bool exiting = false;
 	bool dimmed = false;
@@ -105,12 +101,6 @@ private:
 
 	void _toggle_left_sidebar();
 	void _toggle_right_sidebar();
-
-	void _on_navigation_pane_create(PaneBase *p_pane);
-	void _on_file_pane_create(PaneBase *p_pane);
-
-	void _on_tree_item_activated(const String &p_path, bool is_dir);
-	void _on_tree_item_selected(const String &p_path, bool is_dir);
 
 	void _exit(int p_exit_code);
 

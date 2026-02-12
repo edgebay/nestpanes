@@ -1,7 +1,5 @@
 #include "pane_factory.h"
 
-PaneFactory *PaneFactory::singleton = nullptr;
-
 HashMap<StringName, PaneFactory::PaneInfo> PaneFactory::pane_map;
 
 void PaneFactory::get_pane_list(List<PaneInfo> *r_panes) {
@@ -21,12 +19,6 @@ bool PaneFactory::get_pane_info(const StringName &p_type, PaneInfo *r_info) {
 	return false;
 }
 
-PaneFactory::PaneFactory() {
-	singleton = this;
-}
-
-PaneFactory::~PaneFactory() {
+void PaneFactory::clear() {
 	pane_map.clear();
-
-	singleton = nullptr;
 }
