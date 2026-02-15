@@ -15,6 +15,7 @@ class PopupMenu;
 class VBoxContainer;
 
 class ContainerManager;
+class LayoutManager;
 class PaneManager;
 class PaneBase;
 
@@ -58,10 +59,11 @@ private:
 
 	HBoxContainer *title_bar = nullptr;
 	VBoxContainer *ribbon = nullptr;
-	MultiSplitContainer *left_sidebar = nullptr;
-	MultiSplitContainer *central_area = nullptr;
-	MultiSplitContainer *right_sidebar = nullptr;
+	Control *left_sidebar = nullptr;
+	Control *central_area = nullptr;
+	Control *right_sidebar = nullptr;
 
+	LayoutManager *layout_manager = nullptr;
 	ContainerManager *container_manager = nullptr;
 	PaneManager *pane_manager = nullptr;
 
@@ -106,7 +108,6 @@ private:
 
 	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
 
-	String _get_config_path() const;
 	void _save_layout();
 	void _load_layout();
 

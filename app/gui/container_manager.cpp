@@ -64,7 +64,6 @@ void ContainerManager::_new_tab(const StringName &p_pane_type, AppTabContainer *
 		return;
 	}
 	p_tab_container->add_child(pane);
-	pane->set_owner(p_tab_container->get_owner());
 	pane->connect("title_changed", callable_mp(this, &ContainerManager::_on_pane_title_changed).bind(pane));
 	pane->connect("icon_changed", callable_mp(this, &ContainerManager::_on_pane_icon_changed).bind(pane));
 
@@ -152,7 +151,6 @@ AppTabContainer *ContainerManager::_split(AppTabContainer *p_from, int p_directi
 
 	AppTabContainer *tab_container = _create_tab_container(tab_closable, group_id);
 	split_container->split(tab_container, p_from, (MultiSplitContainer::SplitDirection)p_direction);
-	tab_container->set_owner(split_container->get_owner()); // Note: after add to scene tree
 
 	set_current_tab_container(tab_container);
 
@@ -186,35 +184,19 @@ AppTabContainer *ContainerManager::_create_tab_container(bool p_tab_closable, in
 	return tab_container;
 }
 
-MultiSplitContainer *ContainerManager::create_container(const String &p_name, Node *p_parent, Node *p_owner, Node *p_child) {
+AppTabContainer *ContainerManager::create_tab_container(bool p_tab_closable, int p_group_id) {
+	return _create_tab_container(p_tab_closable, p_group_id);
+}
+
+MultiSplitContainer *ContainerManager::create_split_container() {
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
 	bool tab_closable = false;
 	int group_id = -1;
 	split_container->set_meta("tab_closable", tab_closable);
 	split_container->set_meta("group_id", group_id);
-	if (!p_name.is_empty()) {
-		split_container->set_name(p_name);
-	}
-
-	AppTabContainer *tab_container = _create_tab_container(tab_closable, group_id);
-	split_container->split(tab_container);
-	if (p_child) {
-		tab_container->add_child(p_child);
-	}
-
-	if (p_parent) {
-		p_parent->add_child(split_container);
-
-		if (p_owner) {
-			split_container->set_owner(p_owner);
-			tab_container->set_owner(p_owner);
-			if (p_child) {
-				p_child->set_owner(p_owner); // TODO
-			}
-		}
-	}
 
 	split_containers.push_back(split_container);
+
 	return split_container;
 }
 

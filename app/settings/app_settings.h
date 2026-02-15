@@ -101,6 +101,7 @@ public:
 	void mark_setting_changed(const String &p_setting);
 
 	static float get_auto_display_scale();
+	static String get_layouts_config();
 	String get_language() const;
 
 	// Shortcuts

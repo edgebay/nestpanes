@@ -929,6 +929,11 @@ float AppSettings::get_auto_display_scale() {
 #endif // defined(WINDOWS_ENABLED)
 }
 
+String AppSettings::get_layouts_config() {
+	const String config_file_name = "app_layouts.cfg";
+	return AppPaths::get_singleton()->get_config_dir().path_join(config_file_name);
+}
+
 String EditorSettings::get_language() const {
 	const String language = has_setting("interface/editor/editor_language") ? get("interface/editor/editor_language") : "auto";
 	if (language != "auto") {

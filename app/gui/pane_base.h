@@ -30,6 +30,9 @@ public:
 	void set_icon(const Ref<Texture2D> &p_icon);
 	Ref<Texture2D> get_icon() const;
 
+	virtual Dictionary get_config_data();
+	virtual void apply_config_data(const Dictionary &p_dict);
+
 	PaneBase(const StringName &p_type = StringName());
 	virtual ~PaneBase();
 };

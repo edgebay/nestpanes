@@ -36,15 +36,9 @@
 #include "app/gui/app_about.h"
 #include "app/gui/app_tab_container.h"
 #include "app/gui/container_manager.h"
+#include "app/gui/layout_manager.h"
 #include "app/gui/multi_split_container.h"
 #include "app/gui/pane_manager.h"
-
-#include "app/app_modules/file_management/gui/file_pane.h"
-#include "app/app_modules/file_management/gui/navigation_pane.h"
-
-#define LEFT_SIDEBAR_NAME "left_sidebar"
-#define CENTRAL_AREA_NAME "central_area"
-#define RIGHT_SIDEBAR_NAME "right_sidebar"
 
 AppNode *AppNode::singleton = nullptr;
 
@@ -250,10 +244,6 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
-String AppNode::_get_config_path() const {
-	return AppPaths::get_singleton()->get_config_dir().path_join("app_layout.cfg");
-}
-
 void AppNode::_save_layout() {
 	if (!load_layout_done) {
 		return;
@@ -278,27 +268,12 @@ void AppNode::_save_layout() {
 	if (err == OK) {
 	}
 
-	// Save config.
-	Ref<ConfigFile> config;
-	String config_path = _get_config_path();
-	config.instantiate();
-	// Load and amend existing config if it exists.
-	config->load(config_path);
-
-	// TODO: save_layout_to_config(config, "docks");
-
-	config->save(config_path);
+	layout_manager->save_layout();
 }
 
 void AppNode::_load_layout() {
-	Ref<ConfigFile> config;
-	String config_path = _get_config_path();
-	config.instantiate();
-	Error err = config->load(config_path);
-	// TODO
-	if (err != OK) { // No config.
-	} else {
-	}
+	layout_manager->load_layout(gui_main);
+
 	load_layout_done = true;
 }
 
@@ -477,7 +452,7 @@ void AppNode::_init_main_menu() {
 	view_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
 	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", TTRC("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
-	view_menu->set_item_checked(-1, true); // Note: The left sidebar is visible by default.
+	view_menu->set_item_checked(-1, left_sidebar->is_visible());
 
 	help_menu = memnew(PopupMenu);
 	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
@@ -503,9 +478,9 @@ void AppNode::_init_main_menu() {
 
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_READY: {
-			_load_layout();
-		} break;
+			// case NOTIFICATION_READY: {
+			// 	_load_layout();
+			// } break;
 
 		case NOTIFICATION_ENTER_TREE: {
 			// Theme has already been created in the constructor, so we can skip that step.
@@ -627,7 +602,6 @@ AppNode::AppNode() {
 
 	about = memnew(AppAbout);
 	gui_base->add_child(about);
-	_init_main_menu();
 
 	// Body.
 	HBoxContainer *hbox = memnew(HBoxContainer);
@@ -660,34 +634,34 @@ AppNode::AppNode() {
 	container_manager = memnew(ContainerManager);
 	gui_base->add_child(container_manager);
 
+	layout_manager = memnew(LayoutManager);
+	gui_base->add_child(layout_manager);
+
+	// Default layout.
+	HSplitContainer *hsplit = memnew(HSplitContainer);
+	hbox->add_child(hsplit);
+	hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+	gui_main = hsplit;
+
+	_load_layout();
+
 #define LOAD_SCENE 0 // TODO: load layout
 	if (LOAD_SCENE && _load_main_scene()) {
 		hbox->add_child(gui_main);
-	} else {
-		// Default layout.
-		HSplitContainer *hsplit = memnew(HSplitContainer);
-		hbox->add_child(hsplit);
-		hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-
-		gui_main = hsplit;
-
-		// Left sidebar.
-		left_sidebar = container_manager->create_container(LEFT_SIDEBAR_NAME, hsplit, gui_main);
-		container_manager->new_tab(NavigationPane::get_class_static()); // TODO
-
-		// Central content area.
-		central_area = container_manager->create_container(CENTRAL_AREA_NAME, hsplit, gui_main);
-		central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-		container_manager->set_tab_closable(central_area, true);
-		container_manager->set_tabs_rearrange_group(central_area, 1);
-		container_manager->new_tab(FilePane::get_class_static()); // TODO
-
-		// Right sidebar.
-		right_sidebar = container_manager->create_container(RIGHT_SIDEBAR_NAME, hsplit, gui_main);
-		right_sidebar->hide();
 	}
+
+	// Left sidebar.
+	left_sidebar = layout_manager->get_area(LEFT_SIDEBAR_NAME);
+
+	// Central content area.
+	central_area = layout_manager->get_area(CENTRAL_AREA_NAME);
+
+	// Right sidebar.
+	right_sidebar = layout_manager->get_area(RIGHT_SIDEBAR_NAME);
+
+	_init_main_menu();
 
 	APP_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
 	APP_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);

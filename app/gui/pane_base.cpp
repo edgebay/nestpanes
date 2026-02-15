@@ -54,6 +54,13 @@ Ref<Texture2D> PaneBase::get_icon() const {
 	return !pane_icon.is_valid() ? _get_pane_icon() : pane_icon;
 }
 
+Dictionary PaneBase::get_config_data() {
+	return Dictionary();
+}
+
+void PaneBase::apply_config_data(const Dictionary &p_dict) {
+}
+
 void PaneBase::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("title_changed"));
 	ADD_SIGNAL(MethodInfo("icon_changed"));

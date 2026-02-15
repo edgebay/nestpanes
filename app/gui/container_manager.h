@@ -59,7 +59,8 @@ public:
 
 	PopupMenu *get_popup() const;
 
-	MultiSplitContainer *create_container(const String &p_name = "", Node *p_parent = nullptr, Node *p_owner = nullptr, Node *p_child = nullptr);
+	AppTabContainer *create_tab_container(bool p_tab_closable = false, int p_group_id = -1);
+	MultiSplitContainer *create_split_container();
 
 	void set_current_tab_container(AppTabContainer *p_tab_container);
 	void clear_current_tab_container();
