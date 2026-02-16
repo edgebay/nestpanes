@@ -743,7 +743,7 @@ void AppTabContainer::_on_tab_clicked(int p_tab) {
 }
 
 void AppTabContainer::_on_tab_closed(int p_tab) {
-	close_tab(p_tab);
+	emit_signal("tab_closed", p_tab);
 }
 
 void AppTabContainer::_on_tab_hovered(int p_tab) {
@@ -1396,16 +1396,6 @@ Vector<int> AppTabContainer::get_allowed_size_flags_horizontal() const {
 
 Vector<int> AppTabContainer::get_allowed_size_flags_vertical() const {
 	return Vector<int>();
-}
-
-void AppTabContainer::close_tab(int p_tab) {
-	emit_signal("tab_closed", p_tab);
-
-	Node *control = get_child(p_tab, false);
-	if (control != nullptr) {
-		remove_child(control);
-		control->queue_free();
-	}
 }
 
 void AppTabContainer::_bind_methods() {

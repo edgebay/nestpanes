@@ -5,19 +5,15 @@
 #include "core/templates/safe_refcount.h"
 #include "scene/resources/theme.h"
 
-class AppTabContainer;
 class Control;
 class HBoxContainer;
 class MenuBar;
 class MenuButton;
-class MultiSplitContainer;
 class PopupMenu;
 class VBoxContainer;
 
-class ContainerManager;
 class LayoutManager;
 class PaneManager;
-class PaneBase;
 
 class Timer;
 
@@ -35,6 +31,7 @@ public:
 
 		// View menu.
 		VIEW_LEFT_SIDEBAR,
+		VIEW_RIGHT_SIDEBAR,
 
 		// Help menu.
 		HELP_SEARCH,
@@ -59,12 +56,8 @@ private:
 
 	HBoxContainer *title_bar = nullptr;
 	VBoxContainer *ribbon = nullptr;
-	Control *left_sidebar = nullptr;
-	Control *central_area = nullptr;
-	Control *right_sidebar = nullptr;
 
 	LayoutManager *layout_manager = nullptr;
-	ContainerManager *container_manager = nullptr;
 	PaneManager *pane_manager = nullptr;
 
 	Control *menu_btn_spacer = nullptr;
@@ -76,8 +69,6 @@ private:
 	PopupMenu *help_menu = nullptr;
 
 	AppAbout *about = nullptr;
-
-	List<AppTabContainer *> tab_containers;
 
 	Ref<Theme> theme;
 
@@ -118,6 +109,8 @@ private:
 	void _update_main_menu_type();
 	void _add_to_main_menu(const String &p_name, PopupMenu *p_menu);
 	void _init_main_menu();
+
+	void _on_area_visibility_changed(const String &p_name, bool p_visible);
 
 protected:
 	void _notification(int p_what);

@@ -35,6 +35,7 @@ private:
 
 protected:
 	void _notification(int p_what);
+	static void _bind_methods();
 
 public:
 	static PaneManager *get_singleton() { return singleton; }
@@ -43,6 +44,7 @@ public:
 	void register_pane(const StringName &p_type, const Ref<Texture2D> &p_icon, const Callable &p_create_callback = Callable());
 
 	PaneBase *create(const StringName &p_type);
+	void destroy(PaneBase *p_pane);
 
 	void set_current_pane(PaneBase *p_pane);
 	void clear_current_pane();

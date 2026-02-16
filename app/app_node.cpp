@@ -35,7 +35,6 @@
 
 #include "app/gui/app_about.h"
 #include "app/gui/app_tab_container.h"
-#include "app/gui/container_manager.h"
 #include "app/gui/layout_manager.h"
 #include "app/gui/multi_split_container.h"
 #include "app/gui/pane_manager.h"
@@ -130,10 +129,10 @@ void AppNode::_menu_option(int p_option) {
 void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 	switch (p_option) {
 		case FILE_NEW_TAB: {
-			container_manager->new_tab();
+			layout_manager->create_new_tab();
 		} break;
 		case FILE_CLOSE_TAB: {
-			container_manager->close_current_tab();
+			layout_manager->close_current_tab();
 		} break;
 		case FILE_QUIT: {
 			_exit(EXIT_SUCCESS);
@@ -144,11 +143,12 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			// } break;
 
 		case VIEW_LEFT_SIDEBAR: {
-			int index = view_menu->get_item_index(p_option);
-			bool is_checked = view_menu->is_item_checked(index);
-			left_sidebar->set_visible(!is_checked);
-			view_menu->set_item_checked(index, !is_checked);
+			layout_manager->toggle_area_visible(LEFT_SIDEBAR_NAME);
 		} break;
+		case VIEW_RIGHT_SIDEBAR: {
+			layout_manager->toggle_area_visible(RIGHT_SIDEBAR_NAME);
+		} break;
+
 		// case HELP_SEARCH: {
 		// 	emit_signal(SNAME("request_help_search"), "");
 		// } break;
@@ -187,21 +187,13 @@ void AppNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 }
 
 void AppNode::_toggle_left_sidebar() {
-	bool is_visible = left_sidebar->is_visible();
-	if (is_visible) {
-		left_sidebar->hide();
-	} else {
-		left_sidebar->show();
-	}
+	// left_toggle_button->release_focus(); // TODO
+	layout_manager->toggle_area_visible(LEFT_SIDEBAR_NAME);
 }
 
 void AppNode::_toggle_right_sidebar() {
-	bool is_visible = right_sidebar->is_visible();
-	if (is_visible) {
-		right_sidebar->hide();
-	} else {
-		right_sidebar->show();
-	}
+	// right_toggle_button->release_focus(); // TODO
+	layout_manager->toggle_area_visible(RIGHT_SIDEBAR_NAME);
 }
 
 void AppNode::_exit(int p_exit_code) {
@@ -219,21 +211,9 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
 		bool is_handled = true;
 		if (APP_IS_SHORTCUT("app/next_tab", p_event)) {
-			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
-			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
-			if (tab_count > 0) {
-				int next_tab = current_tab_container->get_current_tab() + 1;
-				next_tab %= tab_count;
-				current_tab_container->set_current_tab(next_tab);
-			}
+			layout_manager->select_next_tab();
 		} else if (APP_IS_SHORTCUT("app/prev_tab", p_event)) {
-			AppTabContainer *current_tab_container = container_manager->get_current_tab_container();
-			int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
-			if (tab_count > 0) {
-				int next_tab = current_tab_container->get_current_tab() - 1;
-				next_tab = next_tab >= 0 ? next_tab : tab_count - 1;
-				current_tab_container->set_current_tab(next_tab);
-			}
+			layout_manager->select_previous_tab();
 		} else {
 			is_handled = false;
 		}
@@ -249,25 +229,6 @@ void AppNode::_save_layout() {
 		return;
 	}
 
-	// Save layout.
-	Ref<PackedScene> sdata;
-	sdata.instantiate();
-	Error err = sdata->pack(gui_main);
-	if (err != OK) {
-		// TODO: hint
-		// show_accept(TTR("Couldn't save scene. Likely dependencies (instances or inheritance) couldn't be satisfied."), TTR("OK"));
-		return;
-	}
-
-	int flg = 0;
-	flg |= ResourceSaver::FLAG_REPLACE_SUBRESOURCE_PATHS;
-
-	String scene_path = _get_main_scene_path();
-	err = ResourceSaver::save(sdata, scene_path, flg);
-	// TODO
-	if (err == OK) {
-	}
-
 	layout_manager->save_layout();
 }
 
@@ -275,70 +236,6 @@ void AppNode::_load_layout() {
 	layout_manager->load_layout(gui_main);
 
 	load_layout_done = true;
-}
-
-String AppNode::_get_main_scene_path() const {
-	return AppPaths::get_singleton()->get_config_dir().path_join("app_scene.tscn");
-}
-
-Error AppNode::_parse_node(Node *p_node) {
-	if (Object::cast_to<MultiSplitContainer>(p_node)) {
-		String node_name = p_node->get_name();
-		if (node_name == LEFT_SIDEBAR_NAME) {
-			left_sidebar = Object::cast_to<MultiSplitContainer>(p_node);
-		} else if (node_name == CENTRAL_AREA_NAME) {
-			central_area = Object::cast_to<MultiSplitContainer>(p_node);
-		} else if (node_name == RIGHT_SIDEBAR_NAME) {
-			right_sidebar = Object::cast_to<MultiSplitContainer>(p_node);
-		}
-	} else if (Object::cast_to<AppTabContainer>(p_node)) {
-		// TODO: handle left_tab_container, right_tab_container
-		AppTabContainer *container = Object::cast_to<AppTabContainer>(p_node);
-		tab_containers.push_back(container);
-	}
-
-	// TODO: panes
-
-	for (int i = 0; i < p_node->get_child_count(); i++) {
-		Node *c = p_node->get_child(i);
-		Error err = _parse_node(c);
-		if (err) {
-			left_sidebar = nullptr;
-			central_area = nullptr;
-			right_sidebar = nullptr;
-
-			tab_containers.clear();
-			return err;
-		}
-	}
-
-	return OK;
-}
-
-bool AppNode::_load_main_scene() {
-	String scene_path = _get_main_scene_path();
-	Ref<PackedScene> sdata = ResourceLoader::load(scene_path, "", ResourceFormatLoader::CACHE_MODE_REPLACE_DEEP);
-	if (sdata.is_null()) {
-		return false;
-	}
-
-	sdata->set_path(scene_path, true); // Take over path.
-
-	Node *new_scene = sdata->instantiate(PackedScene::GEN_EDIT_STATE_DISABLED);
-	if (!new_scene) {
-		return false;
-	}
-	new_scene->set_scene_instance_state(Ref<SceneState>());
-
-	Error err = _parse_node(new_scene);
-	if (err != OK || (left_sidebar == nullptr || central_area == nullptr || right_sidebar == nullptr) || tab_containers.is_empty()) {
-		return false;
-	}
-
-	// TODO: restore the layout
-
-	gui_main = new_scene;
-	return true;
 }
 
 void AppNode::_update_main_menu_type() {
@@ -452,7 +349,10 @@ void AppNode::_init_main_menu() {
 	view_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
 	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", TTRC("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
-	view_menu->set_item_checked(-1, left_sidebar->is_visible());
+	view_menu->set_item_checked(-1, layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
+
+	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/right_sidebar", TTRC("Right Sidebar"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::B), VIEW_RIGHT_SIDEBAR);
+	view_menu->set_item_checked(-1, layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
 
 	help_menu = memnew(PopupMenu);
 	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
@@ -474,6 +374,16 @@ void AppNode::_init_main_menu() {
 	help_menu->add_separator();
 	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/about", TTRC("About")), HELP_ABOUT);
 	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
+}
+
+void AppNode::_on_area_visibility_changed(const String &p_name, bool p_visible) {
+	if (p_name == LEFT_SIDEBAR_NAME) {
+		int index = view_menu->get_item_index(VIEW_LEFT_SIDEBAR);
+		view_menu->set_item_checked(index, layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
+	} else if (p_name == RIGHT_SIDEBAR_NAME) {
+		int index = view_menu->get_item_index(VIEW_RIGHT_SIDEBAR);
+		view_menu->set_item_checked(index, layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
+	}
 }
 
 void AppNode::_notification(int p_what) {
@@ -585,7 +495,7 @@ AppNode::AppNode() {
 	// Button *left_toggle_button = memnew(Button);
 	// // left_toggle_button->set_flat(true);
 	// left_toggle_button->set_theme_type_variation("MainScreenButton");
-	// left_toggle_button->set_focus_mode(Control::FOCUS_NONE);
+	// // left_toggle_button->set_focus_mode(Control::FOCUS_NONE);
 	// left_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 	// left_toggle_button->set_tooltip_text(RTR("Toggle left sidebar"));
 	// left_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_left_sidebar));
@@ -594,7 +504,7 @@ AppNode::AppNode() {
 	// Button *right_toggle_button = memnew(Button);
 	// // right_toggle_button->set_flat(true);
 	// right_toggle_button->set_theme_type_variation("MainScreenButton");
-	// right_toggle_button->set_focus_mode(Control::FOCUS_NONE);
+	// // right_toggle_button->set_focus_mode(Control::FOCUS_NONE);
 	// right_toggle_button->set_button_icon(theme->get_icon(SNAME("TripleBar"), SNAME("AppIcons"))); // TODO
 	// right_toggle_button->set_tooltip_text(RTR("Toggle right sidebar"));
 	// right_toggle_button->connect(SceneStringName(pressed), callable_mp(this, &AppNode::_toggle_right_sidebar));
@@ -631,11 +541,9 @@ AppNode::AppNode() {
 	pane_manager = memnew(PaneManager);
 	gui_base->add_child(pane_manager);
 
-	container_manager = memnew(ContainerManager);
-	gui_base->add_child(container_manager);
-
 	layout_manager = memnew(LayoutManager);
 	gui_base->add_child(layout_manager);
+	layout_manager->connect("area_visibility_changed", callable_mp(this, &AppNode::_on_area_visibility_changed));
 
 	// Default layout.
 	HSplitContainer *hsplit = memnew(HSplitContainer);
@@ -645,22 +553,7 @@ AppNode::AppNode() {
 
 	gui_main = hsplit;
 
-	_load_layout();
-
-#define LOAD_SCENE 0 // TODO: load layout
-	if (LOAD_SCENE && _load_main_scene()) {
-		hbox->add_child(gui_main);
-	}
-
-	// Left sidebar.
-	left_sidebar = layout_manager->get_area(LEFT_SIDEBAR_NAME);
-
-	// Central content area.
-	central_area = layout_manager->get_area(CENTRAL_AREA_NAME);
-
-	// Right sidebar.
-	right_sidebar = layout_manager->get_area(RIGHT_SIDEBAR_NAME);
-
+	_load_layout(); // TODO: child icon invalid
 	_init_main_menu();
 
 	APP_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);

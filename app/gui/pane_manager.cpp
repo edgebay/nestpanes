@@ -32,8 +32,6 @@ void PaneManager::_gui_focus_changed(Control *p_control) {
 	set_current_pane(pane);
 
 	// TODO: pane->set_active(bool)
-
-	// TODO: emit signal and handle in ContainerManager?
 }
 
 // File management.
@@ -91,6 +89,11 @@ PaneBase *PaneManager::create(const StringName &p_type) {
 	}
 
 	PaneBase *pane = PaneFactory::create_pane(type);
+	if (!pane) {
+		return nullptr;
+	}
+
+	set_current_pane(pane);
 
 	pane_map[type].push_back(pane);
 
@@ -99,12 +102,24 @@ PaneBase *PaneManager::create(const StringName &p_type) {
 	return pane;
 }
 
+void PaneManager::destroy(PaneBase *p_pane) {
+	String type = p_pane->get_class_name();
+
+	if (pane_map.has(type)) {
+		pane_map[type].erase(p_pane);
+	}
+
+	p_pane->queue_free();
+}
+
 void PaneManager::set_current_pane(PaneBase *p_pane) {
 	if (p_pane && p_pane != current_pane) {
 		if (current_pane != nullptr) {
 			prev_pane = current_pane;
 		}
 		current_pane = p_pane;
+
+		emit_signal("pane_changed", p_pane);
 	}
 }
 
@@ -121,6 +136,10 @@ PaneBase *PaneManager::get_current_pane() const {
 
 PaneBase *PaneManager::get_prev_pane() const {
 	return prev_pane;
+}
+
+void PaneManager::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("pane_changed", PropertyInfo(Variant::OBJECT, "pane")));
 }
 
 PaneManager::PaneManager() {

@@ -5,7 +5,7 @@
 
 #include "app/app_modules/file_management/gui/file_pane.h"
 #include "app/gui/app_tab_container.h"
-#include "app/gui/container_manager.h"
+#include "app/gui/layout_manager.h"
 
 void FileContextMenu::_notification(int p_what) {
 	switch (p_what) {
@@ -39,7 +39,7 @@ void FileContextMenu::_id_pressed(int p_index) {
 			}
 
 			if (FileSystemAccess::dir_exists(path)) {
-				ContainerManager::get_singleton()->new_tab(FilePane::get_class_static(),
+				LayoutManager::get_singleton()->create_new_tab(FilePane::get_class_static(),
 						tab_container,
 						callable_mp(this, &FileContextMenu::_on_new_file_pane).bind(path));
 			} else if (FileSystemAccess::file_exists(path)) {
