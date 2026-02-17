@@ -169,6 +169,9 @@ PopupMenu *LayoutManager::get_popup() const {
 
 AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_group_id) {
 	AppTabContainer *tab_container = memnew(AppTabContainer);
+	tab_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	tab_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
 	// tab_container->set_theme_type_variation("TabContainerOdd");	// TODO: theme
 	tab_container->set_new_tab_enabled(p_tab_closable);
 	tab_container->set_drag_to_rearrange_enabled(true);
@@ -193,10 +196,7 @@ AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_
 
 MultiSplitContainer *LayoutManager::create_split_container() {
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
-	bool tab_closable = false;
-	int group_id = -1;
-	split_container->set_meta("tab_closable", tab_closable);
-	split_container->set_meta("group_id", group_id);
+	split_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
 	split_containers.push_back(split_container);
 
@@ -399,6 +399,54 @@ Ref<ConfigFile> LayoutManager::get_layout() {
 	return default_layout;
 }
 
+Dictionary LayoutManager::_get_tab_container_data(AppTabContainer *p_tab_container) {
+	Dictionary d;
+	d["current_tab"] = p_tab_container->get_current_tab();
+	return d;
+}
+
+void LayoutManager::_set_tab_container_data(AppTabContainer *p_tab_container, const Dictionary &p_data) {
+	p_tab_container->set_current_tab(p_data.get("current_tab", p_tab_container->get_current_tab()));
+}
+
+Dictionary LayoutManager::_get_split_container_data(MultiSplitContainer *p_split_container) {
+	Dictionary d;
+	d["visible"] = p_split_container->is_visible();
+	d["vertical"] = p_split_container->is_vertical();
+	return d;
+}
+
+void LayoutManager::_set_split_container_data(MultiSplitContainer *p_split_container, const Dictionary &p_data) {
+	p_split_container->set_visible(p_data.get("visible", p_split_container->is_visible()));
+	p_split_container->set_vertical(p_data.get("vertical", p_split_container->is_vertical()));
+}
+
+Dictionary LayoutManager::_get_area_data(Control *p_area) {
+	Dictionary d;
+	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_area);
+	if (split_container) {
+		d = _get_split_container_data(split_container);
+
+		d["size_flags_horizontal"] = split_container->get_h_size_flags();
+		d["size_flags_vertical"] = split_container->get_v_size_flags();
+		d["tab_closable"] = get_tab_closable(split_container);
+		d["group_id"] = get_tabs_rearrange_group(split_container);
+	}
+	return d;
+}
+
+void LayoutManager::_set_area_data(Control *p_area, const Dictionary &p_data) {
+	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_area);
+	if (split_container) {
+		_set_split_container_data(split_container, p_data);
+
+		split_container->set_h_size_flags(p_data.get("size_flags_horizontal", split_container->get_h_size_flags()));
+		split_container->set_v_size_flags(p_data.get("size_flags_vertical", split_container->get_v_size_flags()));
+		set_tab_closable(split_container, p_data.get("tab_closable", get_tab_closable(split_container)));
+		set_tabs_rearrange_group(split_container, p_data.get("group_id", get_tabs_rearrange_group(split_container)));
+	}
+}
+
 Array LayoutManager::_get_children_data(Node *p_parent) {
 	Array children;
 
@@ -414,18 +462,14 @@ Array LayoutManager::_get_children_data(Node *p_parent) {
 		if (Object::cast_to<AppTabContainer>(child)) {
 			AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(child);
 			child_type = "TabContainer";
-
-			// TODO
-			// child_data
+			child_data = _get_tab_container_data(tab_container);
 
 			is_container = true;
 			child_children = _get_children_data(child);
 		} else if (Object::cast_to<MultiSplitContainer>(child)) {
 			MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(child);
 			child_type = "SplitContainer";
-
-			// TODO
-			child_data["vertical"] = split_container->is_vertical();
+			child_data = _get_split_container_data(split_container);
 
 			is_container = true;
 			child_children = _get_children_data(child);
@@ -453,14 +497,7 @@ void LayoutManager::_save_area_to_config(Ref<ConfigFile> p_layout, Control *p_ar
 	MultiSplitContainer *split_container = Object::cast_to<MultiSplitContainer>(p_area);
 	if (split_container) {
 		p_layout->set_value(section, "type", "SplitContainer");
-
-		Dictionary container_data;
-		container_data["visible"] = split_container->is_visible();
-		container_data["vertical"] = split_container->is_vertical();
-		container_data["tab_closable"] = get_tab_closable(split_container);
-		container_data["group_id"] = get_tabs_rearrange_group(split_container);
-		p_layout->set_value(section, "data", container_data);
-
+		p_layout->set_value(section, "data", _get_area_data(split_container));
 		p_layout->set_value(section, "children", _get_children_data(p_area));
 	}
 }
@@ -502,7 +539,9 @@ void LayoutManager::_load_container(Node *p_parent, const Array &p_children) {
 		Dictionary child_data = dict.get("data", Dictionary());
 
 		if (child_type == "TabContainer") {
-			AppTabContainer *tab_container = create_tab_container();
+			bool tab_closable = get_tab_closable(parent);
+			int group_id = get_tabs_rearrange_group(parent);
+			AppTabContainer *tab_container = create_tab_container(tab_closable, group_id);
 			parent->add_child(tab_container);
 
 			if (dict.has("children")) {
@@ -510,22 +549,17 @@ void LayoutManager::_load_container(Node *p_parent, const Array &p_children) {
 				_load_children(tab_container, child_children);
 			}
 
-			// TODO: load data
+			_set_tab_container_data(tab_container, child_data);
 		} else if (child_type == "SplitContainer") {
 			MultiSplitContainer *split_container = create_split_container();
 			parent->add_child(split_container);
-			split_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-			split_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-			split_container->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
 			if (dict.has("children")) {
 				Array child_children = dict["children"];
 				_load_container(split_container, child_children);
 			}
 
-			// TODO: load data
-			bool vertical = child_data.get("vertical", split_container->is_vertical());
-			split_container->set_vertical(vertical);
+			_set_split_container_data(split_container, child_data);
 		}
 	}
 }
@@ -539,20 +573,13 @@ void LayoutManager::_load_area_from_config(Ref<ConfigFile> p_layout, const Strin
 
 	String type = p_layout->get_value(section, "type");
 	if (type == "SplitContainer") {
-		MultiSplitContainer *area = create_split_container();
+		MultiSplitContainer *area = Object::cast_to<MultiSplitContainer>(_create_area(type));
 		area->set_name(p_name);
 		p_parent->add_child(area);
 
-		Array children = p_layout->get_value(section, "children");
-		_load_container(area, children);
+		_load_container(area, p_layout->get_value(section, "children", Array()));
 
-		Dictionary container_data = p_layout->get_value(section, "data", Dictionary());
-		area->set_visible(container_data.get("visible", area->is_visible()));
-		area->set_vertical(container_data.get("vertical", area->is_vertical()));
-		set_tab_closable(area, container_data.get("tab_closable", get_tab_closable(area)));
-		set_tabs_rearrange_group(area, container_data.get("group_id", get_tabs_rearrange_group(area)));
-
-		_add_area(area);
+		_set_area_data(area, p_layout->get_value(section, "data", Dictionary()));
 	}
 }
 
@@ -560,7 +587,7 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	AppTabContainer *tab_container = nullptr;
 
 	// Left sidebar.
-	MultiSplitContainer *left_sidebar = create_split_container();
+	MultiSplitContainer *left_sidebar = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(left_sidebar);
 	left_sidebar->set_name(LEFT_SIDEBAR_NAME);
 
@@ -568,12 +595,11 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	left_sidebar->add_child(tab_container);
 
 	create_new_tab(NavigationPane::get_class_static(), tab_container);
-	_add_area(left_sidebar);
 
 	// Central content area.
 	bool tab_closable = true;
 	int group_id = 1;
-	MultiSplitContainer *central_area = create_split_container();
+	MultiSplitContainer *central_area = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(central_area);
 	central_area->set_name(CENTRAL_AREA_NAME);
 	central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
@@ -585,14 +611,12 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	central_area->add_child(tab_container);
 
 	create_new_tab(FilePane::get_class_static(), tab_container);
-	_add_area(central_area);
 
 	// Right sidebar.
-	MultiSplitContainer *right_sidebar = create_split_container();
+	MultiSplitContainer *right_sidebar = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(right_sidebar);
 	right_sidebar->set_name(RIGHT_SIDEBAR_NAME);
 	right_sidebar->hide();
-	_add_area(right_sidebar);
 }
 
 void LayoutManager::save_layout() {
@@ -629,6 +653,22 @@ void LayoutManager::load_layout(Node *p_parent) {
 	}
 
 	load_layout_done = true;
+}
+
+Control *LayoutManager::_create_area(const String &p_type) {
+	if (p_type == "SplitContainer") {
+		MultiSplitContainer *split_container = create_split_container();
+
+		bool tab_closable = false;
+		int group_id = -1;
+		split_container->set_meta("tab_closable", tab_closable);
+		split_container->set_meta("group_id", group_id);
+
+		_add_area(split_container);
+
+		return split_container;
+	}
+	return nullptr;
 }
 
 void LayoutManager::_add_area(Control *p_area) {

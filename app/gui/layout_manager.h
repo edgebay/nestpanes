@@ -66,14 +66,24 @@ private:
 	void _on_current_pane_changed(PaneBase *p_pane);
 
 	// Layout.
+	Dictionary _get_tab_container_data(AppTabContainer *p_tab_container);
+	void _set_tab_container_data(AppTabContainer *p_tab_container, const Dictionary &p_data);
+	Dictionary _get_split_container_data(MultiSplitContainer *p_split_container);
+	void _set_split_container_data(MultiSplitContainer *p_split_container, const Dictionary &p_data);
+	Dictionary _get_area_data(Control *p_area);
+	void _set_area_data(Control *p_area, const Dictionary &p_data);
+
 	Array _get_children_data(Node *p_parent);
 	void _save_area_to_config(Ref<ConfigFile> p_layout, Control *p_node);
+
 	void _apply_layout_config(PaneBase *p_pane, const Dictionary &p_data);
 	void _load_children(Node *p_parent, const Array &p_children);
 	void _load_container(Node *p_parent, const Array &p_children);
 	void _load_area_from_config(Ref<ConfigFile> p_layout, const String &p_name, Node *p_parent);
+
 	void _setup_default_layout(Node *p_parent);
 
+	Control *_create_area(const String &p_type = "SplitContainer");
 	void _add_area(Control *p_area);
 	Control *_get_area(const String &p_name) const;
 	void _remove_area(Control *p_area);
@@ -87,6 +97,7 @@ public:
 	// Container.
 	PopupMenu *get_popup() const;
 
+	/// TODO: private
 	AppTabContainer *create_tab_container(bool p_tab_closable = false, int p_group_id = -1);
 	MultiSplitContainer *create_split_container();
 
@@ -100,6 +111,7 @@ public:
 
 	void set_tabs_rearrange_group(MultiSplitContainer *p_split_container, int p_group_id);
 	int get_tabs_rearrange_group(MultiSplitContainer *p_split_container) const;
+	///
 
 	void create_new_tab(const StringName &p_type = StringName(), AppTabContainer *p_tab_container = nullptr, const Callable &p_callback = Callable());
 	void close_current_tab();
