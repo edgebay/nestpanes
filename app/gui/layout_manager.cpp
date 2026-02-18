@@ -406,7 +406,13 @@ Dictionary LayoutManager::_get_tab_container_data(AppTabContainer *p_tab_contain
 }
 
 void LayoutManager::_set_tab_container_data(AppTabContainer *p_tab_container, const Dictionary &p_data) {
-	p_tab_container->set_current_tab(p_data.get("current_tab", p_tab_container->get_current_tab()));
+	int index = p_data.get("current_tab", p_tab_container->get_current_tab());
+	p_tab_container->set_current_tab(index);
+
+	PaneBase *pane = Object::cast_to<PaneBase>(p_tab_container->get_tab_control(index));
+	if (pane) {
+		PaneManager::get_singleton()->set_current_pane(pane);
+	}
 }
 
 Dictionary LayoutManager::_get_split_container_data(MultiSplitContainer *p_split_container) {
@@ -429,6 +435,7 @@ Dictionary LayoutManager::_get_area_data(Control *p_area) {
 
 		d["size_flags_horizontal"] = split_container->get_h_size_flags();
 		d["size_flags_vertical"] = split_container->get_v_size_flags();
+		d["split_offsets"] = split_container->get_split_offsets();
 		d["tab_closable"] = get_tab_closable(split_container);
 		d["group_id"] = get_tabs_rearrange_group(split_container);
 	}
@@ -442,9 +449,22 @@ void LayoutManager::_set_area_data(Control *p_area, const Dictionary &p_data) {
 
 		split_container->set_h_size_flags(p_data.get("size_flags_horizontal", split_container->get_h_size_flags()));
 		split_container->set_v_size_flags(p_data.get("size_flags_vertical", split_container->get_v_size_flags()));
+		split_container->set_split_offsets(p_data.get("split_offsets", split_container->get_split_offsets()));
 		set_tab_closable(split_container, p_data.get("tab_closable", get_tab_closable(split_container)));
 		set_tabs_rearrange_group(split_container, p_data.get("group_id", get_tabs_rearrange_group(split_container)));
 	}
+}
+
+Dictionary LayoutManager::_get_main_data() {
+	Dictionary d;
+	HSplitContainer *hsplit = Object::cast_to<HSplitContainer>(gui_main);
+	d["split_offsets"] = hsplit->get_split_offsets();
+	return d;
+}
+
+void LayoutManager::_set_main_data(const Dictionary &p_data) {
+	HSplitContainer *hsplit = Object::cast_to<HSplitContainer>(gui_main);
+	hsplit->set_split_offsets(p_data.get("split_offsets", hsplit->get_split_offsets()));
 }
 
 Array LayoutManager::_get_children_data(Node *p_parent) {
@@ -503,6 +523,7 @@ void LayoutManager::_save_area_to_config(Ref<ConfigFile> p_layout, Control *p_ar
 }
 
 void LayoutManager::_apply_layout_config(PaneBase *p_pane, const Dictionary &p_data) {
+	ERR_FAIL_NULL(p_pane);
 	p_pane->apply_config_data(p_data);
 }
 
@@ -624,6 +645,11 @@ void LayoutManager::save_layout() {
 		return;
 	}
 
+	String section = "main";
+	String type = gui_main->get_class_name();
+	default_layout->set_value(section, "type", type);
+	default_layout->set_value(section, "data", _get_main_data());
+
 	// Save default_layout.
 	for (Control *area : areas) {
 		_save_area_to_config(default_layout, area);
@@ -633,6 +659,11 @@ void LayoutManager::save_layout() {
 }
 
 void LayoutManager::load_layout(Node *p_parent) {
+	if (!gui_main) {
+		gui_main = _create_main();
+		p_parent->add_child(gui_main); // TODO: change parent?
+	}
+
 	if (!popup_menu) {
 		popup_menu = memnew(PopupMenu);
 		popup_menu->add_item(RTR("Split Up"), SPLIT_MENU_UP);
@@ -640,19 +671,31 @@ void LayoutManager::load_layout(Node *p_parent) {
 		popup_menu->add_item(RTR("Split Left"), SPLIT_MENU_LEFT);
 		popup_menu->add_item(RTR("Split Right"), SPLIT_MENU_RIGHT);
 		popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &LayoutManager::_menu_id_pressed));
-		p_parent->add_child(popup_menu); // TODO: change parent?
+		gui_main->add_child(popup_menu);
 	}
 
 	Error err = default_layout->load(AppSettings::get_layouts_config());
 	if (err != OK) { // No default_layout.
-		_setup_default_layout(p_parent);
+		_setup_default_layout(gui_main);
 	} else {
-		_load_area_from_config(default_layout, LEFT_SIDEBAR_NAME, p_parent);
-		_load_area_from_config(default_layout, CENTRAL_AREA_NAME, p_parent);
-		_load_area_from_config(default_layout, RIGHT_SIDEBAR_NAME, p_parent);
+		_load_area_from_config(default_layout, LEFT_SIDEBAR_NAME, gui_main);
+		_load_area_from_config(default_layout, CENTRAL_AREA_NAME, gui_main);
+		_load_area_from_config(default_layout, RIGHT_SIDEBAR_NAME, gui_main);
+
+		String section = "main";
+		// String type = default_layout->get_value(section, "type");
+		_set_main_data(default_layout->get_value(section, "data", Dictionary()));
 	}
 
 	load_layout_done = true;
+}
+
+Control *LayoutManager::_create_main() {
+	HSplitContainer *hsplit = memnew(HSplitContainer);
+	hsplit->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	return hsplit;
 }
 
 Control *LayoutManager::_create_area(const String &p_type) {

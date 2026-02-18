@@ -138,6 +138,7 @@ FileSystemDirectory *FileSystemDirectory::create_subdir(const String &p_path) {
 	FileInfo file_info;
 	Error err = FileSystemAccess::get_file_info(p_path, file_info);
 	if (err != OK) {
+		// TODO: handle err
 		return nullptr;
 	}
 
@@ -241,6 +242,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 }
 
 void FileSystem::_update(FileSystemDirectory *p_dir) {
+	ERR_FAIL_NULL(p_dir);
 	p_dir->scan();
 	emit_signal(SNAME("file_system_changed"), p_dir);
 }
@@ -256,6 +258,7 @@ void FileSystem::update(const String &p_path) {
 }
 
 void FileSystem::update(FileSystemDirectory *p_dir) {
+	ERR_FAIL_NULL(p_dir);
 	callable_mp(this, &FileSystem::_update).call_deferred(p_dir);
 }
 
@@ -293,6 +296,8 @@ FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
 
 		dir = dir->create_subdir(dir->get_path().path_join(name));
 		if (!dir) {
+			created = false;
+			found = false;
 			break;
 		}
 		created = true;
@@ -306,6 +311,64 @@ FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
 	}
 
 	return dir;
+}
+
+void FileSystem::load_dirs(const Vector<String> &p_paths, const Callable &p_callback) {
+	if (p_paths.is_empty()) {
+		return;
+	}
+
+	for (const String &target_path : p_paths) {
+		if (target_path == file_system_root->get_path()) {
+			continue;
+		}
+
+		if (!FileSystemAccess::dir_exists(target_path)) {
+			continue;
+		}
+
+		String path = target_path.replace_char('\\', '/');
+		if (path.ends_with("/")) {
+			path = path.substr(0, path.length() - 1);
+		}
+
+		Vector<String> names = path.split("/");
+
+		bool created = false;
+		bool found = false;
+		FileSystemDirectory *dir = file_system_root;
+		for (int i = 0; i < names.size(); i++) {
+			String name = names[i];
+			FileSystemDirectory *subdir = dir->get_subdir_by_name(name);
+			if (subdir) {
+				found = true;
+				dir = subdir;
+				continue;
+			}
+
+			dir = dir->create_subdir(dir->get_path().path_join(name));
+			if (!dir) {
+				created = false;
+				found = false;
+				break;
+			}
+			created = true;
+		}
+		if (!found && !created) {
+			continue;
+		}
+
+		if (created || !dir->is_scanned()) {
+			dir->scan();
+		}
+	}
+
+	if (p_callback.is_valid()) {
+		p_callback.call();
+	}
+
+	// TODO
+	// emit_signal(SNAME("file_system_changed"), p_dir);
 }
 
 void FileSystem::_bind_methods() {

@@ -22,13 +22,13 @@ void NavigationPane::_notification(int p_what) {
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_THEME_CHANGED: {
 			if (tree->get_root() != nullptr) {
-				_update_tree(get_uncollapsed_paths());
+				_update_tree();
 			}
 		} break;
 	}
 }
 
-void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, bool p_uncollapse_root, bool p_scroll_to_selected) {
+void NavigationPane::_update_tree() {
 	ERR_FAIL_NULL(file_system);
 
 	if (tree->has_connections("item_collapsed")) {
@@ -40,16 +40,9 @@ void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, boo
 	TreeItem *root = tree->create_item();
 	const FileSystemDirectory *file_system_root = file_system->get_root();
 
-	Vector<String> uncollapsed_paths = p_uncollapsed_paths;
-	if (p_uncollapse_root) {
-		uncollapsed_paths.push_back(file_system_root->get_path());
-	}
+	_create_tree(root, file_system_root, get_uncollapsed_paths());
 
-	_create_tree(root, file_system_root, uncollapsed_paths);
-
-	if (p_scroll_to_selected) {
-		tree->ensure_cursor_is_visible();
-	}
+	tree->ensure_cursor_is_visible();
 
 	updating_tree = false;
 	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
@@ -57,6 +50,8 @@ void NavigationPane::_update_tree(const Vector<String> &p_uncollapsed_paths, boo
 
 void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
 	ERR_FAIL_NULL(file_system);
+	ERR_FAIL_NULL(p_parent);
+	ERR_FAIL_NULL(p_dir);
 
 	Dictionary d = p_parent->get_metadata(0);
 	String path = d["path"];
@@ -87,6 +82,9 @@ void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirecto
 }
 
 void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
+	ERR_FAIL_NULL(p_parent);
+	ERR_FAIL_NULL(p_dir);
+
 	// Create a tree item for the subdirectory.
 	TreeItem *subdirectory_item = tree->create_item(p_parent);
 	String dname = p_dir->get_name();
@@ -127,11 +125,11 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	// Create items for all subdirectories.
 	for (int i = 0; i < p_dir->get_subdir_count(); i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
-		if (uncollapsed) {
-			if (!subdir->is_scanned()) {
-				file_system->update(subdir);
-			}
-		}
+		// if (uncollapsed) {
+		// 	if (!subdir->is_scanned()) {
+		// 		file_system->update(subdir); // TODO: do not update here
+		// 	}
+		// }
 		_create_tree(subdirectory_item, subdir, p_uncollapsed_paths);
 	}
 
@@ -142,6 +140,9 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 }
 
 void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_file_info) {
+	ERR_FAIL_NULL(p_parent);
+	ERR_FAIL_NULL(p_file_info);
+
 	const int icon_size = get_theme_constant(SNAME("class_icon_size"));
 	TreeItem *file_item = tree->create_item(p_parent);
 	const String file_metadata = p_file_info->path;
@@ -221,6 +222,11 @@ void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
 				file_system->update(subdir);
 			}
 		}
+
+		uncollapsed_paths.push_back(d["path"]);
+	} else {
+		Dictionary d = p_item->get_metadata(0);
+		uncollapsed_paths.erase(d["path"]);
 	}
 }
 
@@ -376,6 +382,11 @@ void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 	callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
 }
 
+void NavigationPane::_load_uncollapsed_paths() {
+	file_system->load_dirs(uncollapsed_paths, callable_mp(this, &NavigationPane::_update_tree));
+	// TODO: scan all subdir
+}
+
 Vector<String> NavigationPane::get_selected_paths() const {
 	// Build a list of selected items with the active one at the first position.
 	Vector<String> selected_strings;
@@ -401,28 +412,29 @@ Vector<String> NavigationPane::get_selected_paths() const {
 }
 
 Vector<String> NavigationPane::get_uncollapsed_paths() const {
-	Vector<String> uncollapsed_paths;
-	TreeItem *root = tree->get_root();
-	if (root) {
-		// BFS to find all uncollapsed paths of the file system directory.
-		TreeItem *file_system_subtree = root->get_first_child();
-		if (file_system_subtree) {
-			List<TreeItem *> queue;
-			queue.push_back(file_system_subtree);
+	// Vector<String> paths;
+	// TreeItem *root = tree->get_root();
+	// if (root) {
+	// 	// BFS to find all uncollapsed paths of the file system directory.
+	// 	TreeItem *file_system_subtree = root->get_first_child();
+	// 	if (file_system_subtree) {
+	// 		List<TreeItem *> queue;
+	// 		queue.push_back(file_system_subtree);
 
-			while (!queue.is_empty()) {
-				TreeItem *ti = queue.back()->get();
-				queue.pop_back();
-				if (!ti->is_collapsed() && ti->get_child_count() > 0) {
-					Dictionary d = ti->get_metadata(0);
-					uncollapsed_paths.push_back(d["path"]);
-				}
-				for (int i = 0; i < ti->get_child_count(); i++) {
-					queue.push_back(ti->get_child(i));
-				}
-			}
-		}
-	}
+	// 		while (!queue.is_empty()) {
+	// 			TreeItem *ti = queue.back()->get();
+	// 			queue.pop_back();
+	// 			if (!ti->is_collapsed() && ti->get_child_count() > 0) {
+	// 				Dictionary d = ti->get_metadata(0);
+	// 				paths.push_back(d["path"]);
+	// 			}
+	// 			for (int i = 0; i < ti->get_child_count(); i++) {
+	// 				queue.push_back(ti->get_child(i));
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// return paths;
 	return uncollapsed_paths;
 }
 
@@ -436,12 +448,33 @@ void NavigationPane::set_file_system(FileSystem *p_file_system) {
 
 	context_menu->set_file_system(file_system);
 
-	callable_mp(this, &NavigationPane::_update_tree).call_deferred(Vector<String>(), true, true);
+	const FileSystemDirectory *file_system_root = file_system->get_root();
+	String root_path = file_system_root->get_path();
+	if (!uncollapsed_paths.has(root_path)) {
+		uncollapsed_paths.push_back(root_path);
+	}
+
+	callable_mp(this, &NavigationPane::_update_tree).call_deferred();
 }
 
 void NavigationPane::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_activated", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
 	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::BOOL, "is_dir")));
+}
+
+Dictionary NavigationPane::get_config_data() {
+	Dictionary d;
+	d["uncollapsed_paths"] = get_uncollapsed_paths();
+	return d;
+}
+
+void NavigationPane::apply_config_data(const Dictionary &p_dict) {
+	ERR_FAIL_NULL(file_system);
+
+	if (p_dict.has("uncollapsed_paths")) {
+		uncollapsed_paths = p_dict.get("uncollapsed_paths", get_uncollapsed_paths());
+		callable_mp(this, &NavigationPane::_load_uncollapsed_paths).call_deferred();
+	}
 }
 
 NavigationPane::NavigationPane() :

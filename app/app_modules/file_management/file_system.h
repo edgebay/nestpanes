@@ -85,6 +85,7 @@ public:
 	void update_file_system();
 
 	FileSystemDirectory *load_dir(const String &p_path);
+	void load_dirs(const Vector<String> &p_paths, const Callable &p_callback = Callable());
 
 	FileSystem();
 	virtual ~FileSystem();

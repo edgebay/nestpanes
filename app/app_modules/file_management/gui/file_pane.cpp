@@ -332,12 +332,12 @@ void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
 }
 
 void FilePane::_update_item_list() {
-	item_list->clear();
-
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
 	if (!dir) {
 		return;
 	}
+
+	item_list->clear();
 
 	// list dirs
 	for (int i = 0; i < dir->get_subdir_count(); i++) {
@@ -524,6 +524,7 @@ void FilePane::_select_history(int p_idx) {
 }
 
 void FilePane::_go_history() {
+	ERR_FAIL_COND(local_history_pos < 0 || local_history_pos >= local_history.size());
 	set_path(local_history[local_history_pos], false);
 }
 
@@ -713,6 +714,8 @@ void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 }
 
 void FilePane::_set_path(FileSystemDirectory *p_dir, bool p_update_history) {
+	ERR_FAIL_NULL(p_dir);
+
 	current_path = p_dir->get_path();
 	emit_signal(SNAME("path_changed"), this);
 
@@ -776,6 +779,19 @@ void FilePane::set_file_system(FileSystem *p_file_system) {
 
 void FilePane::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("path_changed", PropertyInfo(Variant::OBJECT, "file_pane")));
+}
+
+Dictionary FilePane::get_config_data() {
+	Dictionary d;
+	d["path"] = get_path();
+	return d;
+}
+
+void FilePane::apply_config_data(const Dictionary &p_dict) {
+	String path = p_dict.get("path", get_path());
+	if (path != get_path() && FileSystemAccess::dir_exists(path)) {
+		callable_mp(this, &FilePane::set_path).call_deferred(path, false);
+	}
 }
 
 FilePane::FilePane() :

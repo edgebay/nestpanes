@@ -22,12 +22,13 @@ private:
 
 	bool updating_tree = false;
 
+	Vector<String> uncollapsed_paths;
 	String selected_path = "";
 
 	virtual String _get_pane_title() const override;
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
-	void _update_tree(const Vector<String> &p_uncollapsed_paths = Vector<String>(), bool p_uncollapse_root = false, bool p_scroll_to_selected = true);
+	void _update_tree();
 	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
@@ -47,6 +48,8 @@ private:
 	TreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(FileSystemDirectory *p_dir);
 
+	void _load_uncollapsed_paths();
+
 protected:
 	// TODO: edit
 	// void _item_edited();
@@ -55,6 +58,9 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual Dictionary get_config_data() override;
+	virtual void apply_config_data(const Dictionary &p_dict) override;
+
 	// TODO: edit
 	// virtual bool edit_selected(const FileOrFolder &p_selected) override;
 

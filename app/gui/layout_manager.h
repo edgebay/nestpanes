@@ -36,6 +36,7 @@ private:
 	Ref<ConfigFile> default_layout;
 	bool load_layout_done = false;
 
+	Control *gui_main = nullptr;
 	Vector<Control *> areas;
 
 	// Container.
@@ -72,6 +73,8 @@ private:
 	void _set_split_container_data(MultiSplitContainer *p_split_container, const Dictionary &p_data);
 	Dictionary _get_area_data(Control *p_area);
 	void _set_area_data(Control *p_area, const Dictionary &p_data);
+	Dictionary _get_main_data();
+	void _set_main_data(const Dictionary &p_data);
 
 	Array _get_children_data(Node *p_parent);
 	void _save_area_to_config(Ref<ConfigFile> p_layout, Control *p_node);
@@ -83,6 +86,7 @@ private:
 
 	void _setup_default_layout(Node *p_parent);
 
+	Control *_create_main();
 	Control *_create_area(const String &p_type = "SplitContainer");
 	void _add_area(Control *p_area);
 	Control *_get_area(const String &p_name) const;

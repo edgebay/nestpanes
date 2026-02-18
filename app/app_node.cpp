@@ -546,12 +546,7 @@ AppNode::AppNode() {
 	layout_manager->connect("area_visibility_changed", callable_mp(this, &AppNode::_on_area_visibility_changed));
 
 	// Default layout.
-	HSplitContainer *hsplit = memnew(HSplitContainer);
-	hbox->add_child(hsplit);
-	hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-
-	gui_main = hsplit;
+	gui_main = hbox;
 
 	_load_layout(); // TODO: child icon invalid
 	_init_main_menu();

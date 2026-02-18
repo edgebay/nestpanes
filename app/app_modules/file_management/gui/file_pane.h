@@ -117,6 +117,9 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual Dictionary get_config_data() override;
+	virtual void apply_config_data(const Dictionary &p_dict) override;
+
 	void set_path(const String &p_path, bool p_update_history = true);
 	String get_path() const;
 
