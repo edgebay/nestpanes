@@ -83,8 +83,6 @@ private:
 
 	Timer *layout_save_delay_timer = nullptr;
 
-	bool load_layout_done = false;
-
 	void _update_theme(bool p_skip_creation = false);
 
 	void _check_system_theme_changed();

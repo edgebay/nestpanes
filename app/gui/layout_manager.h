@@ -59,6 +59,7 @@ private:
 
 	void _on_pane_title_changed(PaneBase *p_pane);
 	void _on_pane_icon_changed(PaneBase *p_pane);
+	void _on_pane_data_changed(PaneBase *p_pane);
 
 	AppTabContainer *_split(AppTabContainer *p_from, int p_direction);
 
@@ -133,6 +134,7 @@ public:
 
 	void save_layout();
 	void load_layout(Node *p_parent);
+	bool is_load_layout_done() const;
 
 	void show_area(const String &p_name);
 	void hide_area(const String &p_name);

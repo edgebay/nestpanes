@@ -17,6 +17,8 @@ protected:
 	virtual String _get_pane_title() const;
 	virtual Ref<Texture2D> _get_pane_icon() const;
 
+	virtual void _data_changed();
+
 	static void _bind_methods();
 
 public:

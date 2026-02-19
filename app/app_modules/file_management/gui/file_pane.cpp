@@ -745,6 +745,8 @@ void FilePane::_set_path(FileSystemDirectory *p_dir, bool p_update_history) {
 	}
 
 	callable_mp(this, &FilePane::_update_ui).call_deferred();
+
+	_data_changed();
 }
 
 void FilePane::set_path(const String &p_path, bool p_update_history) {

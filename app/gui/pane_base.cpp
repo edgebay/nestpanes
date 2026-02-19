@@ -8,6 +8,10 @@ Ref<Texture2D> PaneBase::_get_pane_icon() const {
 	return Ref<Texture2D>();
 }
 
+void PaneBase::_data_changed() {
+	emit_signal(SNAME("data_changed"));
+}
+
 PaneBase *PaneBase::get_control_parent_pane(Control *p_control) {
 	ERR_FAIL_NULL_V(p_control, nullptr);
 
@@ -64,6 +68,7 @@ void PaneBase::apply_config_data(const Dictionary &p_dict) {
 void PaneBase::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("title_changed"));
 	ADD_SIGNAL(MethodInfo("icon_changed"));
+	ADD_SIGNAL(MethodInfo("data_changed"));
 }
 
 PaneBase::PaneBase(const StringName &p_type) {

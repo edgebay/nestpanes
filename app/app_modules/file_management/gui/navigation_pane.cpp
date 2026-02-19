@@ -228,6 +228,8 @@ void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
 		Dictionary d = p_item->get_metadata(0);
 		uncollapsed_paths.erase(d["path"]);
 	}
+
+	_data_changed();
 }
 
 void NavigationPane::_build_empty_menu() {

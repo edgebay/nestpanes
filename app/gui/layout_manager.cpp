@@ -77,20 +77,8 @@ void LayoutManager::_move_tab_control(TabBar *p_from_tab_bar, int p_from_index, 
 		return;
 	}
 
-	// Control *control = tab_container->get_tab_control(p_from_index);
-	// PaneBase *pane = Object::cast_to<PaneBase>(control);
-	// if (pane) {
-	// 	pane->disconnect("title_changed", callable_mp(this, &LayoutManager::_on_pane_title_changed));
-	// 	pane->disconnect("icon_changed", callable_mp(this, &LayoutManager::_on_pane_icon_changed));
-	// }
-
 	int to_index = p_to->get_tab_count();
 	p_to->move_tab_from_tab_container(tab_container, p_from_index, to_index);
-
-	// if (pane) {
-	// 	pane->connect("title_changed", callable_mp(this, &LayoutManager::_on_pane_title_changed).bind(pane));
-	// 	pane->connect("icon_changed", callable_mp(this, &LayoutManager::_on_pane_icon_changed).bind(pane));
-	// }
 
 	set_current_tab_container(p_to);
 }
@@ -135,6 +123,10 @@ void LayoutManager::_on_pane_icon_changed(PaneBase *p_pane) {
 	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_pane->get_parent());
 	int tab_index = p_pane->get_index(false);
 	tab_container->set_tab_icon(tab_index, p_pane->get_icon());
+}
+
+void LayoutManager::_on_pane_data_changed(PaneBase *p_pane) {
+	save_layout();
 }
 
 AppTabContainer *LayoutManager::_split(AppTabContainer *p_from, int p_direction) {
@@ -325,6 +317,7 @@ void LayoutManager::create_new_tab(const StringName &p_type, AppTabContainer *p_
 	tab_container->add_child(pane);
 	pane->connect("title_changed", callable_mp(this, &LayoutManager::_on_pane_title_changed).bind(pane));
 	pane->connect("icon_changed", callable_mp(this, &LayoutManager::_on_pane_icon_changed).bind(pane));
+	pane->connect("data_changed", callable_mp(this, &LayoutManager::_on_pane_data_changed).bind(pane));
 
 	tab_container->set_tab_icon(tab_index, pane->get_icon());
 	tab_container->set_tab_title(tab_index, pane->get_title());
@@ -726,6 +719,10 @@ void LayoutManager::load_layout(Node *p_parent) {
 	}
 
 	load_layout_done = true;
+}
+
+bool LayoutManager::is_load_layout_done() const {
+	return load_layout_done;
 }
 
 Control *LayoutManager::_create_main() {

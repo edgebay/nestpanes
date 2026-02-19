@@ -232,7 +232,7 @@ void AppNode::_viewport_resized() {
 }
 
 void AppNode::_save_layout() {
-	if (!load_layout_done) {
+	if (!layout_manager->is_load_layout_done()) {
 		return;
 	}
 
@@ -241,8 +241,6 @@ void AppNode::_save_layout() {
 
 void AppNode::_load_layout() {
 	layout_manager->load_layout(gui_main);
-
-	load_layout_done = true;
 }
 
 void AppNode::_update_main_menu_type() {
