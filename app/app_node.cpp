@@ -224,6 +224,13 @@ void AppNode::shortcut_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
+void AppNode::_viewport_resized() {
+	Window *w = get_window();
+	if (w) {
+		layout_manager->set_window_windowed(w->get_mode() == Window::MODE_WINDOWED);
+	}
+}
+
 void AppNode::_save_layout() {
 	if (!load_layout_done) {
 		return;
@@ -395,6 +402,20 @@ void AppNode::_notification(int p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			// Theme has already been created in the constructor, so we can skip that step.
 			_update_theme(true);
+
+			get_viewport()->connect("size_changed", callable_mp(this, &AppNode::_viewport_resized));
+		} break;
+
+		case NOTIFICATION_EXIT_TREE: {
+			get_viewport()->disconnect("size_changed", callable_mp(this, &AppNode::_viewport_resized));
+		} break;
+
+		case NOTIFICATION_WM_ABOUT: {
+			_menu_option_confirm(HELP_ABOUT, false);
+		} break;
+
+		case NOTIFICATION_WM_CLOSE_REQUEST: {
+			_menu_option_confirm(FILE_QUIT, false);
 		} break;
 
 		case AppSettings::NOTIFICATION_APP_SETTINGS_CHANGED: {

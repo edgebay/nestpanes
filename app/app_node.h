@@ -99,6 +99,8 @@ private:
 
 	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
 
+	void _viewport_resized();
+
 	void _save_layout();
 	void _load_layout();
 

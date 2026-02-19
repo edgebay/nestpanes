@@ -116,6 +116,7 @@
 #include "app/app_core/app_paths.h"
 #include "app/app_node.h"
 #include "app/register_app_types.h"
+#include "app/settings/app_settings.h"
 #endif
 
 #ifdef TOOLS_ENABLED
@@ -3197,6 +3198,39 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 	AppPaths::create();
 
+	// App setting class is not available, load config directly.
+
+	{
+		Ref<ConfigFile> config;
+		config.instantiate();
+		// Load and amend existing config if it exists.
+		Error err = config->load(AppSettings::get_layouts_config());
+		if (err == OK) {
+			init_screen = config->get_value("window", "screen", init_screen);
+			String mode = config->get_value("window", "mode", "maximized");
+			window_size = config->get_value("window", "size", window_size);
+			if (mode == "windowed") {
+				window_mode = DisplayServer::WINDOW_MODE_WINDOWED;
+				init_windowed = true;
+			} else if (mode == "fullscreen") {
+				window_mode = DisplayServer::WINDOW_MODE_FULLSCREEN;
+				init_fullscreen = true;
+			} else {
+				window_mode = DisplayServer::WINDOW_MODE_MAXIMIZED;
+				init_maximized = true;
+			}
+
+			if (init_windowed) {
+				init_use_custom_pos = true;
+				init_custom_pos = config->get_value("window", "position", Vector2i(0, 0));
+			}
+		}
+	}
+
+	if (init_screen == AppSettings::InitialScreen::INITIAL_SCREEN_AUTO) {
+		init_screen = DisplayServer::SCREEN_PRIMARY;
+	}
+
 	OS::get_singleton()->benchmark_end_measure("Startup", "Initialize Early Settings");
 #endif
 
@@ -4703,6 +4737,14 @@ int Main::start() {
 
 		// Load SSL Certificates from Project Settings (or builtin).
 		Crypto::load_default_certificates(GLOBAL_GET("network/tls/certificate_bundle_override")); // TODO: Project Settings
+
+		// TODO
+		// bool editor_embed_subwindows = EDITOR_GET("interface/editor/single_window_mode");
+
+		// if (editor_embed_subwindows) {
+		// 	sml->get_root()->set_embedding_subwindows(true);
+		// }
+		// restore_editor_window_layout = EDITOR_GET("interface/editor/editor_screen").operator int() == EditorSettings::InitialScreen::INITIAL_SCREEN_AUTO;
 #else
 		String local_game_path;
 		if (!game_path.is_empty() && !project_manager) {

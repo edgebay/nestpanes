@@ -399,6 +399,42 @@ Ref<ConfigFile> LayoutManager::get_layout() {
 	return default_layout;
 }
 
+void LayoutManager::set_window_windowed(bool p_windowed) {
+	was_window_windowed_last = p_windowed;
+}
+
+void LayoutManager::_save_window_settings_to_config(Ref<ConfigFile> p_layout, const String &p_section) {
+	Window *w = get_window();
+	if (w) {
+		p_layout->set_value(p_section, "screen", w->get_current_screen());
+
+		Window::Mode mode = w->get_mode();
+		switch (mode) {
+			case Window::MODE_WINDOWED:
+				p_layout->set_value(p_section, "mode", "windowed");
+				p_layout->set_value(p_section, "size", w->get_size());
+				break;
+			case Window::MODE_FULLSCREEN:
+			case Window::MODE_EXCLUSIVE_FULLSCREEN:
+				p_layout->set_value(p_section, "mode", "fullscreen");
+				break;
+			case Window::MODE_MINIMIZED:
+				if (was_window_windowed_last) {
+					p_layout->set_value(p_section, "mode", "windowed");
+					p_layout->set_value(p_section, "size", w->get_size());
+				} else {
+					p_layout->set_value(p_section, "mode", "maximized");
+				}
+				break;
+			default:
+				p_layout->set_value(p_section, "mode", "maximized");
+				break;
+		}
+
+		p_layout->set_value(p_section, "position", w->get_position());
+	}
+}
+
 Dictionary LayoutManager::_get_tab_container_data(AppTabContainer *p_tab_container) {
 	Dictionary d;
 	d["current_tab"] = p_tab_container->get_current_tab();
@@ -654,6 +690,8 @@ void LayoutManager::save_layout() {
 	for (Control *area : areas) {
 		_save_area_to_config(default_layout, area);
 	}
+
+	_save_window_settings_to_config(default_layout, "window");
 
 	default_layout->save(AppSettings::get_layouts_config());
 }

@@ -39,6 +39,8 @@ private:
 	Control *gui_main = nullptr;
 	Vector<Control *> areas;
 
+	bool was_window_windowed_last = false;
+
 	// Container.
 	PopupMenu *popup_menu = nullptr;
 
@@ -67,6 +69,8 @@ private:
 	void _on_current_pane_changed(PaneBase *p_pane);
 
 	// Layout.
+	void _save_window_settings_to_config(Ref<ConfigFile> p_layout, const String &p_section);
+
 	Dictionary _get_tab_container_data(AppTabContainer *p_tab_container);
 	void _set_tab_container_data(AppTabContainer *p_tab_container, const Dictionary &p_data);
 	Dictionary _get_split_container_data(MultiSplitContainer *p_split_container);
@@ -124,6 +128,8 @@ public:
 
 	// Layout.
 	Ref<ConfigFile> get_layout();
+
+	void set_window_windowed(bool p_windowed);
 
 	void save_layout();
 	void load_layout(Node *p_parent);

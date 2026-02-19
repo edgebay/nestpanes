@@ -391,7 +391,7 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 		}
 		lang_hint = vformat(";auto/Auto (%s);en/[en] English", TranslationServer::get_singleton()->get_locale_name(best)) + lang_hint;
 
-		EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_ENUM, "interface/editor/editor_language", "auto", lang_hint, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING);
+		EDITOR_SETTING_USAGE(Variant::STRING, PROPERTY_HINT_ENUM, "interface/app/language", "auto", lang_hint, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING);
 	}
 
 	APP_SETTING(Variant::STRING, PROPERTY_HINT_NONE, "app_version", "0.0.1", "")
@@ -400,6 +400,12 @@ void AppSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	const String display_scale_hint_string = vformat("Auto (%d%%),75%%,100%%,125%%,150%%,175%%,200%%,Custom", Math::round(get_auto_display_scale() * 100));
 	APP_SETTING_USAGE(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/display_scale", 0, display_scale_hint_string, PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	APP_SETTING_USAGE(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/app/custom_display_scale", 1.0, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
+
+	String screen_hints = "Auto (Remembers last position):-5,Screen With Mouse Pointer:-4,Screen With Keyboard Focus:-3,Primary Screen:-2";
+	for (int i = 0; i < DisplayServer::get_singleton()->get_screen_count(); i++) {
+		screen_hints += ",Screen " + itos(i + 1) + ":" + itos(i);
+	}
+	APP_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/app/editor_screen", AppSettings::InitialScreen::INITIAL_SCREEN_AUTO, screen_hints)
 
 	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_embedded_menu", false, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_BASIC_SETTING)
 	APP_SETTING_USAGE(Variant::BOOL, PROPERTY_HINT_NONE, "interface/app/use_native_file_dialogs", false, "", PROPERTY_USAGE_DEFAULT)
@@ -935,7 +941,7 @@ String AppSettings::get_layouts_config() {
 }
 
 String EditorSettings::get_language() const {
-	const String language = has_setting("interface/editor/editor_language") ? get("interface/editor/editor_language") : "auto";
+	const String language = has_setting("interface/app/language") ? get("interface/app/language") : "auto";
 	if (language != "auto") {
 		return language;
 	}
