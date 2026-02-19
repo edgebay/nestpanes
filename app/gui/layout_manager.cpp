@@ -199,7 +199,7 @@ AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_
 
 MultiSplitContainer *LayoutManager::create_split_container() {
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
-	split_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	// split_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
 	split_container->connect("drag_ended", callable_mp(this, &LayoutManager::_split_container_drag_ended));
 
@@ -654,11 +654,15 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	AppTabContainer *tab_container = nullptr;
 
 	// Left sidebar.
+	bool sidebar_tab_closable = false;
+	int sidebar_group_id = 2;
 	MultiSplitContainer *left_sidebar = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(left_sidebar);
 	left_sidebar->set_name(LEFT_SIDEBAR_NAME);
+	set_tab_closable(left_sidebar, sidebar_tab_closable);
+	set_tabs_rearrange_group(left_sidebar, sidebar_group_id);
 
-	tab_container = create_tab_container();
+	tab_container = create_tab_container(sidebar_tab_closable, sidebar_group_id);
 	left_sidebar->add_child(tab_container);
 
 	create_new_tab(NavigationPane::get_class_static(), tab_container);
@@ -669,6 +673,7 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	MultiSplitContainer *central_area = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(central_area);
 	central_area->set_name(CENTRAL_AREA_NAME);
+	central_area->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 	central_area->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	central_area->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	set_tab_closable(central_area, tab_closable);
@@ -683,6 +688,12 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	MultiSplitContainer *right_sidebar = Object::cast_to<MultiSplitContainer>(_create_area());
 	p_parent->add_child(right_sidebar);
 	right_sidebar->set_name(RIGHT_SIDEBAR_NAME);
+	set_tab_closable(right_sidebar, sidebar_tab_closable);
+	set_tabs_rearrange_group(right_sidebar, sidebar_group_id);
+
+	tab_container = create_tab_container(sidebar_tab_closable, sidebar_group_id);
+	right_sidebar->add_child(tab_container);
+
 	right_sidebar->hide();
 }
 

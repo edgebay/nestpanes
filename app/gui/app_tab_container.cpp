@@ -369,7 +369,7 @@ void AppTabContainer::_notification(int p_what) {
 					if (from_tabs && from_tabs->get_tabs_rearrange_group() == get_tabs_rearrange_group()) {
 						drop_overlay->show();
 
-						if (from_tabs == get_tab_bar() && get_child_count(false) == 1) {
+						if (get_child_count(false) <= 1) {
 							drop_overlay->enable_position_detection(false);
 						} else {
 							drop_overlay->enable_position_detection(true);
