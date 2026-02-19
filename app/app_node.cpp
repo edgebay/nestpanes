@@ -17,8 +17,6 @@
 #include "scene/gui/split_container.h"
 #include "scene/gui/tab_container.h"
 
-#include "scene/main/timer.h"
-
 #include "scene/resources/packed_scene.h"
 
 #include "scene/theme/theme_db.h"
@@ -229,6 +227,8 @@ void AppNode::_viewport_resized() {
 	if (w) {
 		layout_manager->set_window_windowed(w->get_mode() == Window::MODE_WINDOWED);
 	}
+
+	layout_manager->save_layout_delayed();
 }
 
 void AppNode::_save_layout() {
@@ -423,10 +423,6 @@ void AppNode::_notification(int p_what) {
 	}
 }
 
-void AppNode::save_layout_delayed() {
-	layout_save_delay_timer->start();
-}
-
 AppNode::AppNode() {
 	DEV_ASSERT(!singleton);
 	singleton = this;
@@ -574,12 +570,6 @@ AppNode::AppNode() {
 	APP_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
 
 	// TODO: command_palette
-
-	layout_save_delay_timer = memnew(Timer);
-	add_child(layout_save_delay_timer);
-	layout_save_delay_timer->set_wait_time(0.5);
-	layout_save_delay_timer->set_one_shot(true);
-	layout_save_delay_timer->connect("timeout", callable_mp(this, &AppNode::_save_layout));
 
 	set_process(true);
 	set_process_shortcut_input(true);

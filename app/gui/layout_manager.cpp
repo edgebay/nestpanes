@@ -8,6 +8,8 @@
 #include "app/gui/pane_manager.h"
 #include "scene/gui/popup_menu.h"
 
+#include "scene/main/timer.h"
+
 #include "app/app_modules/file_management/gui/file_pane.h"
 #include "app/app_modules/file_management/gui/navigation_pane.h"
 
@@ -69,6 +71,9 @@ void LayoutManager::_tab_container_child_order_changed(AppTabContainer *p_tab_co
 			}
 		}
 	}
+
+	// Cover: create new tab, close tab, move tab control, rearrange tab, and split (which creates a new tab or moves the tab control).
+	_layout_changed();
 }
 
 void LayoutManager::_move_tab_control(TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_to) {
@@ -84,7 +89,7 @@ void LayoutManager::_move_tab_control(TabBar *p_from_tab_bar, int p_from_index, 
 }
 
 void LayoutManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container) {
-	// Move tab.
+	// Move tab control.
 	if (p_position == AppTabContainer::DropPosition::DROP_CENTER) {
 		_move_tab_control(p_from_tab_bar, p_from_index, p_tab_container);
 		return;
@@ -113,6 +118,11 @@ void LayoutManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_f
 	_move_tab_control(p_from_tab_bar, p_from_index, tab_container);
 }
 
+void LayoutManager::_on_tab_selected(int p_tab) {
+	// Cover: next tab, previous tab, and tab click.
+	_layout_changed();
+}
+
 void LayoutManager::_on_pane_title_changed(PaneBase *p_pane) {
 	AppTabContainer *tab_container = Object::cast_to<AppTabContainer>(p_pane->get_parent());
 	int tab_index = p_pane->get_index(false);
@@ -126,7 +136,7 @@ void LayoutManager::_on_pane_icon_changed(PaneBase *p_pane) {
 }
 
 void LayoutManager::_on_pane_data_changed(PaneBase *p_pane) {
-	save_layout();
+	_layout_changed();
 }
 
 AppTabContainer *LayoutManager::_split(AppTabContainer *p_from, int p_direction) {
@@ -178,6 +188,7 @@ AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_
 	tab_container->connect("new_tab", callable_mp(this, &LayoutManager::create_new_tab).bind("", tab_container, Callable())); // TODO: type
 	tab_container->connect("child_order_changed", callable_mp(this, &LayoutManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &LayoutManager::_on_drop_tab).bind(tab_container));
+	tab_container->connect("tab_selected", callable_mp(this, &LayoutManager::_on_tab_selected));
 	tab_container->connect("tab_closed", callable_mp(this, &LayoutManager::_close_tab_control).bind(tab_container));
 
 	tab_containers.push_back(tab_container);
@@ -189,6 +200,8 @@ AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_
 MultiSplitContainer *LayoutManager::create_split_container() {
 	MultiSplitContainer *split_container = memnew(MultiSplitContainer);
 	split_container->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+
+	split_container->connect("drag_ended", callable_mp(this, &LayoutManager::_split_container_drag_ended));
 
 	split_containers.push_back(split_container);
 
@@ -346,6 +359,10 @@ void LayoutManager::_close_tab_control(int p_tab, AppTabContainer *p_tab_contain
 	PaneManager::get_singleton()->destroy(pane);
 }
 
+void LayoutManager::_split_container_drag_ended() {
+	_layout_changed();
+}
+
 void LayoutManager::close_current_tab() {
 	// TODO: use current pane
 	AppTabContainer *tab_container = nullptr;
@@ -371,7 +388,7 @@ void LayoutManager::close_current_tab() {
 
 void LayoutManager::select_next_tab() {
 	int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
-	if (tab_count > 0) {
+	if (tab_count > 1) {
 		int next_tab = current_tab_container->get_current_tab() + 1;
 		next_tab %= tab_count;
 		current_tab_container->set_current_tab(next_tab);
@@ -380,7 +397,7 @@ void LayoutManager::select_next_tab() {
 
 void LayoutManager::select_previous_tab() {
 	int tab_count = current_tab_container ? current_tab_container->get_tab_count() : 0;
-	if (tab_count > 0) {
+	if (tab_count > 1) {
 		int next_tab = current_tab_container->get_current_tab() - 1;
 		next_tab = next_tab >= 0 ? next_tab : tab_count - 1;
 		current_tab_container->set_current_tab(next_tab);
@@ -669,6 +686,14 @@ void LayoutManager::_setup_default_layout(Node *p_parent) {
 	right_sidebar->hide();
 }
 
+void LayoutManager::save_layout_delayed() {
+	if (!load_layout_done || !layout_save_delay_timer->is_inside_tree()) {
+		return;
+	}
+
+	layout_save_delay_timer->start();
+}
+
 void LayoutManager::save_layout() {
 	if (!load_layout_done) {
 		return;
@@ -730,6 +755,9 @@ Control *LayoutManager::_create_main() {
 	hsplit->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 	hsplit->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	hsplit->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+	hsplit->connect("drag_ended", callable_mp(this, &LayoutManager::_split_container_drag_ended));
+
 	return hsplit;
 }
 
@@ -766,6 +794,16 @@ void LayoutManager::_remove_area(Control *p_area) {
 	areas.erase(p_area);
 }
 
+void LayoutManager::_area_visibility_changed(const String &p_name, bool p_visible) {
+	emit_signal("area_visibility_changed", p_name, p_visible);
+
+	_layout_changed();
+}
+
+void LayoutManager::_layout_changed() {
+	save_layout_delayed();
+}
+
 void LayoutManager::show_area(const String &p_name) {
 	Control *area = _get_area(p_name);
 	if (!area) {
@@ -774,7 +812,7 @@ void LayoutManager::show_area(const String &p_name) {
 
 	if (!area->is_visible()) {
 		area->show();
-		emit_signal("area_visibility_changed", p_name, true);
+		_area_visibility_changed(p_name, true);
 	}
 }
 
@@ -786,7 +824,7 @@ void LayoutManager::hide_area(const String &p_name) {
 
 	if (area->is_visible()) {
 		area->hide();
-		emit_signal("area_visibility_changed", p_name, false);
+		_area_visibility_changed(p_name, false);
 	}
 }
 
@@ -798,7 +836,7 @@ void LayoutManager::toggle_area_visible(const String &p_name) {
 
 	bool visible = area->is_visible();
 	area->set_visible(!visible);
-	emit_signal("area_visibility_changed", p_name, !visible);
+	_area_visibility_changed(p_name, !visible);
 }
 
 bool LayoutManager::is_area_visible(const String &p_name) const {
@@ -822,6 +860,12 @@ LayoutManager::LayoutManager() {
 	default_layout.instantiate();
 
 	PaneManager::get_singleton()->connect("pane_changed", callable_mp(this, &LayoutManager::_on_current_pane_changed));
+
+	layout_save_delay_timer = memnew(Timer);
+	add_child(layout_save_delay_timer);
+	layout_save_delay_timer->set_wait_time(0.5);
+	layout_save_delay_timer->set_one_shot(true);
+	layout_save_delay_timer->connect("timeout", callable_mp(this, &LayoutManager::save_layout));
 }
 
 LayoutManager::~LayoutManager() {

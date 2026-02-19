@@ -17,6 +17,8 @@ class PaneBase;
 class PopupMenu;
 class TabBar;
 
+class Timer;
+
 // TODO: Object?
 class LayoutManager : public Node {
 	GDCLASS(LayoutManager, Node);
@@ -51,11 +53,14 @@ private:
 	AppTabContainer *prev_tab_container = nullptr;
 	AppTabContainer *selected_tab_container = nullptr;
 
+	Timer *layout_save_delay_timer = nullptr;
+
 	void _menu_id_pressed(int p_option);
 	void _select_tab_container(AppTabContainer *p_tab_container);
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _move_tab_control(TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_to);
 	void _on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container);
+	void _on_tab_selected(int p_tab);
 
 	void _on_pane_title_changed(PaneBase *p_pane);
 	void _on_pane_icon_changed(PaneBase *p_pane);
@@ -66,6 +71,8 @@ private:
 	void _set_tab_closable(MultiSplitContainer *p_split_container, bool p_closable);
 	void _set_tabs_rearrange_group(MultiSplitContainer *p_split_container, int p_group_id);
 	void _close_tab_control(int p_tab, AppTabContainer *p_tab_container);
+
+	void _split_container_drag_ended();
 
 	void _on_current_pane_changed(PaneBase *p_pane);
 
@@ -96,6 +103,9 @@ private:
 	void _add_area(Control *p_area);
 	Control *_get_area(const String &p_name) const;
 	void _remove_area(Control *p_area);
+
+	void _area_visibility_changed(const String &p_name, bool p_visible);
+	void _layout_changed();
 
 protected:
 	static void _bind_methods();
@@ -132,6 +142,7 @@ public:
 
 	void set_window_windowed(bool p_windowed);
 
+	void save_layout_delayed();
 	void save_layout();
 	void load_layout(Node *p_parent);
 	bool is_load_layout_done() const;

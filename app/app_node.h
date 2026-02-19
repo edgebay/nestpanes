@@ -15,8 +15,6 @@ class VBoxContainer;
 class LayoutManager;
 class PaneManager;
 
-class Timer;
-
 class AppAbout;
 
 class AppNode : public Node {
@@ -81,8 +79,6 @@ private:
 	Color last_system_base_color = Color(0, 0, 0, 0);
 	Color last_system_accent_color = Color(0, 0, 0, 0);
 
-	Timer *layout_save_delay_timer = nullptr;
-
 	void _update_theme(bool p_skip_creation = false);
 
 	void _check_system_theme_changed();
@@ -117,8 +113,6 @@ protected:
 
 public:
 	static AppNode *get_singleton() { return singleton; }
-
-	void save_layout_delayed();
 
 	AppNode();
 	~AppNode();
