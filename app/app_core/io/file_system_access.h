@@ -10,6 +10,16 @@
 
 #define UNPACK(...) __VA_ARGS__
 
+#define FILE_SYSTEM_ACCESS_FUNC0(m_func_name)                                         \
+protected:                                                                            \
+	virtual void _##m_func_name() = 0;                                                \
+                                                                                      \
+public:                                                                               \
+	static void m_func_name() {                                                       \
+		ERR_FAIL_NULL_MSG(get_singleton(), "FileSystemAccess not instantiated yet."); \
+		get_singleton()->_##m_func_name();                                            \
+	}
+
 #define FILE_SYSTEM_ACCESS_FUNC0_V(m_ret_type, m_retval, m_func_name)                             \
 protected:                                                                                        \
 	virtual m_ret_type _##m_func_name() = 0;                                                      \
@@ -86,6 +96,10 @@ public:
 	// static bool is_link(String p_file);
 
 	// Support absolute paths only.
+
+	FILE_SYSTEM_ACCESS_FUNC1_V(Error, FAILED, list_dir_begin, (const String &), path);
+	FILE_SYSTEM_ACCESS_FUNC1_V(Error, FAILED, get_next, (FileInfo &), info);
+	FILE_SYSTEM_ACCESS_FUNC0(list_dir_end);
 
 	static Ref<Texture2D> get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false);
 	static Error get_file_info(const String &p_file_path, FileInfo &r_info);

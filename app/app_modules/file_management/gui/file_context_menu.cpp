@@ -207,7 +207,7 @@ void FileContextMenu::_id_pressed(int p_index) {
 			bool ret = FileSystemAccess::paste(path);
 			print_line("paste ret: ", ret);
 			if (ret && file_system) {
-				file_system->update(path);
+				file_system->scan(path, true);
 
 				// TODO: Update the source directory for cut operations.
 			}
@@ -230,7 +230,7 @@ void FileContextMenu::_id_pressed(int p_index) {
 
 			if (file_system) {
 				for (const String &dir : dirs) {
-					file_system->update(dir);
+					file_system->scan(dir, true);
 				}
 			}
 		} break;

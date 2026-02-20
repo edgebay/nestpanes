@@ -97,8 +97,6 @@ PaneBase *PaneManager::create(const StringName &p_type) {
 
 	pane_map[type].push_back(pane);
 
-	// TODO: erase the pane before freeing it
-
 	return pane;
 }
 
@@ -147,6 +145,8 @@ PaneManager::PaneManager() {
 
 	// File management.
 	file_system = memnew(FileSystem);
+	add_child(file_system);
+
 	register_pane<FilePane>(
 			FilePane::get_class_static(),
 			// theme->get_icon(SNAME("Folder"), SNAME("AppIcons")),
@@ -171,8 +171,6 @@ PaneManager::PaneManager() {
 }
 
 PaneManager::~PaneManager() {
-	memdelete(file_system);
-
 	PaneFactory::clear();
 
 	singleton = nullptr;

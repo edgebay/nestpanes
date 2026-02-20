@@ -125,11 +125,6 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	// Create items for all subdirectories.
 	for (int i = 0; i < p_dir->get_subdir_count(); i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
-		// if (uncollapsed) {
-		// 	if (!subdir->is_scanned()) {
-		// 		file_system->update(subdir); // TODO: do not update here
-		// 	}
-		// }
 		_create_tree(subdirectory_item, subdir, p_uncollapsed_paths);
 	}
 
@@ -212,21 +207,14 @@ void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_s
 }
 
 void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
-	if (!p_item->is_collapsed()) {
-		Dictionary d = p_item->get_metadata(0);
-		FileSystemDirectory *dir = Object::cast_to<FileSystemDirectory>(d["data"]);
-		// TODO: Update the dir object itself(subdirs and files).
-		for (int i = 0; i < dir->get_subdir_count(); i++) {
-			FileSystemDirectory *subdir = dir->get_subdir(i);
-			if (!subdir->is_scanned()) {
-				file_system->update(subdir);
-			}
-		}
+	Dictionary d = p_item->get_metadata(0);
+	String path = d["path"];
 
-		uncollapsed_paths.push_back(d["path"]);
+	if (!p_item->is_collapsed()) {
+		file_system->scan(path);
+		uncollapsed_paths.push_back(path);
 	} else {
-		Dictionary d = p_item->get_metadata(0);
-		uncollapsed_paths.erase(d["path"]);
+		uncollapsed_paths.erase(path);
 	}
 
 	_data_changed();
@@ -377,15 +365,15 @@ TreeItem *NavigationPane::_search_item(const String &p_path) {
 
 void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
 	TreeItem *item = _search_item(p_dir->get_path());
-	if (!item) {
-		return;
+	if (item) {
+		callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
+	} else {
+		callable_mp(this, &NavigationPane::_update_tree).call_deferred();
 	}
-
-	callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
 }
 
 void NavigationPane::_load_uncollapsed_paths() {
-	file_system->load_dirs(uncollapsed_paths, callable_mp(this, &NavigationPane::_update_tree));
+	file_system->scan(uncollapsed_paths);
 	// TODO: scan all subdir
 }
 

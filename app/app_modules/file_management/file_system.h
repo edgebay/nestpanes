@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/object/object.h"
+#include "scene/main/node.h"
 
 #include "app/app_core/types/file_info.h"
 
@@ -23,16 +24,13 @@ private:
 protected:
 	friend class FileSystem;
 
-	void scan(bool p_scan_subdirs = false);
-	FileSystemDirectory *create_subdir(const String &p_path);
 	void clear();
 
 	void setup(FileSystemDirectory *p_parent,
 			const String &p_name,
 			const String &p_path,
 			const Ref<Texture2D> &p_icon,
-			bool p_hidden = false,
-			bool p_scan = false);
+			bool p_hidden = false);
 
 public:
 	String get_name() const;
@@ -58,21 +56,35 @@ public:
 	~FileSystemDirectory();
 };
 
-class FileSystem : public Object {
-	GDCLASS(FileSystem, Object);
+class FileSystem : public Node {
+	GDCLASS(FileSystem, Node);
 
 	_THREAD_SAFE_CLASS_
 
 private:
+	struct ScanTask {
+		String path = "";
+		FileSystemDirectory *dir = nullptr;
+		bool pending = false;
+	};
+
+	List<ScanTask> scan_tasks;
+	HashSet<String> pending_paths;
+	int max_items_per_step = 100;
+
 	FileSystemDirectory *file_system_root = nullptr;
 
-	void _update(FileSystemDirectory *p_dir);
+	FileSystemDirectory *_create_dir(const String &p_path) const;
+	void _scan();
+	void _scan_root();
 
 protected:
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
 	static bool is_valid_path(const String &p_path);
+	static bool is_valid_dir_path(const String &p_path);
 	// TODO
 	// static String normalize_path(const String &p_path);
 
@@ -80,12 +92,9 @@ public:
 	FileSystemDirectory *get_dir(const String &p_path) const;
 	const FileInfo *get_file(const String &p_path) const;
 
-	void update(const String &p_path);
-	void update(FileSystemDirectory *p_dir);
-	void update_file_system();
-
-	FileSystemDirectory *load_dir(const String &p_path);
-	void load_dirs(const Vector<String> &p_paths, const Callable &p_callback = Callable());
+	bool is_scanning() const;
+	void scan(const String &p_path, bool p_update = false);
+	void scan(const Vector<String> &p_paths, bool p_update = false);
 
 	FileSystem();
 	virtual ~FileSystem();

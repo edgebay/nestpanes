@@ -1,6 +1,7 @@
 #include "file_system.h"
 
 #include "app/app_core/io/file_system_access.h"
+#include "core/io/dir_access.h"
 
 #include "app/settings/app_settings.h"
 
@@ -102,52 +103,6 @@ const FileInfo *FileSystemDirectory::get_file_by_name(const String &p_name) cons
 	return nullptr;
 }
 
-void FileSystemDirectory::scan(bool p_scan_subdirs) {
-	if (scanned) {
-		clear();
-	}
-
-	List<FileInfo> dir_list;
-	List<FileInfo> file_list;
-	Error err = FileSystemAccess::list_file_infos(path, dir_list, file_list);
-	if (err != OK) {
-		return;
-	}
-
-	// Create all items for the files in the subdirectory.
-	for (const FileInfo &file_info : dir_list) {
-		FileSystemDirectory *subdir = memnew(FileSystemDirectory);
-		subdir->setup(this, file_info.name, file_info.path, file_info.icon, file_info.is_hidden, p_scan_subdirs);
-		subdirs.push_back(subdir);
-	}
-	for (const FileInfo &file_info : file_list) {
-		FileInfo *fi = memnew(FileInfo);
-		*fi = file_info;
-		files.push_back(fi);
-	}
-
-	scanned = true;
-}
-
-FileSystemDirectory *FileSystemDirectory::create_subdir(const String &p_path) {
-	FileSystemDirectory *subdir = get_subdir_by_path(p_path);
-	if (subdir) {
-		return subdir;
-	}
-
-	FileInfo file_info;
-	Error err = FileSystemAccess::get_file_info(p_path, file_info);
-	if (err != OK) {
-		// TODO: handle err
-		return nullptr;
-	}
-
-	subdir = memnew(FileSystemDirectory);
-	subdir->setup(this, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
-	subdirs.push_back(subdir);
-	return subdir;
-}
-
 void FileSystemDirectory::clear() {
 	for (FileInfo *fi : files) {
 		memdelete(fi);
@@ -162,16 +117,12 @@ void FileSystemDirectory::clear() {
 	scanned = false;
 }
 
-void FileSystemDirectory::setup(FileSystemDirectory *p_parent, const String &p_name, const String &p_path, const Ref<Texture2D> &p_icon, bool p_hidden, bool p_scan) {
+void FileSystemDirectory::setup(FileSystemDirectory *p_parent, const String &p_name, const String &p_path, const Ref<Texture2D> &p_icon, bool p_hidden) {
 	parent = p_parent;
 	name = p_name;
 	path = p_path;
 	icon = p_icon;
 	hidden = p_hidden;
-
-	if (p_scan) {
-		scan();
-	}
 }
 
 FileSystemDirectory::FileSystemDirectory() {
@@ -183,7 +134,11 @@ FileSystemDirectory::~FileSystemDirectory() {
 
 /// FileSystem
 bool FileSystem::is_valid_path(const String &p_path) {
-	return FileSystemAccess::path_exists(p_path);
+	return p_path == COMPUTER_PATH || FileSystemAccess::path_exists(p_path);
+}
+
+bool FileSystem::is_valid_dir_path(const String &p_path) {
+	return p_path == COMPUTER_PATH || FileSystemAccess::dir_exists(p_path);
 }
 
 FileSystemDirectory *FileSystem::get_root() const {
@@ -241,32 +196,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 	return found ? dir->get_file_by_name(file) : nullptr;
 }
 
-void FileSystem::_update(FileSystemDirectory *p_dir) {
-	ERR_FAIL_NULL(p_dir);
-	p_dir->scan();
-	emit_signal(SNAME("file_system_changed"), p_dir);
-}
-
-void FileSystem::update(const String &p_path) {
-	// TODO: Use a list to store the paths and handle them in NOTIFICATION_PROCESS?
-	FileSystemDirectory *dir = get_dir(p_path);
-	if (!dir) {
-		return;
-	}
-
-	callable_mp(this, &FileSystem::_update).call_deferred(dir);
-}
-
-void FileSystem::update(FileSystemDirectory *p_dir) {
-	ERR_FAIL_NULL(p_dir);
-	callable_mp(this, &FileSystem::_update).call_deferred(p_dir);
-}
-
-void FileSystem::update_file_system() {
-	// TODO
-}
-
-FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
+FileSystemDirectory *FileSystem::_create_dir(const String &p_path) const {
 	if (p_path == file_system_root->get_path()) {
 		return file_system_root;
 	}
@@ -294,81 +224,177 @@ FileSystemDirectory *FileSystem::load_dir(const String &p_path) {
 			continue;
 		}
 
-		dir = dir->create_subdir(dir->get_path().path_join(name));
-		if (!dir) {
+		String subdir_path = dir->get_path().path_join(name);
+		FileInfo file_info;
+		Error err = FileSystemAccess::get_file_info(subdir_path, file_info);
+		if (err != OK) {
 			created = false;
 			found = false;
 			break;
 		}
+
+		subdir = memnew(FileSystemDirectory);
+		subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+		dir->subdirs.push_back(subdir);
+
+		dir = subdir;
 		created = true;
 	}
 	if (!found && !created) {
 		return nullptr;
 	}
 
-	if (created || !dir->is_scanned()) {
-		callable_mp(this, &FileSystem::_update).call_deferred(dir);
-	}
-
 	return dir;
 }
 
-void FileSystem::load_dirs(const Vector<String> &p_paths, const Callable &p_callback) {
-	if (p_paths.is_empty()) {
+void FileSystem::_scan() {
+	if (scan_tasks.is_empty()) {
 		return;
 	}
 
-	for (const String &target_path : p_paths) {
-		if (target_path == file_system_root->get_path()) {
-			continue;
+	ScanTask &task = scan_tasks.front()->get();
+	String path = task.path;
+	// print_line("scan: ", path);
+	if (path == file_system_root->get_path()) {
+		_scan_root();
+		scan_tasks.pop_front();
+		pending_paths.erase(path);
+		return;
+	}
+
+	if (!task.dir) {
+		task.dir = _create_dir(path);
+		if (!task.dir) {
+			scan_tasks.pop_front();
+			pending_paths.erase(path);
+			return;
+		}
+	}
+	ERR_FAIL_NULL(task.dir);
+
+	FileSystemDirectory *dir = task.dir;
+	Error err = FAILED;
+	bool changed = false;
+	if (task.pending) {
+		err = OK;
+		task.pending = false;
+	} else {
+		if (dir->is_scanned()) {
+			dir->clear();
+			changed = true;
 		}
 
-		if (!FileSystemAccess::dir_exists(target_path)) {
-			continue;
-		}
+		err = FileSystemAccess::list_dir_begin(path);
+	}
 
-		String path = target_path.replace_char('\\', '/');
-		if (path.ends_with("/")) {
-			path = path.substr(0, path.length() - 1);
-		}
-
-		Vector<String> names = path.split("/");
-
-		bool created = false;
-		bool found = false;
-		FileSystemDirectory *dir = file_system_root;
-		for (int i = 0; i < names.size(); i++) {
-			String name = names[i];
-			FileSystemDirectory *subdir = dir->get_subdir_by_name(name);
-			if (subdir) {
-				found = true;
-				dir = subdir;
-				continue;
-			}
-
-			dir = dir->create_subdir(dir->get_path().path_join(name));
-			if (!dir) {
-				created = false;
-				found = false;
+	if (err == OK) {
+		int items_processed = 0;
+		while (true) {
+			FileInfo file_info;
+			err = FileSystemAccess::get_next(file_info);
+			if (err != OK) {
 				break;
 			}
-			created = true;
+
+			if (file_info.name != "." && file_info.name != "..") {
+				if (file_info.type == FOLDER_TYPE) {
+					FileSystemDirectory *subdir = memnew(FileSystemDirectory);
+					subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+					dir->subdirs.push_back(subdir);
+				} else {
+					FileInfo *fi = memnew(FileInfo);
+					*fi = file_info;
+					dir->files.push_back(fi);
+				}
+				changed = true;
+			}
+
+			items_processed++;
+			if (items_processed >= max_items_per_step) {
+				task.pending = true;
+				break;
+			}
 		}
-		if (!found && !created) {
+
+		if (!task.pending) {
+			FileSystemAccess::list_dir_end();
+		}
+	}
+
+	if (!task.pending) {
+		dir->scanned = true;
+
+		scan_tasks.pop_front();
+		pending_paths.erase(path);
+	}
+
+	if (changed) {
+		emit_signal(SNAME("file_system_changed"), dir);
+	}
+}
+
+void FileSystem::_scan_root() {
+	ERR_FAIL_NULL(file_system_root);
+
+	FileSystemDirectory *dir = file_system_root;
+	if (dir->is_scanned()) {
+		dir->clear();
+	}
+
+	List<FileInfo> drives;
+	Error err = FileSystemAccess::list_drives(drives);
+	if (err != OK) {
+		return;
+	}
+
+	for (const FileInfo &file_info : drives) {
+		FileSystemDirectory *subdir = memnew(FileSystemDirectory);
+		subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+		dir->subdirs.push_back(subdir);
+	}
+
+	dir->scanned = true;
+	emit_signal(SNAME("file_system_changed"), dir);
+}
+
+void FileSystem::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_PROCESS: {
+			_scan();
+		} break;
+	}
+}
+
+bool FileSystem::is_scanning() const {
+	return !scan_tasks.is_empty();
+}
+
+void FileSystem::scan(const String &p_path, bool p_update) {
+	scan(Vector<String>({ p_path }), p_update);
+}
+
+void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
+	for (const String &path : p_paths) {
+		if (!is_valid_dir_path(path)) {
 			continue;
 		}
 
-		if (created || !dir->is_scanned()) {
-			dir->scan();
+		if (pending_paths.has(path)) {
+			continue;
 		}
-	}
 
-	if (p_callback.is_valid()) {
-		p_callback.call();
-	}
+		FileSystemDirectory *dir = get_dir(path);
+		if (!p_update && dir && dir->is_scanned()) {
+			continue;
+		}
 
-	// TODO
-	// emit_signal(SNAME("file_system_changed"), p_dir);
+		pending_paths.insert(path);
+
+		ScanTask task;
+		task.path = path;
+		task.dir = dir;
+		scan_tasks.push_back(task);
+	}
 }
 
 void FileSystem::_bind_methods() {
@@ -377,7 +403,8 @@ void FileSystem::_bind_methods() {
 
 FileSystem::FileSystem() {
 	file_system_root = memnew(FileSystemDirectory);
-	file_system_root->setup(nullptr, COMPUTER_PATH, COMPUTER_PATH, FileSystemAccess::get_icon(COMPUTER_PATH), false, true);
+	file_system_root->setup(nullptr, COMPUTER_PATH, COMPUTER_PATH, FileSystemAccess::get_icon(COMPUTER_PATH), false);
+	scan(COMPUTER_PATH);
 
 	APP_SHORTCUT("file_management/copy_path", TTRC("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
 
@@ -397,6 +424,8 @@ FileSystem::FileSystem() {
 
 	APP_SHORTCUT("file_management/rename", TTRC("Rename..."), Key::F2);
 	APP_SHORTCUT("file_management/delete", TTRC("Delete"), Key::KEY_DELETE);
+
+	set_process(true);
 }
 
 FileSystem::~FileSystem() {

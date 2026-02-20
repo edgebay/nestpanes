@@ -79,8 +79,9 @@ private:
 	void _update_icons();
 
 	void _update_ui();
+	void _update_ui_nocheck(FileSystemDirectory *p_dir);
 	void _add_item(const FileInfo &p_fi, bool p_is_dir = false);
-	void _update_item_list();
+	void _update_item_list(FileSystemDirectory *p_dir);
 
 	void _build_empty_menu();
 	void _build_file_menu();
@@ -108,7 +109,7 @@ private:
 	bool _rename_operation_confirm(const String &p_from, const String &p_new_name);
 	void _item_list_draw();
 
-	void _set_path(FileSystemDirectory *p_dir, bool p_update_history = true);
+	void _set_path(const String &p_path, bool p_update_history = true);
 
 	void _on_file_system_changed(FileSystemDirectory *p_dir);
 

@@ -554,10 +554,10 @@ AppNode::AppNode() {
 	// settings_button->set_button_icon(theme->get_icon(SNAME("Settings"), SNAME("AppIcons"))); // TODO: Settings icon
 
 	pane_manager = memnew(PaneManager);
-	gui_base->add_child(pane_manager);
+	add_child(pane_manager);
 
 	layout_manager = memnew(LayoutManager);
-	gui_base->add_child(layout_manager);
+	add_child(layout_manager);
 	layout_manager->connect("area_visibility_changed", callable_mp(this, &AppNode::_on_area_visibility_changed));
 
 	// Default layout.

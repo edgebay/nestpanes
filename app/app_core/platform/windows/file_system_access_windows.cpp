@@ -89,6 +89,14 @@ Ref<Image> _icon_to_image(HICON hIcon, float p_alpha_multiplier = 1) {
 	return memnew(Image(width, height, false, Image::FORMAT_RGBA8, pixels));
 }
 
+struct FileSystemAccessWindowsPrivate {
+	HANDLE h; // handle for FindFirstFile.
+	WIN32_FIND_DATA f;
+	WIN32_FIND_DATAW fu; // Unicode version.
+
+	String path = "";
+};
+
 void FileSystemAccessWindows::_update_drives_icon() {
 	DWORD mask = GetLogicalDrives();
 	if (drives_mask == mask) {
@@ -127,6 +135,89 @@ Ref<Texture2D> FileSystemAccessWindows::_get_this_pc_icon() const {
 	}
 
 	return ImageTexture::create_from_image(img);
+}
+
+Error FileSystemAccessWindows::_list_dir_begin(const String &p_path) {
+	GLOBAL_LOCK_FUNCTION
+
+	list_dir_end();
+	p->h = FindFirstFileExW((LPCWSTR)(String(p_path + "\\*").utf16().get_data()), FindExInfoStandard, &p->fu, FindExSearchNameMatch, nullptr, 0);
+
+	if (p->h == INVALID_HANDLE_VALUE) {
+		return ERR_CANT_OPEN;
+	}
+
+	p->path = p_path;
+
+	return OK;
+}
+
+Error FileSystemAccessWindows::_get_next(FileInfo &r_info) {
+	if (p->h == INVALID_HANDLE_VALUE) {
+		return FAILED;
+	}
+
+	// Skip system files.
+	while (p->fu.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) {
+		if (FindNextFileW(p->h, &p->fu) == 0) {
+			FindClose(p->h);
+			p->h = INVALID_HANDLE_VALUE;
+			p->path = "";
+			return FAILED;
+		}
+	}
+
+	String name = String::utf16((const char16_t *)(p->fu.cFileName));
+
+	// if (!(name == "." || name == ".."))
+	bool is_dir = (p->fu.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+	bool is_hidden = (p->fu.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+
+	r_info.name = name;
+	r_info.path = p->path.path_join(name);
+
+	r_info.icon = _get_icon(r_info.path, is_dir, is_hidden);
+
+	// FILETIME ft_create, ft_write;
+	// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);
+	uint64_t last_write_time = 0;
+	last_write_time = p->fu.ftLastWriteTime.dwHighDateTime;
+	last_write_time <<= 32;
+	last_write_time |= p->fu.ftLastWriteTime.dwLowDateTime;
+	const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
+	const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
+	if (last_write_time >= TICKS_TO_UNIX_EPOCH) {
+		last_write_time = (last_write_time - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
+	}
+	r_info.modified_time = last_write_time; // FileAccess::get_modified_time(r_info.path);
+
+	r_info.is_hidden = is_hidden;
+
+	if (!is_dir) {
+		r_info.type = name.get_extension();
+		r_info.size = (static_cast<int64_t>(p->fu.nFileSizeHigh) << 32) + p->fu.nFileSizeLow;
+	} else {
+		r_info.type = FOLDER_TYPE;
+		r_info.size = 0;
+	}
+
+	if (FindNextFileW(p->h, &p->fu) == 0) {
+		FindClose(p->h);
+		p->h = INVALID_HANDLE_VALUE;
+		p->path = "";
+	}
+
+	return OK;
+}
+
+void FileSystemAccessWindows::_list_dir_end() {
+	GLOBAL_LOCK_FUNCTION
+
+	if (p->h != INVALID_HANDLE_VALUE) {
+		FindClose(p->h);
+		p->h = INVALID_HANDLE_VALUE;
+		p->path = "";
+	}
 }
 
 Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, bool p_is_dir, bool p_is_hidden) const {
@@ -720,6 +811,9 @@ void FileSystemAccessWindows::finalize() {
 }
 
 FileSystemAccessWindows::FileSystemAccessWindows() {
+	p = memnew(FileSystemAccessWindowsPrivate);
+	p->h = INVALID_HANDLE_VALUE;
+
 	set_system_icon(SNAME(COMPUTER_PATH), _get_this_pc_icon());
 	_update_drives_icon(); // TODO: Handle drive change
 	// // Folder CLSID - ::{59031a47-3f73-442d-9ca1-6c09bfe28fef}
@@ -728,4 +822,7 @@ FileSystemAccessWindows::FileSystemAccessWindows() {
 }
 
 FileSystemAccessWindows::~FileSystemAccessWindows() {
+	_list_dir_end();
+
+	memdelete(p);
 }

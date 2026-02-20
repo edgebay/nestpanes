@@ -2,10 +2,13 @@
 
 #include "app/app_core/io/file_system_access.h"
 
+struct FileSystemAccessWindowsPrivate;
+
 class FileSystemAccessWindows : public FileSystemAccess {
 private:
 	uint64_t drives_mask = 0;
-	String current_path = "";
+
+	FileSystemAccessWindowsPrivate *p = nullptr;
 
 	void _update_drives_icon();
 
@@ -13,6 +16,10 @@ private:
 
 protected:
 	virtual Ref<Texture2D> _get_this_pc_icon() const;
+
+	virtual Error _list_dir_begin(const String &p_path) override;
+	virtual Error _get_next(FileInfo &r_info) override;
+	virtual void _list_dir_end() override;
 
 	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false) const override;
 	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) const override;
