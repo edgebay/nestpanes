@@ -3,7 +3,7 @@
 #include "app/gui/pane_base.h"
 
 class FileContextMenu;
-class Tree;
+class FileSystemTree;
 class TreeItem;
 
 struct FileInfo;
@@ -14,7 +14,7 @@ class NavigationPane : public PaneBase {
 	GDCLASS(NavigationPane, PaneBase);
 
 private:
-	Tree *tree = nullptr;
+	FileSystemTree *tree = nullptr;
 
 	FileContextMenu *context_menu = nullptr;
 

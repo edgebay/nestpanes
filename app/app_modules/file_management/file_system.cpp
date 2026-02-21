@@ -284,6 +284,7 @@ void FileSystem::_scan() {
 
 	if (!task.dir) {
 		task.dir = _create_dir(path);
+		// print_line("create dir: ", task.dir);
 		if (!task.dir) {
 			scan_tasks.pop_front();
 			pending_paths.erase(path);
@@ -299,10 +300,8 @@ void FileSystem::_scan() {
 		err = OK;
 		task.pending = false;
 	} else {
-		if (dir->is_scanned()) {
-			dir->clear();
-			changed = true;
-		}
+		changed = true;
+		dir->clear();
 
 		err = FileSystemAccess::list_dir_begin(path);
 	}
@@ -341,6 +340,7 @@ void FileSystem::_scan() {
 		}
 	}
 
+	// print_line("end: ", changed, task.pending, err);
 	if (!task.pending) {
 		dir->scanned = true;
 

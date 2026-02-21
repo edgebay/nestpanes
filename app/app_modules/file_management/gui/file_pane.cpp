@@ -297,6 +297,7 @@ void FilePane::_update_ui() {
 	}
 
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
+	// print_line("update ui: ", dir, current_path);
 	if (!dir) {
 		file_system->scan(current_path);
 		return;
@@ -370,45 +371,10 @@ void FilePane::_update_item_list(FileSystemDirectory *p_dir) {
 }
 
 void FilePane::_add_item(const FileInfo &p_fi) {
-	bool is_dir = p_fi.type == FOLDER_TYPE;
-	Ref<Texture2D> icon = p_fi.icon;
-	if (!icon.is_valid()) {
-		Ref<Texture2D> folder = get_app_theme_icon(SNAME("Folder"));
-		Ref<Texture2D> file = get_app_theme_icon(SNAME("File"));
-
-		icon = is_dir ? folder : file;
-	}
-
 	TreeItem *root = tree->get_root();
 	ERR_FAIL_NULL(root);
 
-	TreeItem *item = tree->create_item(root);
-	item->set_text(0, p_fi.name);
-	// item->set_editable(0, true);
-	item->set_icon(0, p_fi.icon);
-
-	String modified_time = itos(p_fi.modified_time);
-	item->set_text(1, modified_time);
-	// item->set_selectable(1, true);
-
-	// item->set_cell_mode(2, TreeItem::CELL_MODE_CHECK);
-	// item->set_editable(2, true);
-	item->set_text(2, p_fi.type);
-	// item->set_checked(2, info.is_singleton);
-
-	String size = itos(p_fi.size);
-	item->set_text(3, size);
-	// item->add_button(3, get_editor_theme_icon(SNAME("Load")), BUTTON_OPEN);
-	// item->add_button(3, get_editor_theme_icon(SNAME("MoveUp")), BUTTON_MOVE_UP);
-	// item->add_button(3, get_editor_theme_icon(SNAME("MoveDown")), BUTTON_MOVE_DOWN);
-	// item->add_button(3, get_editor_theme_icon(SNAME("Remove")), BUTTON_DELETE);
-	// item->set_selectable(3, false);
-
-	Dictionary d;
-	d["name"] = p_fi.name;
-	d["path"] = p_fi.path;
-	d["is_dir"] = is_dir;
-	item->set_metadata(0, d);
+	TreeItem *item = tree->add_item(p_fi, root);
 
 	if (!to_select.is_empty() && to_select == p_fi.path) {
 		// item->select_row();	// TODO
@@ -822,7 +788,7 @@ void FilePane::_set_path(const String &p_path, bool p_update_history) {
 	}
 
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
-	// print_line("path: ", dir, dir ? dir->is_scanned() : "null");
+	// print_line("path: ", dir, dir ? dir->is_scanned() : false);
 	if (!dir || !dir->is_scanned()) {
 		file_system->scan(current_path);
 	} else {
@@ -948,38 +914,13 @@ FilePane::FilePane() :
 	vbox->add_child(mc);
 
 	tree = memnew(FileSystemTree);
-	tree->set_hide_root(true);
-	// tree->set_select_mode(Tree::SELECT_MULTI);
-	tree->set_select_mode(Tree::SELECT_ROW);
-	tree->set_allow_reselect(true);
+	tree->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
+	tree->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+	tree->set_display_mode(FileSystemTree::DISPLAY_MODE_LIST);
 
 	// TODO
 	// SET_DRAG_FORWARDING_GCD(tree, FilePane);
-
-	tree->set_theme_type_variation("TreeTable");
-	tree->set_hide_folding(true);
-	tree->set_columns(4);
-	tree->set_column_titles_visible(true);
-
-	tree->set_column_title(0, TTRC("Name"));
-	tree->set_column_title_alignment(0, HORIZONTAL_ALIGNMENT_LEFT);
-	tree->set_column_clip_content(0, true);
-	tree->set_column_expand(0, true);
-	tree->set_column_expand_ratio(0, 2);
-
-	tree->set_column_title(1, TTRC("Modified Time"));
-	tree->set_column_title_alignment(1, HORIZONTAL_ALIGNMENT_LEFT);
-	tree->set_column_clip_content(1, true);
-	tree->set_column_expand(1, true);
-	tree->set_column_expand_ratio(1, 1);
-
-	tree->set_column_title(2, TTRC("Type"));
-	tree->set_column_title_alignment(2, HORIZONTAL_ALIGNMENT_LEFT);
-	tree->set_column_expand(2, false);
-
-	tree->set_column_title(3, TTRC("Size"));
-	tree->set_column_title_alignment(3, HORIZONTAL_ALIGNMENT_RIGHT);
-	tree->set_column_expand(3, false);
 
 	// tree->connect("cell_selected", callable_mp(this, &FilePane::_autoload_selected));
 	// tree->connect("item_edited", callable_mp(this, &FilePane::_autoload_edited));

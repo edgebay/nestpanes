@@ -1,7 +1,7 @@
 #include "navigation_pane.h"
 
 #include "app/app_modules/file_management/gui/file_context_menu.h"
-#include "scene/gui/tree.h"
+#include "app/app_modules/file_management/gui/file_system_tree.h"
 
 #include "app/gui/app_control.h"
 #include "app/themes/app_scale.h"
@@ -86,37 +86,20 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	ERR_FAIL_NULL(p_dir);
 
 	// Create a tree item for the subdirectory.
-	TreeItem *subdirectory_item = tree->create_item(p_parent);
-	String dname = p_dir->get_name();
-	String lpath = p_dir->get_path();
 
-	subdirectory_item->set_text(0, dname);
-	subdirectory_item->set_structured_text_bidi_override(0, TextServer::STRUCTURED_TEXT_FILE);
-	subdirectory_item->set_icon(0, p_dir->get_icon());
-	// TODO
-	// if (da->is_link(lpath)) {
-	// 	subdirectory_item->set_icon_overlay(0, get_app_theme_icon(SNAME("LinkOverlay")));
-	// 	subdirectory_item->set_tooltip_text(0, vformat(RTR("Link to: %s"), da->read_link(lpath)));
-	// }
-	subdirectory_item->set_selectable(0, true);
+	TreeItem *subdirectory_item = tree->add_item(p_dir->get_info(), p_parent);
 
-	Dictionary d;
-	d["name"] = dname;
-	d["path"] = lpath;
-	d["is_dir"] = true;
-	d["data"] = p_dir;
-	subdirectory_item->set_metadata(0, d);
-
-	if (selected_path == lpath || (selected_path.get_base_dir() == lpath)) {
+	String path = p_dir->get_path();
+	if (selected_path == path || (selected_path.get_base_dir() == path)) {
 		subdirectory_item->select(0);
 		// Keep select an item when re-created a tree
 		// To prevent crashing when nothing is selected.
 		subdirectory_item->set_as_cursor(0);
 	}
 
-	bool uncollapsed = p_uncollapsed_paths.has(lpath);
+	bool uncollapsed = p_uncollapsed_paths.has(path);
 	// TODO
-	// if (p_unfold_path && selected_path.begins_with(lpath) && selected_path != lpath) {
+	// if (p_unfold_path && selected_path.begins_with(path) && selected_path != path) {
 	// 	subdirectory_item->set_collapsed(false);
 	// } else {
 	subdirectory_item->set_collapsed(!uncollapsed);
@@ -138,33 +121,9 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 	ERR_FAIL_NULL(p_parent);
 	ERR_FAIL_NULL(p_file_info);
 
-	const int icon_size = get_theme_constant(SNAME("class_icon_size"));
-	TreeItem *file_item = tree->create_item(p_parent);
-	const String file_metadata = p_file_info->path;
-	file_item->set_text(0, p_file_info->name);
-	file_item->set_structured_text_bidi_override(0, TextServer::STRUCTURED_TEXT_FILE);
-	file_item->set_icon(0, p_file_info->icon);
-	// TODO
-	// if (da->is_link(file_metadata)) {
-	// 	file_item->set_icon_overlay(0, get_app_theme_icon(SNAME("LinkOverlay")));
-	// 	// TRANSLATORS: This is a tooltip for a file that is a symbolic link to another file.
-	// 	file_item->set_tooltip_text(0, vformat(RTR("Link to: %s"), da->read_link(file_metadata)));
-	// }
-	file_item->set_icon_max_width(0, icon_size);
-	// TODO
-	// Color parent_bg_color = p_parent->get_custom_bg_color(0);
-	// if (has_custom_color) {
-	// 	file_item->set_custom_bg_color(0, parent_bg_color.darkened(ITEM_BG_DARK_SCALE));
-	// } else if (parent_bg_color != Color()) {
-	// 	file_item->set_custom_bg_color(0, parent_bg_color);
-	// }
-	file_item->set_selectable(0, true);
-	Dictionary d;
-	d["name"] = p_file_info->name;
-	d["path"] = file_metadata;
-	d["is_dir"] = false;
-	file_item->set_metadata(0, d);
-	if (selected_path == file_metadata) {
+	TreeItem *file_item = tree->add_item(*p_file_info, p_parent);
+
+	if (selected_path == p_file_info->path) {
 		file_item->select(0);
 		file_item->set_as_cursor(0);
 	}
@@ -471,20 +430,15 @@ NavigationPane::NavigationPane() :
 		PaneBase(get_class_static()) {
 	set_custom_minimum_size(Size2(200, 320) * APP_SCALE);
 
-	tree = memnew(Tree);
+	tree = memnew(FileSystemTree);
 	add_child(tree);
 	tree->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 	tree->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
-	tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
-	tree->set_hide_root(true);
+	// TODO
 	// SET_DRAG_FORWARDING_GCD(tree, NavigationPane);
-	tree->set_allow_rmb_select(true);
-	tree->set_allow_reselect(true);
-	tree->set_select_mode(Tree::SELECT_MULTI);
 	tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
-	tree->set_column_clip_content(0, true);
 
 	// double-clicking selected.
 	tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
