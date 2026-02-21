@@ -216,13 +216,37 @@ void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
 		}
 
 		if (option_id >= 0 && add_selected) {
-			if (item_list->is_anything_selected()) {
-				Vector<int> selected_items = item_list->get_selected_items();
-				for (int i : selected_items) {
-					Dictionary d = item_list->get_item_metadata(i);
+			// if (item_list->is_anything_selected()) {
+			// 	Vector<int> selected_items = item_list->get_selected_items();
+			// 	for (int i : selected_items) {
+			// 		Dictionary d = item_list->get_item_metadata(i);
+			// 		targets.push_back(d["path"]);
+			// 	}
+			// } else {
+			// 	option_id = -1;
+			// }
+
+			// TODO
+			TreeItem *cursor_item = tree->get_selected();
+			print_line("cursor_item: ", cursor_item);
+			if (cursor_item) {
+				Dictionary d = cursor_item->get_metadata(0);
+				targets.push_back(d["path"]);
+			}
+
+			TreeItem *selected = tree->get_root();
+			selected = tree->get_next_selected(selected);
+			print_line("selected: ", selected);
+			while (selected) {
+				print_line("visible: ", selected->is_visible_in_tree());
+				if (selected != cursor_item && selected->is_visible_in_tree()) {
+					Dictionary d = selected->get_metadata(0);
 					targets.push_back(d["path"]);
 				}
-			} else {
+				selected = tree->get_next_selected(selected);
+			}
+
+			if (targets.is_empty()) {
 				option_id = -1;
 			}
 		}
@@ -238,10 +262,7 @@ void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
 }
 
 void FilePane::_process_shortcut_input(int p_option, const Vector<String> &p_selected) {
-	if (!_process_id_pressed(p_option, p_selected)) {
-		context_menu->set_targets(p_selected);
-		context_menu->file_option(p_option);
-	}
+	tree->process_menu_id(p_option, p_selected);
 }
 
 void FilePane::_notification(int p_what) {
@@ -345,11 +366,11 @@ void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
 	d["is_dir"] = p_is_dir;
 	item_list->set_item_metadata(item_id, d);
 
-	if (!to_select.is_empty() && to_select == p_fi.path) {
-		item_list->set_current(item_id);
-		item_list->select(item_id);
-		to_select = "";
-	}
+	// if (!to_select.is_empty() && to_select == p_fi.path) {
+	// 	item_list->set_current(item_id);
+	// 	item_list->select(item_id);
+	// 	to_select = "";
+	// }
 }
 
 void FilePane::_update_item_list(FileSystemDirectory *p_dir) {
@@ -375,13 +396,6 @@ void FilePane::_add_item(const FileInfo &p_fi) {
 	ERR_FAIL_NULL(root);
 
 	TreeItem *item = tree->add_item(p_fi, root);
-
-	if (!to_select.is_empty() && to_select == p_fi.path) {
-		// item->select_row();	// TODO
-		item->select(0);
-		item->set_as_cursor(0);
-		to_select = "";
-	}
 }
 
 void FilePane::_update_files(FileSystemDirectory *p_dir) {
@@ -389,6 +403,7 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 
 	tree->clear();
 	TreeItem *root = tree->create_item();
+	root->set_metadata(0, current_path);
 
 	// list dirs
 	int dir_count = p_dir->get_subdir_count();
@@ -406,139 +421,6 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 
 	item_count->set_text(itos(dir_count + file_count));
 }
-
-// TODO: menu item
-void FilePane::_build_empty_menu() {
-	context_menu->clear();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
-	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	FileContextMenu *new_menu = memnew(FileContextMenu);
-	new_menu->set_file_system(file_system);
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
-	context_menu->set_item_submenu_node(-1, new_menu);
-	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FilePane::_context_menu_id_pressed));
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
-}
-
-void FilePane::_build_file_menu() {
-	context_menu->clear();
-
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-
-	// context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
-}
-
-void FilePane::_build_folder_menu() {
-	context_menu->clear();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
-}
-
-void FilePane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
-	if (p_button != MouseButton::RIGHT) {
-		return;
-	}
-
-	item_list->deselect_all();
-
-	Vector<String> targets;
-	targets.push_back(current_path);
-	context_menu->set_targets(targets);
-
-	_build_empty_menu();
-
-	// get_position() is the offset within the parent.
-	context_menu->set_position(get_screen_position() + get_position() + p_pos);
-	context_menu->reset_size();
-	context_menu->popup();
-}
-
-void FilePane::_item_clicked(int p_item, const Vector2 &p_pos, MouseButton p_button) {
-	if (p_button != MouseButton::RIGHT) {
-		return;
-	}
-
-	if (!item_list->is_anything_selected()) {
-		return;
-	}
-
-	Vector<String> targets;
-	Vector<int> selected_items = item_list->get_selected_items();
-	for (int i : selected_items) {
-		Dictionary d = item_list->get_item_metadata(i);
-		targets.push_back(d["path"]);
-	}
-	context_menu->set_targets(targets);
-
-	if (targets.size() > 1) {
-		// TODO: handle multi selected
-	} else {
-		Dictionary d = item_list->get_item_metadata(p_item);
-		if (d["is_dir"]) {
-			_build_folder_menu();
-		} else {
-			_build_file_menu();
-		}
-	}
-
-	// get_position() is the offset within the parent.
-	context_menu->set_position(get_screen_position() + get_position() + p_pos);
-	context_menu->reset_size();
-	context_menu->popup();
-}
-
-// void FilePane::_multi_selected(int p_index, bool p_selected) {
-// 	print_line("multi selected: ", p_index, p_selected);
-// }
 
 void FilePane::_item_dc_selected(int p_item) {
 	int current = p_item;
@@ -616,131 +498,6 @@ void FilePane::_refresh() {
 	refresh->release_focus();
 
 	file_system->scan(current_path, true);
-}
-
-bool FilePane::_process_id_pressed(int p_option, const Vector<String> &p_selected) {
-	bool is_handled = true;
-
-	switch (p_option) {
-		case FileContextMenu::FILE_MENU_OPEN: {
-			String path = p_selected.is_empty() ? "" : p_selected[0];
-			if (!FileSystemAccess::dir_exists(path)) {
-				break;
-			}
-
-			set_path(path);
-		} break;
-
-		case FileContextMenu::FILE_MENU_RENAME: {
-			item_list->edit_selected();
-		} break;
-
-		case FileContextMenu::FILE_MENU_NEW_FOLDER: {
-			String dir = p_selected.is_empty() ? "" : p_selected[0];
-			if (!FileSystemAccess::dir_exists(dir)) {
-				break;
-			}
-
-			String new_name = RTR("new folder");
-			String name = new_name;
-			String path = dir.path_join(name);
-			int i = 1;
-			while (FileSystemAccess::dir_exists(path)) {
-				name = vformat("%s (%d)", new_name, i);
-				path = dir.path_join(name);
-				i++;
-			}
-			Error err = FileSystemAccess::make_dir(path);
-			if (err == OK) {
-				file_system->scan(dir, true);
-				to_select = path;
-				rename_item = true;
-			}
-		} break;
-
-		case FileContextMenu::FILE_MENU_NEW_TEXTFILE: {
-			String dir = p_selected.is_empty() ? "" : p_selected[0];
-			if (!FileSystemAccess::dir_exists(dir)) {
-				break;
-			}
-
-			String new_name = RTR("new file");
-			String name = new_name + ".txt";
-			String path = dir.path_join(name);
-			int i = 1;
-			while (FileSystemAccess::file_exists(path)) {
-				name = vformat("%s (%d).txt", new_name, i);
-				path = dir.path_join(name);
-				i++;
-			}
-			Error err = FileSystemAccess::create_file(dir, name);
-			if (err == OK) {
-				file_system->scan(dir, true);
-				to_select = path;
-				rename_item = true;
-			}
-		} break;
-
-		default: {
-			is_handled = false;
-		}
-	}
-
-	return is_handled;
-}
-
-void FilePane::_context_menu_id_pressed(int p_option) {
-	_process_id_pressed(p_option, context_menu->get_targets());
-}
-
-void FilePane::_item_edited() {
-	Vector<int> selected_ids = item_list->get_selected_items();
-	int id = selected_ids[0];
-	Dictionary d = item_list->get_item_metadata(id);
-
-	String from = d["path"];
-	String new_name = item_list->get_edit_text().strip_edges();
-	if (_rename_operation_confirm(from, new_name)) {
-		file_system->scan(current_path, true);
-
-		to_select = from.get_base_dir().path_join(new_name);
-	} else {
-		item_list->set_item_text(id, d["name"]);
-	}
-}
-
-bool FilePane::_rename_operation_confirm(const String &p_from, const String &p_new_name) {
-	bool rename_error = false;
-
-	if (p_new_name.length() == 0) {
-		// TODO: hint
-		// print_line(TTRC("No name provided."));
-		rename_error = true;
-	} else if (p_new_name.contains_char('/') || p_new_name.contains_char('\\') || p_new_name.contains_char(':')) {
-		// print_line(TTRC("Name contains invalid characters."));
-		rename_error = true;
-	} else if (p_new_name[0] == '.') {
-		// print_line(TTRC("This filename begins with a dot rendering the file invisible to the editor.\nIf you want to rename it anyway, use your operating system's file manager."));
-		rename_error = true;
-	}
-
-	if (rename_error) {
-		return false;
-	}
-
-	String from = p_from;
-	String to = from.get_base_dir().path_join(p_new_name);
-	if (to == from) {
-		return false;
-	}
-	return FileSystemAccess::rename(p_from, to) == OK;
-}
-
-void FilePane::_item_list_draw() {
-	if (rename_item) {
-		item_list->edit_selected();
-		rename_item = false;
-	}
 }
 
 void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
@@ -897,13 +654,7 @@ FilePane::FilePane() :
 
 	vbox->add_child(item_list);
 
-	item_list->connect("item_clicked", callable_mp(this, &FilePane::_item_clicked));
-	item_list->connect("empty_clicked", callable_mp(this, &FilePane::_empty_clicked));
-	item_list->connect("item_edited", callable_mp(this, &FilePane::_item_edited));
-	item_list->connect(SceneStringName(draw), callable_mp(this, &FilePane::_item_list_draw));
-	// TODO: preview?
-	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
-	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected));
+	// TODO: Preview on selection?
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
 
 	item_list->hide();
@@ -946,7 +697,7 @@ FilePane::FilePane() :
 
 	context_menu = memnew(FileContextMenu);
 	add_child(context_menu);
-	context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FilePane::_context_menu_id_pressed));
+	tree->set_context_menu(context_menu);
 
 	address_bar->connect(SceneStringName(text_submitted), callable_mp(this, &FilePane::_on_address_submitted));
 	address_bar->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_select_history));

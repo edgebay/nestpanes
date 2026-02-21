@@ -385,6 +385,10 @@ void FileContextMenu::set_file_system(FileSystem *p_file_system) {
 	file_system = p_file_system;
 }
 
+FileSystem *FileContextMenu::get_file_system() const {
+	return file_system;
+}
+
 void FileContextMenu::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("custom_id_pressed", PropertyInfo(Variant::INT, "id")));
 }

@@ -83,6 +83,7 @@ public:
 	void clear_targets();
 
 	void set_file_system(FileSystem *p_file_system);
+	FileSystem *get_file_system() const;
 
 	FileContextMenu();
 	~FileContextMenu();
