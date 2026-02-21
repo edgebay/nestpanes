@@ -9,11 +9,7 @@ class FileSystemDirectory : public Object {
 	GDCLASS(FileSystemDirectory, Object);
 
 private:
-	// TODO: use FileInfo?
-	String name;
-	String path;
-	Ref<Texture2D> icon;
-	bool hidden = false;
+	FileInfo info;
 
 	bool scanned = false;
 
@@ -26,19 +22,21 @@ protected:
 
 	void clear();
 
-	void setup(FileSystemDirectory *p_parent,
-			const String &p_name,
-			const String &p_path,
-			const Ref<Texture2D> &p_icon,
-			bool p_hidden = false);
+	void setup(FileSystemDirectory *p_parent, const FileInfo &p_info);
 
 public:
+	const FileInfo &get_info() const;
 	String get_name() const;
 	String get_path() const;
 	// TODO
 	// String get_directory_path() const;
 	Ref<Texture2D> get_icon() const;
+	StringName get_type() const;
+	int64_t get_size() const;
+	uint64_t get_creation_time() const;
+	uint64_t get_modified_time() const;
 	bool is_hidden() const;
+
 	bool is_scanned() const;
 
 	FileSystemDirectory *get_parent() const;

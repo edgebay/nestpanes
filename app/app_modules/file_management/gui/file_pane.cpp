@@ -2,10 +2,13 @@
 
 #include "app/app_modules/file_management/gui/address_bar.h"
 #include "app/app_modules/file_management/gui/file_context_menu.h"
+#include "app/app_modules/file_management/gui/file_system_tree.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/item_list.h"
+#include "scene/gui/label.h"
 #include "scene/gui/line_edit.h"
+#include "scene/gui/margin_container.h"
 #include "scene/gui/popup_menu.h"
 
 #include "app/gui/app_control.h"
@@ -321,7 +324,8 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 	// for (local_history) histories->add_item(history);
 	// histories->select(local_history_pos);
 
-	_update_item_list(p_dir);
+	// _update_item_list(p_dir);
+	_update_files(p_dir);
 }
 
 void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
@@ -355,20 +359,86 @@ void FilePane::_update_item_list(FileSystemDirectory *p_dir) {
 	// list dirs
 	for (int i = 0; i < p_dir->get_subdir_count(); i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
-		FileInfo fi;
-		fi.type = FOLDER_TYPE;
-		fi.name = subdir->get_name();
-		fi.path = subdir->get_path();
-		fi.icon = subdir->get_icon();
-		fi.is_hidden = subdir->is_hidden();
-		_add_item(fi, true);
+		_add_item(subdir->get_info(), true);
 	}
 
 	// list files
 	for (int i = 0; i < p_dir->get_file_count(); i++) {
 		const FileInfo &fi = *(p_dir->get_file(i));
+		_add_item(fi, false);
+	}
+}
+
+void FilePane::_add_item(const FileInfo &p_fi) {
+	bool is_dir = p_fi.type == FOLDER_TYPE;
+	Ref<Texture2D> icon = p_fi.icon;
+	if (!icon.is_valid()) {
+		Ref<Texture2D> folder = get_app_theme_icon(SNAME("Folder"));
+		Ref<Texture2D> file = get_app_theme_icon(SNAME("File"));
+
+		icon = is_dir ? folder : file;
+	}
+
+	TreeItem *root = tree->get_root();
+	ERR_FAIL_NULL(root);
+
+	TreeItem *item = tree->create_item(root);
+	item->set_text(0, p_fi.name);
+	// item->set_editable(0, true);
+	item->set_icon(0, p_fi.icon);
+
+	String modified_time = itos(p_fi.modified_time);
+	item->set_text(1, modified_time);
+	// item->set_selectable(1, true);
+
+	// item->set_cell_mode(2, TreeItem::CELL_MODE_CHECK);
+	// item->set_editable(2, true);
+	item->set_text(2, p_fi.type);
+	// item->set_checked(2, info.is_singleton);
+
+	String size = itos(p_fi.size);
+	item->set_text(3, size);
+	// item->add_button(3, get_editor_theme_icon(SNAME("Load")), BUTTON_OPEN);
+	// item->add_button(3, get_editor_theme_icon(SNAME("MoveUp")), BUTTON_MOVE_UP);
+	// item->add_button(3, get_editor_theme_icon(SNAME("MoveDown")), BUTTON_MOVE_DOWN);
+	// item->add_button(3, get_editor_theme_icon(SNAME("Remove")), BUTTON_DELETE);
+	// item->set_selectable(3, false);
+
+	Dictionary d;
+	d["name"] = p_fi.name;
+	d["path"] = p_fi.path;
+	d["is_dir"] = is_dir;
+	item->set_metadata(0, d);
+
+	if (!to_select.is_empty() && to_select == p_fi.path) {
+		// item->select_row();	// TODO
+		item->select(0);
+		item->set_as_cursor(0);
+		to_select = "";
+	}
+}
+
+void FilePane::_update_files(FileSystemDirectory *p_dir) {
+	ERR_FAIL_NULL(p_dir);
+
+	tree->clear();
+	TreeItem *root = tree->create_item();
+
+	// list dirs
+	int dir_count = p_dir->get_subdir_count();
+	for (int i = 0; i < dir_count; i++) {
+		FileSystemDirectory *subdir = p_dir->get_subdir(i);
+		_add_item(subdir->get_info());
+	}
+
+	// list files
+	int file_count = p_dir->get_file_count();
+	for (int i = 0; i < file_count; i++) {
+		const FileInfo &fi = *(p_dir->get_file(i));
 		_add_item(fi);
 	}
+
+	item_count->set_text(itos(dir_count + file_count));
 }
 
 // TODO: menu item
@@ -869,6 +939,69 @@ FilePane::FilePane() :
 	// item_list->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_item_selected), CONNECT_DEFERRED);
 	// item_list->connect("multi_selected", callable_mp(this, &FilePane::_multi_selected));
 	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
+
+	item_list->hide();
+
+	MarginContainer *mc = memnew(MarginContainer);
+	mc->set_v_size_flags(SIZE_EXPAND_FILL);
+	// mc->set_theme_type_variation("NoBorderHorizontalBottomWide");
+	vbox->add_child(mc);
+
+	tree = memnew(FileSystemTree);
+	tree->set_hide_root(true);
+	// tree->set_select_mode(Tree::SELECT_MULTI);
+	tree->set_select_mode(Tree::SELECT_ROW);
+	tree->set_allow_reselect(true);
+
+	// TODO
+	// SET_DRAG_FORWARDING_GCD(tree, FilePane);
+
+	tree->set_theme_type_variation("TreeTable");
+	tree->set_hide_folding(true);
+	tree->set_columns(4);
+	tree->set_column_titles_visible(true);
+
+	tree->set_column_title(0, TTRC("Name"));
+	tree->set_column_title_alignment(0, HORIZONTAL_ALIGNMENT_LEFT);
+	tree->set_column_clip_content(0, true);
+	tree->set_column_expand(0, true);
+	tree->set_column_expand_ratio(0, 2);
+
+	tree->set_column_title(1, TTRC("Modified Time"));
+	tree->set_column_title_alignment(1, HORIZONTAL_ALIGNMENT_LEFT);
+	tree->set_column_clip_content(1, true);
+	tree->set_column_expand(1, true);
+	tree->set_column_expand_ratio(1, 1);
+
+	tree->set_column_title(2, TTRC("Type"));
+	tree->set_column_title_alignment(2, HORIZONTAL_ALIGNMENT_LEFT);
+	tree->set_column_expand(2, false);
+
+	tree->set_column_title(3, TTRC("Size"));
+	tree->set_column_title_alignment(3, HORIZONTAL_ALIGNMENT_RIGHT);
+	tree->set_column_expand(3, false);
+
+	// tree->connect("cell_selected", callable_mp(this, &FilePane::_autoload_selected));
+	// tree->connect("item_edited", callable_mp(this, &FilePane::_autoload_edited));
+	// tree->connect("button_clicked", callable_mp(this, &FilePane::_autoload_button_pressed));
+	// tree->connect("item_activated", callable_mp(this, &FilePane::_autoload_activated));
+
+	// mc->add_child(tree, true);
+	mc->add_child(tree);
+
+	status_bar = memnew(HBoxContainer);
+	vbox->add_child(status_bar);
+	status_bar->set_alignment(BoxContainer::ALIGNMENT_END);
+
+	mc = memnew(MarginContainer);
+	mc->set_v_size_flags(SIZE_EXPAND_FILL);
+	mc->set_theme_type_variation("NoBorderHorizontalBottomWide");
+	status_bar->add_child(mc);
+
+	item_count = memnew(Label);
+	// status_bar->add_child(item_count);
+	mc->add_child(item_count);
+	item_count->set_text("0");
 
 	context_menu = memnew(FileContextMenu);
 	add_child(context_menu);

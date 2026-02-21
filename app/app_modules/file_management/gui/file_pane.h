@@ -8,6 +8,7 @@ class AddressBar;
 class Button;
 class FileContextMenu;
 class HBoxContainer;
+class Label;
 class LineEdit;
 class Popup;
 class VBoxContainer;
@@ -15,6 +16,7 @@ class VBoxContainer;
 struct FileInfo;
 class FileSystem;
 class FileSystemDirectory;
+class FileSystemTree;
 
 class FileSystemItemList : public ItemList {
 	GDCLASS(FileSystemItemList, ItemList);
@@ -53,6 +55,10 @@ private:
 	AddressBar *address_bar = nullptr;
 
 	FileSystemItemList *item_list = nullptr;
+	FileSystemTree *tree = nullptr;
+
+	HBoxContainer *status_bar = nullptr;
+	Label *item_count = nullptr;
 
 	FileContextMenu *context_menu = nullptr;
 
@@ -80,8 +86,10 @@ private:
 
 	void _update_ui();
 	void _update_ui_nocheck(FileSystemDirectory *p_dir);
-	void _add_item(const FileInfo &p_fi, bool p_is_dir = false);
+	void _add_item(const FileInfo &p_fi, bool p_is_dir);
 	void _update_item_list(FileSystemDirectory *p_dir);
+	void _add_item(const FileInfo &p_fi);
+	void _update_files(FileSystemDirectory *p_dir);
 
 	void _build_empty_menu();
 	void _build_file_menu();

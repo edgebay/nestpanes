@@ -26,10 +26,11 @@ struct FileInfo {
 
 	StringName type = "unknown";
 	int64_t size = 0;
+
+	uint64_t creation_time = 0;
 	uint64_t modified_time = 0; // last_write_time
 
-	// bool is_dir = false;	// Use folder type
-	bool is_hidden = false;
+	bool hidden = false;
 
 	FileInfo &operator=(const FileInfo &p_file_info) = default;
 

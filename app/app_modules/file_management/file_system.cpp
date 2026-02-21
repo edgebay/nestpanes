@@ -5,12 +5,16 @@
 
 #include "app/settings/app_settings.h"
 
+const FileInfo &FileSystemDirectory::get_info() const {
+	return info;
+}
+
 String FileSystemDirectory::get_name() const {
-	return name;
+	return info.name;
 }
 
 String FileSystemDirectory::get_path() const {
-	return path;
+	return info.path;
 }
 
 // TODO
@@ -30,11 +34,27 @@ String FileSystemDirectory::get_path() const {
 // }
 
 Ref<Texture2D> FileSystemDirectory::get_icon() const {
-	return icon;
+	return info.icon;
+}
+
+StringName FileSystemDirectory::get_type() const {
+	return info.type;
+}
+
+int64_t FileSystemDirectory::get_size() const {
+	return info.size;
+}
+
+uint64_t FileSystemDirectory::get_creation_time() const {
+	return info.creation_time;
+}
+
+uint64_t FileSystemDirectory::get_modified_time() const {
+	return info.modified_time;
 }
 
 bool FileSystemDirectory::is_hidden() const {
-	return hidden;
+	return info.hidden;
 }
 
 bool FileSystemDirectory::is_scanned() const {
@@ -117,12 +137,12 @@ void FileSystemDirectory::clear() {
 	scanned = false;
 }
 
-void FileSystemDirectory::setup(FileSystemDirectory *p_parent, const String &p_name, const String &p_path, const Ref<Texture2D> &p_icon, bool p_hidden) {
+void FileSystemDirectory::setup(FileSystemDirectory *p_parent, const FileInfo &p_info) {
+	ERR_FAIL_NULL(p_parent);
+	ERR_FAIL_COND(p_info.type != FOLDER_TYPE);
+
 	parent = p_parent;
-	name = p_name;
-	path = p_path;
-	icon = p_icon;
-	hidden = p_hidden;
+	info = p_info;
 }
 
 FileSystemDirectory::FileSystemDirectory() {
@@ -234,7 +254,7 @@ FileSystemDirectory *FileSystem::_create_dir(const String &p_path) const {
 		}
 
 		subdir = memnew(FileSystemDirectory);
-		subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+		subdir->setup(dir, file_info);
 		dir->subdirs.push_back(subdir);
 
 		dir = subdir;
@@ -299,7 +319,7 @@ void FileSystem::_scan() {
 			if (file_info.name != "." && file_info.name != "..") {
 				if (file_info.type == FOLDER_TYPE) {
 					FileSystemDirectory *subdir = memnew(FileSystemDirectory);
-					subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+					subdir->setup(dir, file_info);
 					dir->subdirs.push_back(subdir);
 				} else {
 					FileInfo *fi = memnew(FileInfo);
@@ -349,7 +369,7 @@ void FileSystem::_scan_root() {
 
 	for (const FileInfo &file_info : drives) {
 		FileSystemDirectory *subdir = memnew(FileSystemDirectory);
-		subdir->setup(dir, file_info.name, file_info.path, file_info.icon, file_info.is_hidden);
+		subdir->setup(dir, file_info);
 		dir->subdirs.push_back(subdir);
 	}
 
@@ -403,8 +423,12 @@ void FileSystem::_bind_methods() {
 
 FileSystem::FileSystem() {
 	file_system_root = memnew(FileSystemDirectory);
-	file_system_root->setup(nullptr, COMPUTER_PATH, COMPUTER_PATH, FileSystemAccess::get_icon(COMPUTER_PATH), false);
-	scan(COMPUTER_PATH);
+
+	FileInfo &file_info = file_system_root->info;
+	file_info.name = COMPUTER_PATH;
+	file_info.path = COMPUTER_PATH;
+	file_info.icon = FileSystemAccess::get_icon(COMPUTER_PATH);
+	file_info.type = FOLDER_TYPE; // TODO
 
 	APP_SHORTCUT("file_management/copy_path", TTRC("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
 
@@ -426,6 +450,7 @@ FileSystem::FileSystem() {
 	APP_SHORTCUT("file_management/delete", TTRC("Delete"), Key::KEY_DELETE);
 
 	set_process(true);
+	scan(COMPUTER_PATH);
 }
 
 FileSystem::~FileSystem() {

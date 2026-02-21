@@ -10,7 +10,7 @@
 #include <shlobj.h> // for DROPFILES
 
 // 将 HICON 转换为 Image（RGBA8 格式）
-Ref<Image> _icon_to_image(HICON hIcon, float p_alpha_multiplier = 1) {
+static Ref<Image> _icon_to_image(HICON hIcon, float p_alpha_multiplier = 1) {
 	if (!hIcon) {
 		return Ref<Image>();
 	}
@@ -87,6 +87,23 @@ Ref<Image> _icon_to_image(HICON hIcon, float p_alpha_multiplier = 1) {
 
 	// Godot 图像格式：RGBA8
 	return memnew(Image(width, height, false, Image::FORMAT_RGBA8, pixels));
+}
+
+static uint64_t _get_time_stamp(LPFILETIME time) {
+	const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
+	const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
+
+	uint64_t ret = 0;
+
+	ret = time->dwHighDateTime;
+	ret <<= 32;
+	ret |= time->dwLowDateTime;
+
+	if (ret >= TICKS_TO_UNIX_EPOCH) {
+		return (ret - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
+	}
+
+	return 0;
 }
 
 struct FileSystemAccessWindowsPrivate {
@@ -178,20 +195,10 @@ Error FileSystemAccessWindows::_get_next(FileInfo &r_info) {
 
 	r_info.icon = _get_icon(r_info.path, is_dir, is_hidden);
 
-	// FILETIME ft_create, ft_write;
-	// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);
-	uint64_t last_write_time = 0;
-	last_write_time = p->fu.ftLastWriteTime.dwHighDateTime;
-	last_write_time <<= 32;
-	last_write_time |= p->fu.ftLastWriteTime.dwLowDateTime;
-	const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
-	const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
-	if (last_write_time >= TICKS_TO_UNIX_EPOCH) {
-		last_write_time = (last_write_time - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
-	}
-	r_info.modified_time = last_write_time; // FileAccess::get_modified_time(r_info.path);
+	r_info.creation_time = _get_time_stamp(&p->fu.ftCreationTime);
+	r_info.modified_time = _get_time_stamp(&p->fu.ftLastWriteTime);
 
-	r_info.is_hidden = is_hidden;
+	r_info.hidden = is_hidden;
 
 	if (!is_dir) {
 		r_info.type = name.get_extension();
@@ -281,20 +288,10 @@ Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInf
 
 	r_info.icon = _get_icon(r_info.path, is_dir, is_hidden);
 
-	// FILETIME ft_create, ft_write;
-	// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);
-	uint64_t last_write_time = 0;
-	last_write_time = fileData.ftLastWriteTime.dwHighDateTime;
-	last_write_time <<= 32;
-	last_write_time |= fileData.ftLastWriteTime.dwLowDateTime;
-	const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
-	const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
-	if (last_write_time >= TICKS_TO_UNIX_EPOCH) {
-		last_write_time = (last_write_time - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
-	}
-	r_info.modified_time = last_write_time; // FileAccess::get_modified_time(r_info.path);
+	r_info.creation_time = _get_time_stamp(&fileData.ftCreationTime);
+	r_info.modified_time = _get_time_stamp(&fileData.ftLastWriteTime);
 
-	r_info.is_hidden = is_hidden;
+	r_info.hidden = is_hidden;
 
 	if (!is_dir) {
 		r_info.type = r_info.name.get_extension();
@@ -340,20 +337,10 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 
 		file_info.icon = _get_icon(file_info.path, is_dir, is_hidden);
 
-		// FILETIME ft_create, ft_write;
-		// bool status = GetFileTime(h, &ft_create, nullptr, &ft_write);
-		uint64_t last_write_time = 0;
-		last_write_time = fu.ftLastWriteTime.dwHighDateTime;
-		last_write_time <<= 32;
-		last_write_time |= fu.ftLastWriteTime.dwLowDateTime;
-		const uint64_t WINDOWS_TICKS_PER_SECOND = 10000000;
-		const uint64_t TICKS_TO_UNIX_EPOCH = 116444736000000000LL;
-		if (last_write_time >= TICKS_TO_UNIX_EPOCH) {
-			last_write_time = (last_write_time - TICKS_TO_UNIX_EPOCH) / WINDOWS_TICKS_PER_SECOND;
-		}
-		file_info.modified_time = last_write_time; // FileAccess::get_modified_time(file_info.path);
+		file_info.creation_time = _get_time_stamp(&fu.ftCreationTime);
+		file_info.modified_time = _get_time_stamp(&fu.ftLastWriteTime);
 
-		file_info.is_hidden = is_hidden;
+		file_info.hidden = is_hidden;
 
 		if (!is_dir) {
 			file_info.type = name.get_extension();
@@ -393,9 +380,10 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 
 			file_info.icon = _get_icon(file_info.path, true);
 
+			file_info.creation_time = 0;
 			file_info.modified_time = 0; // FileAccess::get_modified_time(file_info.path);
 
-			file_info.is_hidden = false;
+			file_info.hidden = false;
 
 			file_info.type = FOLDER_TYPE;
 			file_info.size = 0;
