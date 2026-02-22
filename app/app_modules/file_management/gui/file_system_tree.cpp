@@ -2,10 +2,14 @@
 
 #include "app/app_modules/file_management/gui/file_context_menu.h"
 
+// #include "app/app_string_names.h"
 #include "app/gui/app_control.h"
+// #include "app/themes/app_scale.h"
 
 #include "app/app_core/io/file_system_access.h"
 #include "app/app_modules/file_management/file_system.h"
+
+// #define DRAG_THRESHOLD (8 * EDSCALE)
 
 static const int default_column_count = 5;
 static FileSystemTree::ColumnSetting default_column_settings[default_column_count] = {
@@ -19,6 +23,8 @@ static FileSystemTree::ColumnSetting default_column_settings[default_column_coun
 void FileSystemTree::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_DRAW: {
+			// _draw_selection();
+
 			// p_cast->theme_cache.hovered = p_cast->get_theme_item(Theme::DATA_TYPE_STYLEBOX, p_item_name, p_type_name);
 
 			// if (i == 0 && select_mode == SELECT_ROW) {
@@ -391,7 +397,7 @@ bool FileSystemTree::_rename_operation_confirm(const String &p_from, const Strin
 		// print_line(TTRC("Name contains invalid characters."));
 		rename_error = true;
 	} else if (p_new_name[0] == '.') {
-		// print_line(TTRC("This filename begins with a dot rendering the file invisible to the editor.\nIf you want to rename it anyway, use your operating system's file manager."));
+		// print_line(TTRC("This filename begins with a dot rendering the file invisible to the app.\nIf you want to rename it anyway, use your operating system's file manager."));
 		rename_error = true;
 	}
 
@@ -513,8 +519,225 @@ void FileSystemTree::_context_menu_id_pressed(int p_option) {
 	_process_id_pressed(p_option, context_menu->get_targets());
 }
 
+// void FileSystemTree::_draw_selection() {
+// 	print_line("draw: ", drag_type, drag_from, box_selecting_to);
+// 	if (drag_type == DRAG_BOX_SELECTION) {
+// 		// Draw the dragging box
+// 		Point2 bsfrom = drag_from;
+// 		Point2 bsto = box_selecting_to;
+
+// 		draw_rect(
+// 				Rect2(bsfrom, bsto - bsfrom),
+// 				get_theme_color(SNAME("box_selection_fill_color"), AppStringName(App)));
+
+// 		draw_rect(
+// 				Rect2(bsfrom, bsto - bsfrom),
+// 				get_theme_color(SNAME("box_selection_stroke_color"), AppStringName(App)),
+// 				false,
+// 				Math::round(EDSCALE));
+// 	}
+// }
+
+Vector<TreeItem *> FileSystemTree::_get_selected_items() {
+	Vector<TreeItem *> items;
+
+	TreeItem *cursor_item = get_selected();
+	if (cursor_item) {
+		items.push_back(cursor_item);
+	}
+
+	TreeItem *selected = get_root();
+	selected = get_next_selected(selected);
+	while (selected) {
+		if (selected != cursor_item && selected->is_visible_in_tree()) {
+			items.push_back(selected);
+		}
+		selected = get_next_selected(selected);
+	}
+
+	return items;
+}
+
+// bool FileSystemTree::_gui_input_select(const Ref<InputEvent> &p_event) {
+// 	ERR_FAIL_COND_V(display_mode != DISPLAY_MODE_LIST, false);
+
+// 	Ref<InputEventMouseButton> b = p_event;
+// 	Ref<InputEventMouseMotion> m = p_event;
+// 	Ref<InputEventKey> k = p_event;
+
+// 	// if (drag_type == DRAG_NONE || (drag_type == DRAG_BOX_SELECTION && b.is_valid() && !b->is_pressed())) {
+// 	// 	Point2 click;
+// 	// 	bool can_select = b.is_valid() && b->get_button_index() == MouseButton::LEFT;
+// 	// 	if (can_select) {
+// 	// 		click = b->get_position();
+// 	// 		// Allow selecting on release when performed very small box selection (necessary when Shift is pressed, see below).
+// 	// 		can_select = b->is_pressed() || (drag_type == DRAG_BOX_SELECTION && click.distance_to(drag_from) <= DRAG_THRESHOLD);
+// 	// 	}
+// 	// 	if (can_select) {
+// 	// 		TreeItem *item = get_item_at_position(click);
+
+// 	// 		if (b->is_pressed()) {
+// 	// 			// Shift or Ctrl also allows forcing box selection when item was clicked.
+// 	// 			if (item == nullptr || ((b->is_shift_pressed() || b->is_command_or_control_pressed()))) {
+// 	// 				// Start a box selection.
+// 	// 				if (!(b->is_shift_pressed() || b->is_command_or_control_pressed())) {
+// 	// 					// Clear the selection if not additive.
+// 	// 					deselect_all();
+// 	// 					queue_redraw();
+// 	// 				};
+// 	// 				// for (TreeItem *item : _get_selected_items()) {
+// 	// 				// 	selected_list.push_back(item);
+// 	// 				// }
+
+// 	// 				drag_from = click;
+// 	// 				drag_type = DRAG_BOX_SELECTION;
+// 	// 				box_selecting_to = drag_from;
+// 	// 				// prev_selecting_to = box_selecting_to;
+// 	// 				prev_hovered_item = nullptr;
+// 	// 				return true;
+// 	// 			}
+// 	// 		} else {
+// 	// 			drag_type = DRAG_NONE;
+// 	// 			// Select the item.
+// 	// 			// if (item) {
+// 	// 			// 	item->select(0);
+// 	// 			// }
+// 	// 			// return true;
+// 	// 			return false; // Handle it outside?
+// 	// 		}
+// 	// 	}
+// 	// }
+
+// 	if (drag_type == DRAG_NONE) {
+// 		if (b.is_valid() && b->get_button_index() == MouseButton::LEFT) {
+// 			print_line("b: ", b->is_pressed());
+// 			if (b->is_pressed()) {
+// 				drag_from = b->get_position();
+// 				detecting_box_selection = true;
+// 			} else {
+// 				detecting_box_selection = false;
+// 			}
+// 			return false; // Handle it outside
+// 		}
+
+// 		if (detecting_box_selection && m.is_valid()) {
+// 			Point2 click = m->get_position();
+// 			print_line("click: ", click, drag_from, click.distance_to(drag_from), DRAG_THRESHOLD);
+// 			if (click.distance_to(drag_from) > DRAG_THRESHOLD) {
+// 				// Start a box selection.
+// 				if (!(m->is_shift_pressed() || m->is_command_or_control_pressed())) {
+// 					// Clear the selection if not additive.
+// 					deselect_all();
+// 					queue_redraw();
+// 				};
+
+// 				// drag_from = click;
+// 				drag_type = DRAG_BOX_SELECTION;
+// 				box_selecting_to = drag_from;
+// 				// prev_selecting_to = box_selecting_to;
+// 				prev_hovered_item = nullptr;
+// 				starting_item = get_item_at_position(drag_from);
+// 				return true;
+// 			}
+// 		}
+// 	} else if (drag_type == DRAG_BOX_SELECTION) {
+// 		// End box selection.
+// 		if (b.is_valid() && !b->is_pressed() && b->get_button_index() == MouseButton::LEFT) {
+// 			drag_type = DRAG_NONE;
+// 			detecting_box_selection = false;
+// 			queue_redraw();
+// 			return true;
+// 		}
+
+// 		// Cancel box selection.	// TODO: context menu?
+// 		if (b.is_valid() && b->is_pressed() && b->get_button_index() == MouseButton::RIGHT) {
+// 			drag_type = DRAG_NONE;
+// 			detecting_box_selection = false;
+// 			queue_redraw();
+// 			return true;
+// 		}
+
+// 		// Update box selection.
+// 		if (m.is_valid()) {
+// 			Point2 selecting_to = m->get_position();
+
+// 			// bool move_up = selecting_to.y < drag_from.y;
+// 			// TreeItem *hovered_item = get_item_at_position(selecting_to);
+
+// 			// // if (!starting_item && hovered_item) {
+// 			// // 	starting_item = hovered_item;
+// 			// // }
+
+// 			// // TreeItem *item = starting_item;
+// 			// TreeItem *item = get_root();
+// 			// while (item) {
+// 			// 	Rect2 rect = get_item_rect(item);
+
+// 			// 	// if (!item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
+// 			// 	// 	item->select(0);
+// 			// 	// 	// } else {
+// 			// 	// 	// 	item->deselect(0);
+// 			// 	// }
+
+// 			// 	if (move_up) {
+// 			// 		item = item->get_prev();
+// 			// 	} else {
+// 			// 		item = item->get_next();
+// 			// 	}
+// 			// }
+
+// 			// // print_line("item: ", selecting_to, hovered_item, prev_hovered_item);
+// 			// // if (hovered_item && hovered_item != prev_hovered_item) {
+// 			// // 	// TreeItem *target_item = nullptr;
+// 			// // 	// if (prev_hovered_item) {
+// 			// // 	// 	if (move_up) {
+// 			// // 	// 		target_item = prev_hovered_item->get_prev();
+// 			// // 	// 	} else {
+// 			// // 	// 		target_item = prev_hovered_item->get_next();
+// 			// // 	// 	}
+// 			// // 	// }
+
+// 			// // 	if (!hovered_item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
+// 			// // 		hovered_item->select(0);
+// 			// // 	} else {
+// 			// // 		hovered_item->deselect(0);
+// 			// // 	}
+// 			// // 	prev_hovered_item = hovered_item;
+// 			// // }
+
+// 			// prev_selecting_to = box_selecting_to;
+// 			box_selecting_to = selecting_to;
+
+// 			// Rect2 box = Rect2(drag_from, box_selecting_to - drag_from);
+
+// 			queue_redraw();
+// 			return true;
+// 		}
+// 	}
+
+// 	return false;
+// }
+
 void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
+	if (display_mode == DISPLAY_MODE_TREE) {
+		Tree::gui_input(p_event);
+		return;
+	}
+
+	// bool accepted = true;
+
+	// if (_gui_input_select(p_event)) {
+	// 	// print_line("Selection");
+	// } else {
+	// 	// print_line("Not accepted");
+	// 	accepted = false;
+	// }
+
+	// if (accepted) {
+	// 	accept_event();
+	// } else {
 	Tree::gui_input(p_event);
+	// }
 }
 
 void FileSystemTree::set_display_mode(DisplayMode p_display_mode) {
@@ -524,6 +747,10 @@ void FileSystemTree::set_display_mode(DisplayMode p_display_mode) {
 
 	display_mode = p_display_mode;
 	_update_display_mode();
+}
+
+FileSystemTree::DisplayMode FileSystemTree::get_display_mode() const {
+	return display_mode;
 }
 
 void FileSystemTree::set_column_settings(const Array &p_column_settings) {
@@ -591,20 +818,9 @@ void FileSystemTree::process_menu_id(int p_option, const Vector<String> &p_selec
 Vector<String> FileSystemTree::get_selected_paths() {
 	Vector<String> selected_paths;
 
-	TreeItem *cursor_item = get_selected();
-	if (cursor_item) {
-		Dictionary d = cursor_item->get_metadata(0);
+	for (const TreeItem *item : _get_selected_items()) {
+		Dictionary d = item->get_metadata(0);
 		selected_paths.push_back(d["path"]);
-	}
-
-	TreeItem *selected = get_root();
-	selected = get_next_selected(selected);
-	while (selected) {
-		if (selected != cursor_item && selected->is_visible_in_tree()) {
-			Dictionary d = selected->get_metadata(0);
-			selected_paths.push_back(d["path"]);
-		}
-		selected = get_next_selected(selected);
 	}
 
 	return selected_paths;

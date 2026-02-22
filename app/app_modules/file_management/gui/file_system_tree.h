@@ -37,6 +37,46 @@ private:
 	String to_select = "";
 	bool rename_item = false;
 
+	// // Selection.
+	// enum DragType {
+	// 	DRAG_NONE,
+	// 	DRAG_BOX_SELECTION,
+	// 	// DRAG_LEFT,
+	// 	// DRAG_TOP_LEFT,
+	// 	// DRAG_TOP,
+	// 	// DRAG_TOP_RIGHT,
+	// 	// DRAG_RIGHT,
+	// 	// DRAG_BOTTOM_RIGHT,
+	// 	// DRAG_BOTTOM,
+	// 	// DRAG_BOTTOM_LEFT,
+	// 	// DRAG_ANCHOR_TOP_LEFT,
+	// 	// DRAG_ANCHOR_TOP_RIGHT,
+	// 	// DRAG_ANCHOR_BOTTOM_RIGHT,
+	// 	// DRAG_ANCHOR_BOTTOM_LEFT,
+	// 	// DRAG_ANCHOR_ALL,
+	// 	// DRAG_QUEUED,
+	// 	// DRAG_MOVE,
+	// 	// DRAG_MOVE_X,
+	// 	// DRAG_MOVE_Y,
+	// 	// DRAG_SCALE_X,
+	// 	// DRAG_SCALE_Y,
+	// 	// DRAG_SCALE_BOTH,
+	// 	// DRAG_ROTATE,
+	// 	// DRAG_PIVOT,
+	// 	// DRAG_TEMP_PIVOT,
+	// 	// DRAG_V_GUIDE,
+	// 	// DRAG_H_GUIDE,
+	// 	// DRAG_DOUBLE_GUIDE,
+	// 	// DRAG_KEY_MOVE
+	// };
+	// bool detecting_box_selection = false;
+	// DragType drag_type = DRAG_NONE;
+	// Point2 drag_from;
+	// Point2 box_selecting_to;
+	// Point2 prev_selecting_to;
+	// TreeItem *prev_hovered_item;
+	// TreeItem *starting_item;
+
 	void _update_display_mode();
 
 	TreeItem *_add_tree_item(const FileInfo &p_fi, TreeItem *p_parent = nullptr, int p_index = -1);
@@ -45,6 +85,7 @@ private:
 	void _on_item_activated();
 	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
 
+	// Context menu.
 	void _build_empty_menu();
 	void _build_file_menu();
 	void _build_folder_menu();
@@ -58,6 +99,12 @@ private:
 	bool _process_id_pressed(int p_option, const Vector<String> &p_selected);
 	void _context_menu_id_pressed(int p_option);
 
+	// // Selection.
+	// void _draw_selection();
+
+	Vector<TreeItem *> _get_selected_items();
+	// bool _gui_input_select(const Ref<InputEvent> &p_event);
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -66,7 +113,7 @@ public:
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 
 	void set_display_mode(DisplayMode p_display_mode);
-	DisplayMode get_display_mode() const { return display_mode; }
+	DisplayMode get_display_mode() const;
 
 	void set_column_settings(const Array &p_column_settings);
 	Array get_column_settings() const;
