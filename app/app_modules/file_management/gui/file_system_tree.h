@@ -63,6 +63,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual void gui_input(const Ref<InputEvent> &p_event) override;
+
 	void set_display_mode(DisplayMode p_display_mode);
 	DisplayMode get_display_mode() const { return display_mode; }
 
@@ -72,6 +74,8 @@ public:
 	void set_context_menu(FileContextMenu *p_menu);
 	FileContextMenu *get_context_menu() const;
 	void process_menu_id(int p_option, const Vector<String> &p_selected);
+
+	Vector<String> get_selected_paths();
 
 	TreeItem *add_item(const FileInfo &p_fi, TreeItem *p_parent = nullptr, int p_index = -1);
 

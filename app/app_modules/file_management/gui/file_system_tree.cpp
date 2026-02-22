@@ -305,24 +305,12 @@ void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p
 		return;
 	}
 
-	Vector<String> targets;
 	TreeItem *cursor_item = get_selected();
 	if (!cursor_item) {
 		return;
-	} else {
-		Dictionary d = cursor_item->get_metadata(0);
-		targets.push_back(d["path"]);
 	}
 
-	TreeItem *selected = get_root();
-	selected = get_next_selected(selected);
-	while (selected) {
-		if (selected != cursor_item && selected->is_visible_in_tree()) {
-			Dictionary d = selected->get_metadata(0);
-			targets.push_back(d["path"]);
-		}
-		selected = get_next_selected(selected);
-	}
+	Vector<String> targets = get_selected_paths();
 	context_menu->set_targets(targets);
 
 	if (targets.size() > 1) {
@@ -388,7 +376,7 @@ void FileSystemTree::_on_item_edited() {
 
 		context_menu->get_file_system()->scan(path, true);
 	} else {
-		ti->set_text(0, from);
+		ti->set_text(0, d["name"]);
 	}
 }
 
@@ -525,6 +513,10 @@ void FileSystemTree::_context_menu_id_pressed(int p_option) {
 	_process_id_pressed(p_option, context_menu->get_targets());
 }
 
+void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
+	Tree::gui_input(p_event);
+}
+
 void FileSystemTree::set_display_mode(DisplayMode p_display_mode) {
 	if (display_mode == p_display_mode) {
 		return;
@@ -549,9 +541,8 @@ void FileSystemTree::set_context_menu(FileContextMenu *p_menu) {
 	if (context_menu && context_menu != p_menu) {
 		context_menu->disconnect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::_context_menu_id_pressed));
 	}
-	context_menu = p_menu;
 
-	print_line("set menu: ", context_menu);
+	context_menu = p_menu;
 	if (context_menu) {
 		context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::_context_menu_id_pressed));
 
@@ -595,6 +586,28 @@ void FileSystemTree::process_menu_id(int p_option, const Vector<String> &p_selec
 		context_menu->set_targets(p_selected);
 		context_menu->file_option(p_option);
 	}
+}
+
+Vector<String> FileSystemTree::get_selected_paths() {
+	Vector<String> selected_paths;
+
+	TreeItem *cursor_item = get_selected();
+	if (cursor_item) {
+		Dictionary d = cursor_item->get_metadata(0);
+		selected_paths.push_back(d["path"]);
+	}
+
+	TreeItem *selected = get_root();
+	selected = get_next_selected(selected);
+	while (selected) {
+		if (selected != cursor_item && selected->is_visible_in_tree()) {
+			Dictionary d = selected->get_metadata(0);
+			selected_paths.push_back(d["path"]);
+		}
+		selected = get_next_selected(selected);
+	}
+
+	return selected_paths;
 }
 
 TreeItem *FileSystemTree::add_item(const FileInfo &p_fi, TreeItem *p_parent, int p_index) {

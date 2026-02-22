@@ -8,6 +8,10 @@ Ref<Texture2D> PaneBase::_get_pane_icon() const {
 	return Ref<Texture2D>();
 }
 
+void PaneBase::_on_active(bool p_active) {
+	set_process_shortcut_input(p_active);
+}
+
 void PaneBase::_data_changed() {
 	emit_signal(SNAME("data_changed"));
 }
@@ -56,6 +60,20 @@ void PaneBase::set_icon(const Ref<Texture2D> &p_icon) {
 
 Ref<Texture2D> PaneBase::get_icon() const {
 	return !pane_icon.is_valid() ? _get_pane_icon() : pane_icon;
+}
+
+void PaneBase::set_active(bool p_active) {
+	if (active == p_active) {
+		return;
+	}
+
+	active = p_active;
+
+	_on_active(active);
+}
+
+bool PaneBase::is_active() const {
+	return active;
 }
 
 Dictionary PaneBase::get_config_data() {

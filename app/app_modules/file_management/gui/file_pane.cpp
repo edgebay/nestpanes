@@ -226,26 +226,7 @@ void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
 			// 	option_id = -1;
 			// }
 
-			// TODO
-			TreeItem *cursor_item = tree->get_selected();
-			print_line("cursor_item: ", cursor_item);
-			if (cursor_item) {
-				Dictionary d = cursor_item->get_metadata(0);
-				targets.push_back(d["path"]);
-			}
-
-			TreeItem *selected = tree->get_root();
-			selected = tree->get_next_selected(selected);
-			print_line("selected: ", selected);
-			while (selected) {
-				print_line("visible: ", selected->is_visible_in_tree());
-				if (selected != cursor_item && selected->is_visible_in_tree()) {
-					Dictionary d = selected->get_metadata(0);
-					targets.push_back(d["path"]);
-				}
-				selected = tree->get_next_selected(selected);
-			}
-
+			targets = tree->get_selected_paths();
 			if (targets.is_empty()) {
 				option_id = -1;
 			}
@@ -256,6 +237,7 @@ void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
 		}
 
 		if (is_handled) {
+			// accept_event();
 			get_tree()->get_root()->set_input_as_handled();
 		}
 	}
@@ -680,6 +662,7 @@ FilePane::FilePane() :
 
 	// mc->add_child(tree, true);
 	mc->add_child(tree);
+	// mc->hide();
 
 	status_bar = memnew(HBoxContainer);
 	vbox->add_child(status_bar);
@@ -716,9 +699,6 @@ FilePane::FilePane() :
 	dir_next->set_shortcut(ED_GET_SHORTCUT("file_management/next"));
 	dir_up->set_shortcut(ED_GET_SHORTCUT("file_management/up"));
 	refresh->set_shortcut(ED_GET_SHORTCUT("file_management/refresh"));
-
-	// TODO: Handle shortcut input upon receiving focus.
-	set_process_shortcut_input(true);
 }
 
 FilePane::~FilePane() {

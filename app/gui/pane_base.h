@@ -13,9 +13,13 @@ private:
 	String pane_title = "";
 	Ref<Texture2D> pane_icon;
 
+	bool active = false;
+
 protected:
 	virtual String _get_pane_title() const;
 	virtual Ref<Texture2D> _get_pane_icon() const;
+
+	virtual void _on_active(bool p_active);
 
 	virtual void _data_changed();
 
@@ -31,6 +35,9 @@ public:
 
 	void set_icon(const Ref<Texture2D> &p_icon);
 	Ref<Texture2D> get_icon() const;
+
+	void set_active(bool p_active);
+	bool is_active() const;
 
 	virtual Dictionary get_config_data();
 	virtual void apply_config_data(const Dictionary &p_dict);

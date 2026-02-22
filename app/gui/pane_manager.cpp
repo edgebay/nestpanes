@@ -30,8 +30,6 @@ void PaneManager::_gui_focus_changed(Control *p_control) {
 	}
 
 	set_current_pane(pane);
-
-	// TODO: pane->set_active(bool)
 }
 
 // File management.
@@ -111,21 +109,33 @@ void PaneManager::destroy(PaneBase *p_pane) {
 }
 
 void PaneManager::set_current_pane(PaneBase *p_pane) {
-	if (p_pane && p_pane != current_pane) {
-		if (current_pane != nullptr) {
+	ERR_FAIL_NULL(p_pane);
+
+	if (p_pane != current_pane) {
+		if (current_pane) {
+			current_pane->set_active(false);
 			prev_pane = current_pane;
 		}
 		current_pane = p_pane;
+		current_pane->set_active(true);
 
 		emit_signal("pane_changed", p_pane);
 	}
 }
 
 void PaneManager::clear_current_pane() {
-	if (prev_pane == current_pane) {
-		prev_pane = nullptr;
+	if (current_pane) {
+		if (prev_pane == current_pane) {
+			prev_pane = nullptr;
+		}
+		current_pane->set_active(false);
+		current_pane = nullptr;
 	}
-	current_pane = nullptr;
+
+	if (prev_pane) {
+		current_pane = prev_pane;
+		current_pane->set_active(true);
+	}
 }
 
 PaneBase *PaneManager::get_current_pane() const {
