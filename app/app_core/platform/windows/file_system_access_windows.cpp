@@ -176,6 +176,7 @@ Error FileSystemAccessWindows::_get_next(FileInfo &r_info) {
 
 	// Skip system files.
 	while (p->fu.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM) {
+		// print_line("skip: ", String::utf16((const char16_t *)(p->fu.cFileName)));
 		if (FindNextFileW(p->h, &p->fu) == 0) {
 			FindClose(p->h);
 			p->h = INVALID_HANDLE_VALUE;
@@ -587,53 +588,17 @@ bool FileSystemAccessWindows::_copy(const Vector<String> &p_files) {
 	return true;
 }
 
-bool FileSystemAccessWindows::_paste(const String &p_dir) {
+bool FileSystemAccessWindows::_paste(const String &p_dir, Vector<String> &r_dest_paths) {
 	if (!dir_exists(p_dir)) {
 		return false;
 	}
 
 	// Retrieve the paste type and the files to be pasted.
-	if (!OpenClipboard(nullptr)) {
+	bool is_cut = false;
+	Vector<String> files;
+	if (!_get_clipboard_paths(files, is_cut)) {
 		return false;
 	}
-
-	if (!IsClipboardFormatAvailable(CF_HDROP)) {
-		CloseClipboard();
-		return false;
-	}
-
-	HDROP hDrop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
-	if (!hDrop) {
-		CloseClipboard();
-		return false;
-	}
-
-	UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
-	if (fileCount == 0) {
-		CloseClipboard();
-		return false;
-	}
-
-	DWORD dropEffect = DROPEFFECT_COPY; // Default to copy.
-	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
-	HANDLE hEffect = GetClipboardData(cfDropEffect);
-	if (hEffect) {
-		DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
-		if (pEffect) {
-			dropEffect = *pEffect;
-			GlobalUnlock(hEffect);
-		}
-	}
-	Vector<Char16String> files;
-	for (UINT i = 0; i < fileCount; ++i) {
-		UINT pathLen = DragQueryFileW(hDrop, i, nullptr, 0);
-		Char16String src_file_utf16;
-		src_file_utf16.resize_uninitialized(pathLen + 1);
-		DragQueryFileW(hDrop, i, (LPWSTR)src_file_utf16.ptr(), pathLen + 1);
-
-		files.push_back(src_file_utf16);
-	}
-	CloseClipboard();
 
 	// Paste.
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -656,28 +621,57 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 		// hr = pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
 	}
 
+	String dir = p_dir.replace("/", "\\");
 	if (SUCCEEDED(hr)) {
 		// 3. 获取目标文件夹 IShellItem
-		String dir = p_dir.replace("/", "\\");
 		hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
 	}
 
 	if (SUCCEEDED(hr)) {
 		// 遍历所有文件并执行操作
 #if 1 // TODO
-		for (const Char16String &src_file_utf16 : files) {
+		hr = E_UNEXPECTED;
+		for (const String &file : files) {
+			String src_path = file.replace_char('/', '\\');
+			String filename = src_path.get_file();
+			String dest_path = dir + "\\" + filename; // Note: use '\\'
+
+			Char16String src_file_utf16 = src_path.utf16();
 			IShellItem *pItem = nullptr;
 			hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
 			if (SUCCEEDED(hr) && pItem) {
 				sourceItems.push_back(pItem);
-				if (dropEffect & DROPEFFECT_MOVE) {
+
+				if (is_cut) {
 					hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
 				} else {
-					hr = pfo->CopyItem(pItem, pTargetFolder, nullptr, nullptr);
+					// print_line("paste: ", dest_path, src_path);
+					if (dest_path == src_path) {
+						bool is_dir = FileSystemAccess::dir_exists(src_path);
+						String name = filename;
+						String path = dest_path;
+
+						int i = 1;
+						while (FileSystemAccess::path_exists(path)) {
+							if (is_dir || filename.get_extension().is_empty()) {
+								name = vformat("%s (%d)", filename, i);
+							} else {
+								name = vformat("%s (%d).%s", filename.get_basename(), i, filename.get_extension());
+							}
+
+							path = dir + "\\" + name; // Note: use '\\'
+							i++;
+						}
+						filename = name;
+						dest_path = path;
+					}
+					hr = pfo->CopyItem(pItem, pTargetFolder, (LPCWSTR)(filename.utf16().get_data()), nullptr);
 				}
+				r_dest_paths.push_back(dest_path.simplify_path());
 			}
 
 			if (FAILED(hr)) {
+				r_dest_paths.clear();
 				break;
 			}
 		}
@@ -695,13 +689,14 @@ bool FileSystemAccessWindows::_paste(const String &p_dir) {
 			}
 		}
 #else
-		for (const Char16String &src_file_utf16 : files) {
-			String src_path = String::utf16(src_file_utf16.get_data(), src_file_utf16.length());
+		for (const String &file : files) {
+			String src_path = file.replace_char('/', '\\');
 			String filename = src_path.get_file();
-			String dest_path = p_dir + "\\" + filename;
+			String dest_path = dir + "\\" + filename;
+			Char16String src_file_utf16 = src_path.utf16();
 
 			BOOL result = FALSE;
-			if (dropEffect & DROPEFFECT_MOVE) {
+			if (is_cut) {
 				result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
 			} else {
 				result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
@@ -740,6 +735,62 @@ bool FileSystemAccessWindows::_can_paste() {
 	bool result = IsClipboardFormatAvailable(CF_HDROP);
 
 	CloseClipboard();
+
+	return result;
+}
+
+bool FileSystemAccessWindows::_get_clipboard_paths(Vector<String> &r_paths, bool &r_is_cut) {
+	bool result = false;
+
+	if (!OpenClipboard(nullptr)) {
+		return false;
+	}
+
+	if (!IsClipboardFormatAvailable(CF_HDROP)) {
+		CloseClipboard();
+		return false;
+	}
+
+	HDROP hDrop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
+	if (!hDrop) {
+		CloseClipboard();
+		return false;
+	}
+
+	UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
+	if (fileCount == 0) {
+		CloseClipboard();
+		return false;
+	}
+
+	DWORD dropEffect = DROPEFFECT_COPY; // Default to copy.
+	UINT cfDropEffect = RegisterClipboardFormatW(L"Preferred DropEffect");
+	HANDLE hEffect = GetClipboardData(cfDropEffect);
+	if (hEffect) {
+		DWORD *pEffect = static_cast<DWORD *>(GlobalLock(hEffect));
+		if (pEffect) {
+			dropEffect = *pEffect;
+			GlobalUnlock(hEffect);
+		}
+	}
+
+	result = true;
+	for (UINT i = 0; i < fileCount; ++i) {
+		UINT buffsize = DragQueryFileW(hDrop, i, nullptr, 0);
+		Char16String buf;
+		buf.resize_uninitialized(buffsize + 1);
+		if (DragQueryFileW(hDrop, i, (LPWSTR)buf.ptrw(), buffsize + 1) == 0) {
+			result = false;
+			break;
+		}
+		String path = String::utf16((const char16_t *)buf.ptr());
+		r_paths.push_back(path.simplify_path());
+	}
+	CloseClipboard();
+
+	if (result) {
+		r_is_cut = (dropEffect & DROPEFFECT_MOVE);
+	}
 
 	return result;
 }

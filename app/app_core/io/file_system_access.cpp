@@ -88,11 +88,6 @@ bool FileSystemAccess::copy(const Vector<String> &p_files) {
 	return FileSystemAccess::get_singleton()->_copy(p_files);
 }
 
-bool FileSystemAccess::paste(const String &p_dir) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_paste(p_dir);
-}
-
 Error FileSystemAccess::rename(const String &p_from, const String &p_to) {
 	return DirAccess::rename_absolute(p_from, p_to);
 }

@@ -147,12 +147,10 @@ void NavigationPane::_tree_activate_file() {
 }
 
 void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_selected) {
-	// Return if we don't select something new.
 	if (!p_selected) {
 		return;
 	}
 
-	// Tree item selected.
 	TreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
@@ -322,10 +320,11 @@ TreeItem *NavigationPane::_search_item(const String &p_path) {
 	return nullptr;
 }
 
-void NavigationPane::_on_file_system_changed(FileSystemDirectory *p_dir) {
-	TreeItem *item = _search_item(p_dir->get_path());
-	if (item) {
-		callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, p_dir, get_uncollapsed_paths());
+void NavigationPane::_on_file_system_changed(const String &p_path) {
+	TreeItem *item = _search_item(p_path);
+	FileSystemDirectory *dir = file_system->get_dir(p_path);
+	if (item && dir) {
+		callable_mp(this, &NavigationPane::_update_subtree).call_deferred(item, dir, get_uncollapsed_paths());
 	} else {
 		callable_mp(this, &NavigationPane::_update_tree).call_deferred();
 	}

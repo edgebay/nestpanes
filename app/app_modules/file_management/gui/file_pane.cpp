@@ -154,6 +154,21 @@ Ref<Texture2D> FilePane::_get_pane_icon() const {
 	return get_app_theme_icon(SNAME("Folder"));
 }
 
+void FilePane::_on_active(bool p_active) {
+	PaneBase::_on_active(p_active);
+	if (p_active) {
+		dir_prev->set_shortcut(ED_GET_SHORTCUT("file_management/prev"));
+		dir_next->set_shortcut(ED_GET_SHORTCUT("file_management/next"));
+		dir_up->set_shortcut(ED_GET_SHORTCUT("file_management/up"));
+		refresh->set_shortcut(ED_GET_SHORTCUT("file_management/refresh"));
+	} else {
+		dir_prev->set_shortcut(Ref<Shortcut>());
+		dir_next->set_shortcut(Ref<Shortcut>());
+		dir_up->set_shortcut(Ref<Shortcut>());
+		refresh->set_shortcut(Ref<Shortcut>());
+	}
+}
+
 void FilePane::shortcut_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
@@ -302,7 +317,7 @@ void FilePane::_update_ui() {
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
 	// print_line("update ui: ", dir, current_path);
 	if (!dir) {
-		file_system->scan(current_path);
+		file_system->scan(current_path, true);
 		return;
 	}
 
@@ -378,6 +393,7 @@ void FilePane::_add_item(const FileInfo &p_fi) {
 	ERR_FAIL_NULL(root);
 
 	TreeItem *item = tree->add_item(p_fi, root);
+	// print_line("add item: ", item, item->get_text(0));
 }
 
 void FilePane::_update_files(FileSystemDirectory *p_dir) {
@@ -401,6 +417,7 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 		_add_item(fi);
 	}
 
+	// print_line("update files: ", dir_count, file_count);
 	item_count->set_text(itos(dir_count + file_count));
 }
 
@@ -421,6 +438,46 @@ void FilePane::_item_dc_selected(int p_item) {
 		const String file = d["path"];
 		OS::get_singleton()->shell_open(file);
 	}
+}
+
+void FilePane::_on_item_activated() {
+	TreeItem *selected = tree->get_selected();
+	if (!selected) {
+		return;
+	}
+
+	Dictionary d = selected->get_metadata(0);
+	String path = d["path"];
+	bool is_dir = d["is_dir"];
+
+	if (is_dir) {
+		set_path(path);
+	} else {
+		// TODO: signal
+		// emit_signal(SNAME("item_activated"), path, is_dir);
+
+		// TODO: open_file()/run_file()
+		const String file = d["path"];
+		OS::get_singleton()->shell_open(file);
+	}
+}
+
+void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
+	if (!p_selected) {
+		return;
+	}
+
+	TreeItem *selected = tree->get_selected();
+	if (!selected) {
+		return;
+	}
+
+	// TODO
+	// Dictionary d = selected->get_metadata(0);
+	// String path = d["path"];
+	// bool is_dir = d["is_dir"];
+
+	// emit_signal(SceneStringName(item_selected), path, is_dir);
 }
 
 void FilePane::_on_address_submitted(const String &p_path) {
@@ -482,17 +539,13 @@ void FilePane::_refresh() {
 	file_system->scan(current_path, true);
 }
 
-void FilePane::_on_file_system_changed(FileSystemDirectory *p_dir) {
-	ERR_FAIL_NULL(p_dir);
-
-	// print_line("fs change: ", p_dir, p_dir->is_scanned(), p_dir->get_path(), current_path);
-
-	// TODO: update ui when deleting the current or parent dir.
-	if (current_path != p_dir->get_path()) {
+void FilePane::_on_file_system_changed(const String &p_path) {
+	// print_line("fs changed: ", p_path, current_path);
+	if (current_path != p_path) {
 		return;
 	}
 
-	callable_mp(this, &FilePane::_update_ui_nocheck).call_deferred(p_dir);
+	callable_mp(this, &FilePane::_update_ui).call_deferred();
 }
 
 void FilePane::_set_path(const String &p_path, bool p_update_history) {
@@ -636,8 +689,8 @@ FilePane::FilePane() :
 
 	vbox->add_child(item_list);
 
-	// TODO: Preview on selection?
-	item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
+	// // TODO: Preview on selection?
+	// item_list->connect("item_activated", callable_mp(this, &FilePane::_item_dc_selected).bind());
 
 	item_list->hide();
 
@@ -655,10 +708,9 @@ FilePane::FilePane() :
 	// TODO
 	// SET_DRAG_FORWARDING_GCD(tree, FilePane);
 
-	// tree->connect("cell_selected", callable_mp(this, &FilePane::_autoload_selected));
-	// tree->connect("item_edited", callable_mp(this, &FilePane::_autoload_edited));
-	// tree->connect("button_clicked", callable_mp(this, &FilePane::_autoload_button_pressed));
-	// tree->connect("item_activated", callable_mp(this, &FilePane::_autoload_activated));
+	// TODO: Preview on selection?
+	tree->connect("item_activated", callable_mp(this, &FilePane::_on_item_activated));
+	tree->connect("multi_selected", callable_mp(this, &FilePane::_on_multi_selected));
 
 	// mc->add_child(tree, true);
 	mc->add_child(tree);
@@ -694,11 +746,6 @@ FilePane::FilePane() :
 	APP_SHORTCUT("file_management/next", dir_next->get_tooltip_text(), KeyModifierMask::ALT | Key::RIGHT);
 	APP_SHORTCUT("file_management/up", dir_up->get_tooltip_text(), KeyModifierMask::ALT | Key::UP);
 	APP_SHORTCUT("file_management/refresh", refresh->get_tooltip_text(), Key::F5);
-
-	dir_prev->set_shortcut(ED_GET_SHORTCUT("file_management/prev"));
-	dir_next->set_shortcut(ED_GET_SHORTCUT("file_management/next"));
-	dir_up->set_shortcut(ED_GET_SHORTCUT("file_management/up"));
-	refresh->set_shortcut(ED_GET_SHORTCUT("file_management/refresh"));
 }
 
 FilePane::~FilePane() {

@@ -282,6 +282,7 @@ void FileSystem::_scan() {
 		return;
 	}
 
+	task.dir = get_dir(path);
 	if (!task.dir) {
 		task.dir = _create_dir(path);
 		// print_line("create dir: ", task.dir);
@@ -304,6 +305,7 @@ void FileSystem::_scan() {
 		dir->clear();
 
 		err = FileSystemAccess::list_dir_begin(path);
+		// print_line("list begin: ", err);
 	}
 
 	if (err == OK) {
@@ -314,6 +316,7 @@ void FileSystem::_scan() {
 			if (err != OK) {
 				break;
 			}
+			// print_line("next: ", file_info.name);
 
 			if (file_info.name != "." && file_info.name != "..") {
 				if (file_info.type == FOLDER_TYPE) {
@@ -325,6 +328,7 @@ void FileSystem::_scan() {
 					*fi = file_info;
 					dir->files.push_back(fi);
 				}
+				// print_line("files: ", dir->subdirs.size(), dir->files.size());
 				changed = true;
 			}
 
@@ -349,7 +353,7 @@ void FileSystem::_scan() {
 	}
 
 	if (changed) {
-		emit_signal(SNAME("file_system_changed"), dir);
+		emit_signal(SNAME("file_system_changed"), path);
 	}
 }
 
@@ -374,7 +378,7 @@ void FileSystem::_scan_root() {
 	}
 
 	dir->scanned = true;
-	emit_signal(SNAME("file_system_changed"), dir);
+	emit_signal(SNAME("file_system_changed"), dir->get_path());
 }
 
 void FileSystem::_notification(int p_what) {
@@ -394,7 +398,8 @@ void FileSystem::scan(const String &p_path, bool p_update) {
 }
 
 void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
-	for (const String &path : p_paths) {
+	for (String path : p_paths) {
+		path = path.simplify_path();
 		if (!is_valid_dir_path(path)) {
 			continue;
 		}
@@ -412,13 +417,13 @@ void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
 
 		ScanTask task;
 		task.path = path;
-		task.dir = dir;
+		// task.dir = dir;	// Note: dir may have been deleted, do not set here!
 		scan_tasks.push_back(task);
 	}
 }
 
 void FileSystem::_bind_methods() {
-	ADD_SIGNAL(MethodInfo("file_system_changed", PropertyInfo(Variant::OBJECT, "dir")));
+	ADD_SIGNAL(MethodInfo("file_system_changed", PropertyInfo(Variant::STRING, "path")));
 }
 
 FileSystem::FileSystem() {

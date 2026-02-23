@@ -46,7 +46,7 @@ private:
 	void _context_menu_id_pressed(int p_option);
 
 	TreeItem *_search_item(const String &p_path);
-	void _on_file_system_changed(FileSystemDirectory *p_dir);
+	void _on_file_system_changed(const String &p_path);
 
 	void _load_uncollapsed_paths();
 

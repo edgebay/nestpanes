@@ -80,7 +80,6 @@ protected:
 
 	virtual bool _cut(const Vector<String> &p_files) = 0;
 	virtual bool _copy(const Vector<String> &p_files) = 0;
-	virtual bool _paste(const String &p_dir) = 0;
 
 public:
 	static FileSystemAccess *get_singleton();
@@ -117,7 +116,8 @@ public:
 	static bool cut(const Vector<String> &p_files);
 	static bool copy(const Vector<String> &p_files);
 	FILE_SYSTEM_ACCESS_FUNC0_V(bool, false, can_paste);
-	static bool paste(const String &p_dir);
+	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, get_clipboard_paths, (Vector<String> &), paths, (bool &), is_cut);
+	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, paste, (const String &), dir, (Vector<String> &), dest_paths);
 
 	static Error rename(const String &p_from, const String &p_to);
 	static Error remove(const String &p_path);

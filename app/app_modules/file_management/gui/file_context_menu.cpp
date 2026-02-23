@@ -195,22 +195,7 @@ void FileContextMenu::_id_pressed(int p_index) {
 			FileSystemAccess::copy(targets);
 		} break;
 
-		case FILE_MENU_PASTE: {
-			String path = targets.is_empty() ? "" : targets[0];
-			if (FileSystemAccess::file_exists(path)) {
-				path = path.get_base_dir();
-			}
-
-			if (!FileSystemAccess::dir_exists(path)) {
-				break;
-			}
-			bool ret = FileSystemAccess::paste(path);
-			print_line("paste ret: ", ret);
-			if (ret && file_system) {
-				file_system->scan(path, true);
-
-				// TODO: Update the source directory for cut operations.
-			}
+		case FILE_MENU_PASTE: { // Handle it in the parent.
 		} break;
 
 		case FILE_MENU_REMOVE: {

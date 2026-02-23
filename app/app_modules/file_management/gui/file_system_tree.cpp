@@ -435,13 +435,57 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 
 	switch (p_option) {
 		case FileContextMenu::FILE_MENU_OPEN: {
-			// TODO: item activated
-			// String path = p_selected.is_empty() ? "" : p_selected[0];
-			// if (!FileSystemAccess::dir_exists(path)) {
-			// 	break;
-			// }
+			String path = p_selected.is_empty() ? "" : p_selected[0];
+			if (!FileSystemAccess::dir_exists(path)) {
+				break;
+			}
 
-			// set_path(path);
+			// TODO: Note the display_mode
+			emit_signal(SNAME("item_activated"));
+		} break;
+
+		case FileContextMenu::FILE_MENU_PASTE: {
+			String path = p_selected.is_empty() ? "" : p_selected[0];
+			if (FileSystemAccess::file_exists(path)) {
+				path = path.get_base_dir();
+			}
+
+			if (!FileSystemAccess::dir_exists(path)) {
+				break;
+			}
+
+			bool ret = false;
+			bool is_cut = false;
+			Vector<String> clipboard_paths;
+			ret = FileSystemAccess::get_clipboard_paths(clipboard_paths, is_cut);
+			if (!ret || clipboard_paths.is_empty()) {
+				break;
+			}
+
+			Vector<String> dest_paths;
+			ret = FileSystemAccess::paste(path, dest_paths);
+			// print_line("paste ret: ", ret, is_cut, dest_paths);
+			if (ret && context_menu->get_file_system()) {
+				context_menu->get_file_system()->scan(path, true);
+
+				if (is_cut) {
+					// Update the source directory for cut operations.
+					Vector<String> dirs;
+					for (const String &clipboard_path : clipboard_paths) {
+						String base_dir = clipboard_path.get_base_dir();
+						if (!dirs.has(base_dir)) {
+							dirs.push_back(base_dir);
+						}
+					}
+					// print_line("dirs: ", dirs.size(), dirs);
+					context_menu->get_file_system()->scan(dirs, true);
+				}
+
+				if (!dest_paths.is_empty()) {
+					// TODO: selected list
+					to_select = dest_paths[0];
+				}
+			}
 		} break;
 
 		case FileContextMenu::FILE_MENU_RENAME: {

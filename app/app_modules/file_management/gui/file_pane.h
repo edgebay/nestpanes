@@ -73,6 +73,8 @@ private:
 	virtual String _get_pane_title() const override;
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
+	virtual void _on_active(bool p_active) override;
+
 	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
 	void _process_shortcut_input(int p_option, const Vector<String> &p_selected);
 
@@ -87,6 +89,8 @@ private:
 
 	// double-clicking selected.
 	void _item_dc_selected(int p_item);
+	void _on_item_activated();
+	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
 
 	void _on_address_submitted(const String &p_path);
 	void _select_history(int p_idx);
@@ -100,7 +104,7 @@ private:
 
 	void _set_path(const String &p_path, bool p_update_history = true);
 
-	void _on_file_system_changed(FileSystemDirectory *p_dir);
+	void _on_file_system_changed(const String &p_path);
 
 protected:
 	void _notification(int p_what);
