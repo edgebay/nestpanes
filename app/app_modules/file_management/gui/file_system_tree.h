@@ -89,6 +89,7 @@ private:
 	void _build_empty_menu();
 	void _build_file_menu();
 	void _build_folder_menu();
+	void _build_selected_items_menu();
 	void _on_item_mouse_selected(const Vector2 &p_pos, MouseButton p_button);
 	void _on_empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 

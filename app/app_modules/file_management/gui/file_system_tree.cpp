@@ -232,32 +232,37 @@ void FileSystemTree::_on_multi_selected(Object *p_item, int p_column, bool p_sel
 void FileSystemTree::_build_empty_menu() {
 	context_menu->clear();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
+	if (display_mode == DISPLAY_MODE_TREE) {
+		// TODO
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_EXPAND_TO_CURRENT);
+	} else if (display_mode == DISPLAY_MODE_LIST) {
+		context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
 
-	context_menu->add_separator();
+		context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
-	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	FileContextMenu *new_menu = memnew(FileContextMenu);
-	new_menu->set_file_system(context_menu->get_file_system());
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
-	context_menu->set_item_submenu_node(-1, new_menu);
-	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::_context_menu_id_pressed));
+		context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
+		// context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+		FileContextMenu *new_menu = memnew(FileContextMenu);
+		new_menu->set_file_system(context_menu->get_file_system());
+		new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
+		// new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
+		new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+		// new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
+		context_menu->set_item_submenu_node(-1, new_menu);
+		new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::_context_menu_id_pressed));
 
-	context_menu->add_separator();
+		context_menu->add_separator();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+		context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
+	}
 }
 
 void FileSystemTree::_build_file_menu() {
 	context_menu->clear();
 
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
 
-	// context_menu->add_separator();
+	context_menu->add_separator();
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
 
@@ -279,11 +284,26 @@ void FileSystemTree::_build_file_menu() {
 void FileSystemTree::_build_folder_menu() {
 	context_menu->clear();
 
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+	if (display_mode == DISPLAY_MODE_TREE) {
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB); // TODO: create new tab in central area
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
 
-	context_menu->add_separator();
+		// context_menu->add_separator();
+
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
+		context_menu->add_item(RTR("New File..."), FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+		context_menu->add_item(RTR("New Folder..."), FileContextMenu::FILE_MENU_NEW_FOLDER);
+
+		context_menu->add_separator();
+	} else if (display_mode == DISPLAY_MODE_LIST) {
+		context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
+		context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB);
+		// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
+
+		context_menu->add_separator();
+	}
 
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
 
@@ -304,6 +324,19 @@ void FileSystemTree::_build_folder_menu() {
 	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
 }
 
+void FileSystemTree::_build_selected_items_menu() {
+	context_menu->clear();
+
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
+
+	context_menu->add_separator();
+
+	// context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
+	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
+}
+
 void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p_button) {
 	ERR_FAIL_NULL(context_menu);
 
@@ -320,7 +353,7 @@ void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p
 	context_menu->set_targets(targets);
 
 	if (targets.size() > 1) {
-		// TODO: handle multi selected
+		_build_selected_items_menu();
 	} else {
 		Dictionary d = cursor_item->get_metadata(0);
 		if (d["is_dir"]) {
@@ -340,11 +373,16 @@ void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p
 void FileSystemTree::_on_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
 	ERR_FAIL_NULL(context_menu);
 
-	if (p_button != MouseButton::RIGHT) {
+	deselect_all();
+
+	// TODO
+	if (display_mode == DISPLAY_MODE_TREE) {
 		return;
 	}
 
-	deselect_all();
+	if (p_button != MouseButton::RIGHT) {
+		return;
+	}
 
 	TreeItem *root_item = get_root();
 	ERR_FAIL_NULL(root_item);
@@ -377,6 +415,7 @@ void FileSystemTree::_on_item_edited() {
 	String from = d["path"];
 	String new_name = ti->get_text(col_index).strip_edges();
 	if (_rename_operation_confirm(from, new_name)) {
+		// deselect_all(); // TODO
 		String path = from.get_base_dir();
 		to_select = path.path_join(new_name);
 
@@ -436,7 +475,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 	switch (p_option) {
 		case FileContextMenu::FILE_MENU_OPEN: {
 			String path = p_selected.is_empty() ? "" : p_selected[0];
-			if (!FileSystemAccess::dir_exists(path)) {
+			if (!FileSystemAccess::path_exists(path)) {
 				break;
 			}
 
@@ -482,6 +521,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 				}
 
 				if (!dest_paths.is_empty()) {
+					// deselect_all(); // TODO
 					// TODO: selected list
 					to_select = dest_paths[0];
 				}
@@ -510,6 +550,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			}
 
 			String new_name = RTR("new folder");
+			// TODO
 			String name = new_name;
 			String path = dir.path_join(name);
 			int i = 1;
@@ -520,6 +561,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			}
 			Error err = FileSystemAccess::make_dir(path);
 			if (err == OK) {
+				// deselect_all(); // TODO
 				to_select = path;
 				rename_item = true;
 
@@ -544,6 +586,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			}
 			Error err = FileSystemAccess::create_file(dir, name);
 			if (err == OK) {
+				// deselect_all(); // TODO
 				to_select = path;
 				rename_item = true;
 
@@ -838,7 +881,7 @@ void FileSystemTree::set_context_menu(FileContextMenu *p_menu) {
 			disconnect("item_edited", callable_mp(this, &FileSystemTree::_on_item_edited));
 		}
 		if (has_connections("item_mouse_selected")) {
-			disconnect("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected)); // multi_selected already contains left mouse button select
+			disconnect("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected));
 		}
 		if (has_connections("empty_clicked")) {
 			disconnect("empty_clicked", callable_mp(this, &FileSystemTree::_on_empty_clicked));
@@ -874,13 +917,25 @@ TreeItem *FileSystemTree::add_item(const FileInfo &p_fi, TreeItem *p_parent, int
 	TreeItem *item = nullptr;
 	if (display_mode == DISPLAY_MODE_TREE) {
 		item = _add_tree_item(p_fi, p_parent, p_index);
-		// TODO: to_select
+		if (item && !to_select.is_empty() && to_select == p_fi.path) {
+			TreeItem *root_item = get_root();
+			TreeItem *parent = item->get_parent();
+			while (parent && parent != root_item) {
+				if (parent->is_collapsed()) {
+					parent->set_collapsed(false);
+				}
+				parent = parent->get_parent();
+			}
+			item->select(0);
+			// item->set_as_cursor(0);
+			to_select = "";
+		}
 	} else if (display_mode == DISPLAY_MODE_LIST) {
 		item = _add_list_item(p_fi, p_parent, p_index);
 		if (item && !to_select.is_empty() && to_select == p_fi.path) {
 			// item->select_row();	// TODO
 			item->select(0);
-			item->set_as_cursor(0);
+			// item->set_as_cursor(0);
 			to_select = "";
 		}
 	}

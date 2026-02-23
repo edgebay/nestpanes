@@ -129,7 +129,7 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 	}
 }
 
-void NavigationPane::_tree_activate_file() {
+void NavigationPane::_on_item_activated() {
 	TreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
@@ -146,7 +146,7 @@ void NavigationPane::_tree_activate_file() {
 	}
 }
 
-void NavigationPane::_tree_multi_selected(Object *p_item, int p_column, bool p_selected) {
+void NavigationPane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
 	if (!p_selected) {
 		return;
 	}
@@ -175,139 +175,6 @@ void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
 	}
 
 	_data_changed();
-}
-
-void NavigationPane::_build_empty_menu() {
-	context_menu->clear();
-
-	// TODO
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_EXPAND_TO_CURRENT);
-}
-
-void NavigationPane::_build_file_menu() {
-	context_menu->clear();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
-}
-
-void NavigationPane::_build_folder_menu() {
-	context_menu->clear();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN);
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_TAB); // TODO: create new tab in central area
-	// context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_NEW_WINDOW);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY_PATH);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW);
-	context_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	FileContextMenu *new_menu = memnew(FileContextMenu);
-	new_menu->set_file_system(file_system);
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("Folder")));
-	new_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
-	new_menu->set_item_icon(-1, get_app_theme_icon(SNAME("File")));
-	context_menu->set_item_submenu_node(-1, new_menu);
-	new_menu->connect(SceneStringName(id_pressed), callable_mp(this, &NavigationPane::_context_menu_id_pressed));
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_CUT);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_COPY);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_PASTE);
-
-	context_menu->add_separator();
-
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_RENAME);
-	context_menu->add_file_item(FileContextMenu::FILE_MENU_DELETE);
-}
-
-void NavigationPane::_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
-	if (p_button != MouseButton::RIGHT) {
-		return;
-	}
-
-	tree->deselect_all();
-
-	// TODO
-	// Vector<String> targets;
-	// targets.push_back(get_path());
-	// context_menu->set_targets(targets);
-
-	// _build_empty_menu();
-
-	// context_menu->set_position(get_screen_position() + p_pos);
-	// context_menu->reset_size();
-	// context_menu->popup();
-}
-
-void NavigationPane::_item_clicked(const Vector2 &p_pos, MouseButton p_button) {
-	if (p_button != MouseButton::RIGHT) {
-		return;
-	}
-
-	TreeItem *cursor_item = tree->get_selected();
-	if (!cursor_item) {
-		return;
-	}
-
-	Vector<String> targets;
-	TreeItem *selected = tree->get_root();
-	selected = tree->get_next_selected(selected); // TODO: push cursor_item at first
-	while (selected) {
-		if (selected->is_visible_in_tree()) {
-			Dictionary d = selected->get_metadata(0);
-			targets.push_back(d["path"]);
-		}
-		selected = tree->get_next_selected(selected);
-	}
-	context_menu->set_targets(targets);
-
-	if (targets.size() > 1) {
-		// TODO: handle multi selected
-	} else {
-		Dictionary d = cursor_item->get_metadata(0);
-		if (d["is_dir"]) {
-			_build_folder_menu();
-		} else {
-			_build_file_menu();
-		}
-	}
-
-	context_menu->set_position(get_screen_position() + p_pos);
-	context_menu->reset_size();
-	context_menu->popup();
-}
-
-void NavigationPane::_context_menu_id_pressed(int p_option) {
-	// TODO
 }
 
 TreeItem *NavigationPane::_search_item(const String &p_path) {
@@ -440,16 +307,14 @@ NavigationPane::NavigationPane() :
 	tree->set_custom_minimum_size(Size2(40 * APP_SCALE, 15 * APP_SCALE));
 
 	// double-clicking selected.
-	tree->connect("item_activated", callable_mp(this, &NavigationPane::_tree_activate_file));
-	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_tree_multi_selected));
-	tree->connect("item_mouse_selected", callable_mp(this, &NavigationPane::_item_clicked)); // multi_selected already contains left mouse button select
-	tree->connect("empty_clicked", callable_mp(this, &NavigationPane::_empty_clicked));
+	tree->connect("item_activated", callable_mp(this, &NavigationPane::_on_item_activated));
+	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_on_multi_selected));
 	// TODO: edit
 	// tree->connect("item_edited", callable_mp(this, &NavigationPane::_item_edited));
 
 	context_menu = memnew(FileContextMenu);
 	add_child(context_menu);
-	context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &NavigationPane::_context_menu_id_pressed));
+	tree->set_context_menu(context_menu);
 }
 
 NavigationPane::~NavigationPane() {

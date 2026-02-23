@@ -33,17 +33,9 @@ private:
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
 
-	void _tree_activate_file();
-	void _tree_multi_selected(Object *p_item, int p_column, bool p_selected);
+	void _on_item_activated();
+	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
 	void _tree_item_collapsed(TreeItem *p_item);
-
-	void _build_empty_menu();
-	void _build_file_menu();
-	void _build_folder_menu();
-	void _empty_clicked(const Vector2 &p_pos, MouseButton p_button);
-	void _item_clicked(const Vector2 &p_pos, MouseButton p_button);
-
-	void _context_menu_id_pressed(int p_option);
 
 	TreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(const String &p_path);
@@ -64,6 +56,7 @@ public:
 	// TODO: edit
 	// virtual bool edit_selected(const FileOrFolder &p_selected) override;
 
+	// TODO: Remove
 	Vector<String> get_selected_paths() const;
 	Vector<String> get_uncollapsed_paths() const;
 
