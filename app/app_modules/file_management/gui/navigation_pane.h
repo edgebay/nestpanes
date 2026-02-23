@@ -40,8 +40,6 @@ private:
 	TreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(const String &p_path);
 
-	void _load_uncollapsed_paths();
-
 protected:
 	// TODO: edit
 	// void _item_edited();
@@ -55,10 +53,6 @@ public:
 
 	// TODO: edit
 	// virtual bool edit_selected(const FileOrFolder &p_selected) override;
-
-	// TODO: Remove
-	Vector<String> get_selected_paths() const;
-	Vector<String> get_uncollapsed_paths() const;
 
 	void set_file_system(FileSystem *p_file_system);
 

@@ -913,6 +913,32 @@ Vector<String> FileSystemTree::get_selected_paths() {
 	return selected_paths;
 }
 
+Vector<String> FileSystemTree::get_uncollapsed_paths() const {
+	Vector<String> paths;
+	TreeItem *root = get_root();
+	if (root) {
+		// BFS to find all uncollapsed paths of the file system directory.
+		TreeItem *file_system_subtree = root->get_first_child();
+		if (file_system_subtree) {
+			List<TreeItem *> queue;
+			queue.push_back(file_system_subtree);
+
+			while (!queue.is_empty()) {
+				TreeItem *ti = queue.back()->get();
+				queue.pop_back();
+				if (!ti->is_collapsed() && ti->get_child_count() > 0) {
+					Dictionary d = ti->get_metadata(0);
+					paths.push_back(d["path"]);
+				}
+				for (int i = 0; i < ti->get_child_count(); i++) {
+					queue.push_back(ti->get_child(i));
+				}
+			}
+		}
+	}
+	return paths;
+}
+
 TreeItem *FileSystemTree::add_item(const FileInfo &p_fi, TreeItem *p_parent, int p_index) {
 	TreeItem *item = nullptr;
 	if (display_mode == DISPLAY_MODE_TREE) {

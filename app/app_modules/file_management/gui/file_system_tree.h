@@ -124,6 +124,7 @@ public:
 	void process_menu_id(int p_option, const Vector<String> &p_selected);
 
 	Vector<String> get_selected_paths();
+	Vector<String> get_uncollapsed_paths() const;
 
 	TreeItem *add_item(const FileInfo &p_fi, TreeItem *p_parent = nullptr, int p_index = -1);
 
