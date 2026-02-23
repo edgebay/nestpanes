@@ -31,7 +31,7 @@ void NavigationPane::_notification(int p_what) {
 void NavigationPane::_update_tree() {
 	ERR_FAIL_NULL(file_system);
 
-	if (tree->has_connections("item_collapsed")) {
+	if (tree->is_connected("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed))) {
 		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 	}
 	updating_tree = true;
@@ -59,7 +59,7 @@ void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirecto
 		return;
 	}
 
-	if (tree->has_connections("item_collapsed")) {
+	if (tree->is_connected("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed))) {
 		tree->disconnect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 	}
 	updating_tree = true;

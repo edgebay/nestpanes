@@ -86,11 +86,15 @@ private:
 	void _update_item_list(FileSystemDirectory *p_dir);
 	void _add_item(const FileInfo &p_fi);
 	void _update_files(FileSystemDirectory *p_dir);
+	void _update_status_bar();
 
 	// double-clicking selected.
 	void _item_dc_selected(int p_item);
 	void _on_item_activated();
 	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
+
+	void _on_item_mouse_selected(const Vector2 &p_pos, MouseButton p_button);
+	void _on_empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 
 	void _on_address_submitted(const String &p_path);
 	void _select_history(int p_idx);

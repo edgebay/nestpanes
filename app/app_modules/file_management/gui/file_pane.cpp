@@ -345,6 +345,7 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 
 	// _update_item_list(p_dir);
 	_update_files(p_dir);
+	_update_status_bar();
 }
 
 void FilePane::_add_item(const FileInfo &p_fi, bool p_is_dir) {
@@ -418,7 +419,17 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 	}
 
 	// print_line("update files: ", dir_count, file_count);
-	item_count->set_text(itos(dir_count + file_count));
+}
+
+void FilePane::_update_status_bar() {
+	String info = vformat(RTR("Total %d"), tree->get_root()->get_child_count());
+	int selected_count = tree->get_selected_paths().size();
+	// print_line("status: ", info, selected_count);
+	if (selected_count) {
+		// vformat(RTRN("%d item", "%d items", some_integer), some_integer)
+		info = vformat(RTR("Selected %d"), selected_count) + " | " + info;
+	}
+	item_count->set_text(info);
 }
 
 void FilePane::_item_dc_selected(int p_item) {
@@ -441,6 +452,8 @@ void FilePane::_item_dc_selected(int p_item) {
 }
 
 void FilePane::_on_item_activated() {
+	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
+
 	TreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
@@ -463,6 +476,8 @@ void FilePane::_on_item_activated() {
 }
 
 void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
+	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
+
 	if (!p_selected) {
 		return;
 	}
@@ -478,6 +493,14 @@ void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected)
 	// bool is_dir = d["is_dir"];
 
 	// emit_signal(SceneStringName(item_selected), path, is_dir);
+}
+
+void FilePane::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p_button) {
+	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
+}
+
+void FilePane::_on_empty_clicked(const Vector2 &p_pos, MouseButton p_button) {
+	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
 }
 
 void FilePane::_on_address_submitted(const String &p_path) {
@@ -712,6 +735,9 @@ FilePane::FilePane() :
 	tree->connect("item_activated", callable_mp(this, &FilePane::_on_item_activated));
 	tree->connect("multi_selected", callable_mp(this, &FilePane::_on_multi_selected));
 
+	tree->connect("item_mouse_selected", callable_mp(this, &FilePane::_on_item_mouse_selected));
+	tree->connect("empty_clicked", callable_mp(this, &FilePane::_on_empty_clicked));
+
 	// mc->add_child(tree, true);
 	mc->add_child(tree);
 	// mc->hide();
@@ -728,7 +754,7 @@ FilePane::FilePane() :
 	item_count = memnew(Label);
 	// status_bar->add_child(item_count);
 	mc->add_child(item_count);
-	item_count->set_text("0");
+	item_count->set_text("");
 
 	context_menu = memnew(FileContextMenu);
 	add_child(context_menu);

@@ -860,30 +860,30 @@ void FileSystemTree::set_context_menu(FileContextMenu *p_menu) {
 	if (context_menu) {
 		context_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::_context_menu_id_pressed));
 
-		if (!has_connections(SceneStringName(draw))) {
+		if (!is_connected(SceneStringName(draw), callable_mp(this, &FileSystemTree::_on_draw))) {
 			// CanvasItem::_redraw_callback()
 			connect(SceneStringName(draw), callable_mp(this, &FileSystemTree::_on_draw));
 		}
-		if (!has_connections("item_edited")) {
+		if (!is_connected("item_edited", callable_mp(this, &FileSystemTree::_on_item_edited))) {
 			connect("item_edited", callable_mp(this, &FileSystemTree::_on_item_edited));
 		}
-		if (!has_connections("item_mouse_selected")) {
+		if (!is_connected("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected))) {
 			connect("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected)); // multi_selected already contains left mouse button select
 		}
-		if (!has_connections("empty_clicked")) {
+		if (!is_connected("empty_clicked", callable_mp(this, &FileSystemTree::_on_empty_clicked))) {
 			connect("empty_clicked", callable_mp(this, &FileSystemTree::_on_empty_clicked));
 		}
 	} else {
-		if (has_connections(SceneStringName(draw))) {
+		if (is_connected(SceneStringName(draw), callable_mp(this, &FileSystemTree::_on_draw))) {
 			disconnect(SceneStringName(draw), callable_mp(this, &FileSystemTree::_on_draw));
 		}
-		if (has_connections("item_edited")) {
+		if (is_connected("item_edited", callable_mp(this, &FileSystemTree::_on_item_edited))) {
 			disconnect("item_edited", callable_mp(this, &FileSystemTree::_on_item_edited));
 		}
-		if (has_connections("item_mouse_selected")) {
+		if (is_connected("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected))) {
 			disconnect("item_mouse_selected", callable_mp(this, &FileSystemTree::_on_item_mouse_selected));
 		}
-		if (has_connections("empty_clicked")) {
+		if (is_connected("empty_clicked", callable_mp(this, &FileSystemTree::_on_empty_clicked))) {
 			disconnect("empty_clicked", callable_mp(this, &FileSystemTree::_on_empty_clicked));
 		}
 	}
