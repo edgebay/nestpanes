@@ -29,7 +29,7 @@ private:
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
 	void _update_tree();
-	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
+	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir);
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
 	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
 
@@ -39,6 +39,9 @@ private:
 
 	TreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(const String &p_path);
+
+	Vector<String> _get_uncollapsed_paths(bool p_uncollapse_root = false);
+	void _clear_uncollapsed_paths();
 
 protected:
 	// TODO: edit

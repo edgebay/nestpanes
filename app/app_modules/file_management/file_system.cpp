@@ -282,33 +282,41 @@ void FileSystem::_scan() {
 		return;
 	}
 
-	task.dir = get_dir(path);
-	if (!task.dir) {
-		task.dir = _create_dir(path);
-		// print_line("create dir: ", task.dir);
-		if (!task.dir) {
-			scan_tasks.pop_front();
-			pending_paths.erase(path);
-			return;
-		}
-	}
-	ERR_FAIL_NULL(task.dir);
-
-	FileSystemDirectory *dir = task.dir;
 	Error err = FAILED;
 	bool changed = false;
 	if (task.pending) {
 		err = OK;
 		task.pending = false;
+		ERR_FAIL_NULL(task.dir);
 	} else {
-		changed = true;
-		dir->clear();
+		FileSystemDirectory *old_dir = get_dir(path);
+		if (!old_dir) {
+			old_dir = _create_dir(path);
+			// print_line("create dir: ", old_dir, path);
+			if (!old_dir) {
+				scan_tasks.pop_front();
+				pending_paths.erase(path);
+				ERR_FAIL();
+			}
+			changed = true;
+		} else {
+			FileSystemDirectory *parent = old_dir->get_parent();
+			task.update_dir = memnew(FileSystemDirectory);
+			if (!parent || !task.update_dir) {
+				scan_tasks.pop_front();
+				pending_paths.erase(path);
+				ERR_FAIL();
+			}
+			// print_line("create update dir: ", task.update_dir);
+		}
+		task.dir = old_dir;
 
 		err = FileSystemAccess::list_dir_begin(path);
 		// print_line("list begin: ", err);
 	}
 
 	if (err == OK) {
+		FileSystemDirectory *dir = task.update_dir ? task.update_dir : task.dir;
 		int items_processed = 0;
 		while (true) {
 			FileInfo file_info;
@@ -329,7 +337,10 @@ void FileSystem::_scan() {
 					dir->files.push_back(fi);
 				}
 				// print_line("files: ", dir->subdirs.size(), dir->files.size());
-				changed = true;
+
+				if (dir == task.dir) {
+					changed = true;
+				}
 			}
 
 			items_processed++;
@@ -341,13 +352,18 @@ void FileSystem::_scan() {
 
 		if (!task.pending) {
 			FileSystemAccess::list_dir_end();
+
+			dir->scanned = true;
+			if (dir == task.update_dir) {
+				changed = true;
+
+				_replace_dir(task.dir, task.update_dir);
+			}
 		}
 	}
 
 	// print_line("end: ", changed, task.pending, err);
 	if (!task.pending) {
-		dir->scanned = true;
-
 		scan_tasks.pop_front();
 		pending_paths.erase(path);
 	}
@@ -360,15 +376,66 @@ void FileSystem::_scan() {
 void FileSystem::_scan_root() {
 	ERR_FAIL_NULL(file_system_root);
 
-	FileSystemDirectory *dir = file_system_root;
-	if (dir->is_scanned()) {
-		dir->clear();
-	}
-
 	List<FileInfo> drives;
 	Error err = FileSystemAccess::list_drives(drives);
 	if (err != OK) {
 		return;
+	}
+
+	FileSystemDirectory *dir = file_system_root;
+	if (dir->is_scanned()) {
+// #define TEST_CODE
+#ifdef TEST_CODE
+		if (drives.size() == dir->subdirs.size()) {
+			FileInfo file_info;
+			file_info.name = "Z:";
+			file_info.path = file_info.name;
+			file_info.icon = FileSystemAccess::get_icon(COMPUTER_PATH);
+			file_info.type = FOLDER_TYPE;
+			drives.push_back(file_info);
+		}
+#endif
+
+		// FileSystemDirectory *update_dir = memnew(FileSystemDirectory);
+
+		// Update dir->subdirs.
+		Vector<FileSystemDirectory *> remove_dirs;
+		for (FileSystemDirectory *subdir : dir->subdirs) {
+			bool found = false;
+			String path = subdir->get_path();
+
+			for (List<FileInfo>::Element *E = drives.front(); E;) {
+				List<FileInfo>::Element *N = E->next();
+				if (E->get().path == path) {
+					// for (FileSystemDirectory *dir : subdir->subdirs) {
+					// 	dir->parent = update_dir;
+					// 	update_dir->subdirs.push_back(dir);
+					// }
+
+					drives.erase(E);
+					found = true;
+					break;
+				}
+				E = N;
+			}
+			// print_line("found subdir: ", found, path);
+			if (!found) {
+				remove_dirs.push_back(subdir);
+			}
+		}
+
+		for (FileSystemDirectory *subdir : remove_dirs) {
+			dir->subdirs.erase(subdir);
+			memdelete(subdir);
+		}
+
+		// dir->subdirs.clear();
+		// memdelete(dir);
+
+		// file_system_root = update_dir;
+		// dir = file_system_root;
+
+		// Note: Then add the remaining drives to the dir.
 	}
 
 	for (const FileInfo &file_info : drives) {
@@ -379,6 +446,57 @@ void FileSystem::_scan_root() {
 
 	dir->scanned = true;
 	emit_signal(SNAME("file_system_changed"), dir->get_path());
+}
+
+void FileSystem::_replace_dir(FileSystemDirectory *p_old, FileSystemDirectory *p_new) {
+	FileSystemDirectory *old_dir = p_old;
+	FileSystemDirectory *new_dir = p_new;
+	// print_line("replace: ", old_dir, new_dir);
+
+	FileSystemDirectory *parent = old_dir->get_parent();
+	new_dir->setup(parent, old_dir->get_info()); // TODO: Update info
+
+	// Move subdir->subdirs and subdir->files.
+	Vector<FileSystemDirectory *> to_dirs = new_dir->subdirs;
+	for (int i = 0; i < old_dir->subdirs.size(); i++) {
+		bool found = false;
+		FileSystemDirectory *subdir = old_dir->subdirs[i];
+		String path = subdir->get_path();
+
+		// print_line("move sub subdirs: ", i, path, to_dirs.size());
+		for (int j = 0; j < to_dirs.size(); j++) {
+			FileSystemDirectory *to_subdir = to_dirs[j];
+			if (to_subdir->get_path() == path) {
+				// print_line("found subdirs: ", j);
+
+				for (FileSystemDirectory *dir : subdir->subdirs) {
+					dir->parent = to_subdir;
+					to_subdir->subdirs.push_back(dir);
+				}
+				if (!subdir->files.is_empty()) {
+					to_subdir->files = subdir->files;
+				}
+
+				// Clear the vector to avoid deleting the subdirs or files
+				subdir->subdirs.clear();
+				subdir->files.clear();
+
+				to_dirs.remove_at(j);
+				found = true;
+				break;
+			}
+		}
+	}
+
+	// Replace in parent.
+	for (int i = 0; i < parent->subdirs.size(); i++) {
+		if (parent->subdirs[i] == old_dir) {
+			// print_line("update dir set: ", i, new_dir);
+			parent->subdirs.set(i, new_dir);
+			break;
+		}
+	}
+	memdelete(old_dir);
 }
 
 void FileSystem::_notification(int p_what) {
@@ -417,7 +535,6 @@ void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
 
 		ScanTask task;
 		task.path = path;
-		// task.dir = dir;	// Note: dir may have been deleted, do not set here!
 		scan_tasks.push_back(task);
 	}
 }

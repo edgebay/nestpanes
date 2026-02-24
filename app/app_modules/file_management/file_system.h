@@ -63,6 +63,7 @@ private:
 	struct ScanTask {
 		String path = "";
 		FileSystemDirectory *dir = nullptr;
+		FileSystemDirectory *update_dir = nullptr;
 		bool pending = false;
 	};
 
@@ -75,6 +76,7 @@ private:
 	FileSystemDirectory *_create_dir(const String &p_path) const;
 	void _scan();
 	void _scan_root();
+	void _replace_dir(FileSystemDirectory *p_old, FileSystemDirectory *p_new);
 
 protected:
 	void _notification(int p_what);
