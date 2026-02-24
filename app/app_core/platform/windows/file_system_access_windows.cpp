@@ -203,7 +203,7 @@ Error FileSystemAccessWindows::_get_next(FileInfo &r_info) {
 
 	if (!is_dir) {
 		r_info.type = name.get_extension();
-		r_info.size = (static_cast<int64_t>(p->fu.nFileSizeHigh) << 32) + p->fu.nFileSizeLow;
+		r_info.size = (static_cast<uint64_t>(p->fu.nFileSizeHigh) << 32) + p->fu.nFileSizeLow;
 	} else {
 		r_info.type = FOLDER_TYPE;
 		r_info.size = 0;
@@ -345,7 +345,7 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 
 		if (!is_dir) {
 			file_info.type = name.get_extension();
-			file_info.size = (static_cast<int64_t>(fu.nFileSizeHigh) << 32) + fu.nFileSizeLow;
+			file_info.size = (static_cast<uint64_t>(fu.nFileSizeHigh) << 32) + fu.nFileSizeLow;
 
 			r_files.push_back(file_info);
 		} else {

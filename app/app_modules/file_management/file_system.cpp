@@ -5,6 +5,8 @@
 
 #include "app/settings/app_settings.h"
 
+#include <ctime>
+
 const FileInfo &FileSystemDirectory::get_info() const {
 	return info;
 }
@@ -41,7 +43,7 @@ StringName FileSystemDirectory::get_type() const {
 	return info.type;
 }
 
-int64_t FileSystemDirectory::get_size() const {
+uint64_t FileSystemDirectory::get_size() const {
 	return info.size;
 }
 
@@ -159,6 +161,51 @@ bool FileSystem::is_valid_path(const String &p_path) {
 
 bool FileSystem::is_valid_dir_path(const String &p_path) {
 	return p_path == COMPUTER_PATH || FileSystemAccess::dir_exists(p_path);
+}
+
+String FileSystem::parse_time(uint64_t p_timestamp, bool p_use_local_time) {
+	String time = "";
+
+	time_t t = (time_t)p_timestamp;
+	struct tm lt;
+#ifdef WINDOWS_ENABLED
+	if (p_use_local_time) {
+		localtime_s(&lt, &t);
+	} else {
+		gmtime_s(&lt, &t);
+	}
+#else
+	if (p_use_local_time) {
+		localtime_r(&t, &lt);
+	} else {
+		gmtime_r(&t, &lt);
+	}
+#endif
+	time = vformat("%04d/%02d/%02d %02d:%02d",
+			(int)(1900 + lt.tm_year),
+			(int)(lt.tm_mon + 1),
+			(int)(lt.tm_mday),
+			(int)(lt.tm_hour),
+			(int)(lt.tm_min));
+
+	return time;
+}
+
+String FileSystem::parse_size(uint64_t p_bytes) {
+	String size = "";
+
+	// size = vformat("%d B", p_bytes);
+	String bytes = vformat("%d", p_bytes);
+	int len = bytes.length();
+	for (int i = 0; i < len; i++) {
+		if (i > 0 && (len - i) % 3 == 0) {
+			size += ",";
+		}
+		size += bytes[i];
+	}
+	size += " B";
+
+	return size;
 }
 
 FileSystemDirectory *FileSystem::get_root() const {

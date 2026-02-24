@@ -14,8 +14,8 @@
 static const int default_column_count = 5;
 static FileSystemTree::ColumnSetting default_column_settings[default_column_count] = {
 	{ 0, true, TTRC("Name"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 3 },
-	{ 1, true, TTRC("Modified"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 2 },
-	{ 2, false, TTRC("Created"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 2 },
+	{ 1, true, TTRC("Modified"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ 2, false, TTRC("Created"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
 	{ 3, true, TTRC("Type"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
 	{ 4, true, TTRC("Size"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
 };
@@ -182,16 +182,32 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 			item->set_text(column, p_fi.name);
 			item->set_icon(column, icon);
 		} else if (setting.title == "Modified") {
-			String modified_time = itos(p_fi.modified_time); // TODO
+			String modified_time = "";
+			if (p_fi.modified_time > 0) {
+				modified_time = FileSystem::parse_time(p_fi.modified_time);
+			}
 			item->set_text(column, modified_time);
 		} else if (setting.title == "Created") {
-			String creation_time = itos(p_fi.creation_time); // TODO
+			String creation_time = "";
+			if (p_fi.creation_time > 0) {
+				creation_time = FileSystem::parse_time(p_fi.creation_time);
+			}
 			item->set_text(column, creation_time);
 		} else if (setting.title == "Type") {
-			item->set_text(column, p_fi.type); // TODO
+			String type = p_fi.type;
+			if (type == FOLDER_TYPE) {
+				type = RTR("FOLDER");
+			} else {
+				type = type.to_upper();
+			}
+			item->set_text(column, type);
 		} else if (setting.title == "Size") {
-			String size = itos(p_fi.size); // TODO
+			String size = "";
+			if (p_fi.type != FOLDER_TYPE) {
+				size = FileSystem::parse_size(p_fi.size);
+			}
 			item->set_text(column, size);
+			item->set_text_alignment(column, HorizontalAlignment::HORIZONTAL_ALIGNMENT_RIGHT);
 		}
 		// item->set_editable(column, true);
 		// item->set_selectable(column, true);
@@ -915,10 +931,10 @@ Vector<String> FileSystemTree::get_selected_paths() {
 
 Vector<String> FileSystemTree::get_uncollapsed_paths() const {
 	Vector<String> paths;
-	TreeItem *root = get_root();
-	if (root) {
+	TreeItem *root_item = get_root();
+	if (root_item) {
 		// BFS to find all uncollapsed paths of the file system directory.
-		TreeItem *file_system_subtree = root->get_first_child();
+		TreeItem *file_system_subtree = root_item->get_first_child();
 		if (file_system_subtree) {
 			List<TreeItem *> queue;
 			queue.push_back(file_system_subtree);

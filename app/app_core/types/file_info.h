@@ -25,7 +25,7 @@ struct FileInfo {
 	Ref<Texture2D> icon;
 
 	StringName type = "unknown";
-	int64_t size = 0;
+	uint64_t size = 0; // Bytes
 
 	uint64_t creation_time = 0;
 	uint64_t modified_time = 0; // last_write_time

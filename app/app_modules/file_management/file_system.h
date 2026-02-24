@@ -32,7 +32,7 @@ public:
 	// String get_directory_path() const;
 	Ref<Texture2D> get_icon() const;
 	StringName get_type() const;
-	int64_t get_size() const;
+	uint64_t get_size() const;
 	uint64_t get_creation_time() const;
 	uint64_t get_modified_time() const;
 	bool is_hidden() const;
@@ -87,6 +87,9 @@ public:
 	static bool is_valid_dir_path(const String &p_path);
 	// TODO
 	// static String normalize_path(const String &p_path);
+
+	static String parse_time(uint64_t p_timestamp, bool p_use_local_time = true);
+	static String parse_size(uint64_t p_bytes);
 
 	FileSystemDirectory *get_root() const;
 	FileSystemDirectory *get_dir(const String &p_path) const;
