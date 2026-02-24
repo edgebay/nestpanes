@@ -64,13 +64,15 @@ void LayoutManager::_tab_container_child_order_changed(AppTabContainer *p_tab_co
 		} else {
 			split_container->remove(p_tab_container);
 			tab_containers.erase(p_tab_container);
-			p_tab_container->queue_free();
 
 			if (current_tab_container == p_tab_container) {
 				clear_current_tab_container();
 			}
+			p_tab_container->queue_free();
 		}
 	}
+
+	// TODO: _update_current_pane?
 
 	// Cover: create new tab, close tab, move tab control, rearrange tab, and split (which creates a new tab or moves the tab control).
 	_layout_changed();
@@ -118,7 +120,9 @@ void LayoutManager::_on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_f
 	_move_tab_control(p_from_tab_bar, p_from_index, tab_container);
 }
 
-void LayoutManager::_on_tab_selected(int p_tab) {
+void LayoutManager::_on_tab_selected(int p_tab, AppTabContainer *p_tab_container) {
+	_update_current_pane(p_tab, p_tab_container);
+
 	// Cover: next tab, previous tab, and tab click.
 	_layout_changed();
 }
@@ -165,6 +169,13 @@ void LayoutManager::_on_current_pane_changed(PaneBase *p_pane) {
 	set_current_tab_container(tab_container);
 }
 
+void LayoutManager::_update_current_pane(int p_tab, AppTabContainer *p_tab_container) {
+	PaneBase *pane = Object::cast_to<PaneBase>(p_tab_container->get_tab_control(p_tab));
+	if (pane) {
+		PaneManager::get_singleton()->set_current_pane(pane);
+	}
+}
+
 PopupMenu *LayoutManager::get_popup() const {
 	return popup_menu;
 }
@@ -188,7 +199,7 @@ AppTabContainer *LayoutManager::create_tab_container(bool p_tab_closable, int p_
 	tab_container->connect("new_tab", callable_mp(this, &LayoutManager::create_new_tab).bind("", tab_container, Callable())); // TODO: type
 	tab_container->connect("child_order_changed", callable_mp(this, &LayoutManager::_tab_container_child_order_changed).bind(tab_container));
 	tab_container->connect("tab_dropped", callable_mp(this, &LayoutManager::_on_drop_tab).bind(tab_container));
-	tab_container->connect("tab_selected", callable_mp(this, &LayoutManager::_on_tab_selected));
+	tab_container->connect("tab_selected", callable_mp(this, &LayoutManager::_on_tab_selected).bind(tab_container));
 	tab_container->connect("tab_closed", callable_mp(this, &LayoutManager::_close_tab_control).bind(tab_container));
 
 	tab_containers.push_back(tab_container);
@@ -453,12 +464,7 @@ Dictionary LayoutManager::_get_tab_container_data(AppTabContainer *p_tab_contain
 
 void LayoutManager::_set_tab_container_data(AppTabContainer *p_tab_container, const Dictionary &p_data) {
 	int index = p_data.get("current_tab", p_tab_container->get_current_tab());
-	p_tab_container->set_current_tab(index);
-
-	PaneBase *pane = Object::cast_to<PaneBase>(p_tab_container->get_tab_control(index));
-	if (pane) {
-		PaneManager::get_singleton()->set_current_pane(pane);
-	}
+	p_tab_container->set_current_tab(index); // Will trigger tab_selected
 }
 
 Dictionary LayoutManager::_get_split_container_data(MultiSplitContainer *p_split_container) {

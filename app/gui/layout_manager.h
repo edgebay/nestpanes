@@ -60,7 +60,7 @@ private:
 	void _tab_container_child_order_changed(AppTabContainer *p_tab_container);
 	void _move_tab_control(TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_to);
 	void _on_drop_tab(int p_position, TabBar *p_from_tab_bar, int p_from_index, AppTabContainer *p_tab_container);
-	void _on_tab_selected(int p_tab);
+	void _on_tab_selected(int p_tab, AppTabContainer *p_tab_container);
 
 	void _on_pane_title_changed(PaneBase *p_pane);
 	void _on_pane_icon_changed(PaneBase *p_pane);
@@ -75,6 +75,7 @@ private:
 	void _split_container_drag_ended();
 
 	void _on_current_pane_changed(PaneBase *p_pane);
+	void _update_current_pane(int p_tab, AppTabContainer *p_tab_container);
 
 	// Layout.
 	void _save_window_settings_to_config(Ref<ConfigFile> p_layout, const String &p_section);

@@ -105,6 +105,9 @@ void PaneManager::destroy(PaneBase *p_pane) {
 		pane_map[type].erase(p_pane);
 	}
 
+	if (current_pane == p_pane) {
+		clear_current_pane();
+	}
 	p_pane->queue_free();
 }
 
