@@ -28,6 +28,9 @@ private:
 	virtual String _get_pane_title() const override;
 	virtual Ref<Texture2D> _get_pane_icon() const override;
 
+	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
+	void _process_shortcut_input(int p_option, const Vector<String> &p_selected);
+
 	void _update_tree();
 	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir);
 	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());

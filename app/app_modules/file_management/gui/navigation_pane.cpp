@@ -4,6 +4,7 @@
 #include "app/app_modules/file_management/gui/file_system_tree.h"
 
 #include "app/gui/app_control.h"
+#include "app/settings/app_settings.h"
 #include "app/themes/app_scale.h"
 
 #include "app/app_modules/file_management/file_system.h"
@@ -14,6 +15,84 @@ String NavigationPane::_get_pane_title() const {
 
 Ref<Texture2D> NavigationPane::_get_pane_icon() const {
 	return get_app_theme_icon(SNAME("Filesystem"));
+}
+
+void NavigationPane::shortcut_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
+	Ref<InputEventKey> k = p_event;
+	if ((k.is_valid() && k->is_pressed() && !k->is_echo()) || Object::cast_to<InputEventShortcut>(*p_event)) {
+		bool is_handled = true;
+		int option_id = -1;
+		bool add_selected = false;
+		Vector<String> targets;
+
+		if (APP_IS_SHORTCUT("file_management/copy_path", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_COPY_PATH;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/show_in_explorer", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_SHOW_IN_EXPLORER;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/open_in_external_program", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_OPEN_EXTERNAL;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/open_in_terminal", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_OPEN_IN_TERMINAL;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/undo", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_UNDO;
+		} else if (APP_IS_SHORTCUT("file_management/redo", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_REDO;
+
+		} else if (APP_IS_SHORTCUT("file_management/new_folder", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_NEW_FOLDER;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/new_textfile", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_NEW_TEXTFILE;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/cut", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_CUT;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/copy", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_COPY;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/paste", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_PASTE;
+			add_selected = true;
+
+		} else if (APP_IS_SHORTCUT("file_management/rename", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_RENAME;
+			add_selected = true;
+		} else if (APP_IS_SHORTCUT("file_management/delete", p_event)) {
+			option_id = FileContextMenu::FILE_MENU_REMOVE;
+			add_selected = true;
+
+		} else {
+			is_handled = false;
+		}
+
+		if (option_id >= 0 && add_selected) {
+			targets = tree->get_selected_paths();
+			if (targets.is_empty()) {
+				option_id = -1;
+			}
+		}
+
+		if (option_id >= 0) {
+			callable_mp(this, &NavigationPane::_process_shortcut_input).call_deferred(option_id, targets);
+		}
+
+		if (is_handled) {
+			accept_event();
+		}
+	}
+}
+
+void NavigationPane::_process_shortcut_input(int p_option, const Vector<String> &p_selected) {
+	tree->process_menu_id(p_option, p_selected);
 }
 
 void NavigationPane::_notification(int p_what) {
