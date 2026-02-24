@@ -23,6 +23,7 @@ protected:
 
 	virtual void _data_changed();
 
+	void _notification(int p_what);
 	static void _bind_methods();
 
 public:

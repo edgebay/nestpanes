@@ -16,6 +16,20 @@ void PaneBase::_data_changed() {
 	emit_signal(SNAME("data_changed"));
 }
 
+void PaneBase::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			// Trigger icon_changed to avoid invalid icons caused by unpropagated theme context.
+			if (!pane_icon.is_valid()) {
+				Ref<Texture2D> icon = _get_pane_icon();
+				if (icon.is_valid()) {
+					set_icon(icon);
+				}
+			}
+		} break;
+	}
+}
+
 PaneBase *PaneBase::get_control_parent_pane(Control *p_control) {
 	ERR_FAIL_NULL_V(p_control, nullptr);
 
