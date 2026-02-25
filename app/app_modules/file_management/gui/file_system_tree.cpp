@@ -942,9 +942,12 @@ Vector<String> FileSystemTree::get_uncollapsed_paths() const {
 			while (!queue.is_empty()) {
 				TreeItem *ti = queue.back()->get();
 				queue.pop_back();
-				if (!ti->is_collapsed() && ti->get_child_count() > 0) {
+				// if (!ti->is_collapsed() && ti->get_child_count() > 0) {
+				if (!ti->is_collapsed()) {
 					Dictionary d = ti->get_metadata(0);
-					paths.push_back(d["path"]);
+					if (d["is_dir"]) {
+						paths.push_back(d["path"]);
+					}
 				}
 				for (int i = 0; i < ti->get_child_count(); i++) {
 					queue.push_back(ti->get_child(i));
@@ -965,6 +968,9 @@ TreeItem *FileSystemTree::add_item(const FileInfo &p_fi, TreeItem *p_parent, int
 			while (parent && parent != root_item) {
 				if (parent->is_collapsed()) {
 					parent->set_collapsed(false);
+
+					// Dictionary d = parent->get_metadata(0);
+					// print_line("set uncollapsed: ", d["path"]);
 				}
 				parent = parent->get_parent();
 			}

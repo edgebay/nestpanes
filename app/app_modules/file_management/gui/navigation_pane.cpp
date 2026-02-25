@@ -215,6 +215,7 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 	ERR_FAIL_NULL(p_file_info);
 
 	TreeItem *file_item = tree->add_item(*p_file_info, p_parent);
+	file_item->set_collapsed(true); // default value is false.
 
 	if (selected_path == p_file_info->path) {
 		file_item->select(0);
@@ -290,14 +291,21 @@ void NavigationPane::_on_file_system_changed(const String &p_path) {
 }
 
 Vector<String> NavigationPane::_get_uncollapsed_paths(bool p_uncollapse_root) {
-	Vector<String> paths = tree->get_uncollapsed_paths();
-	if (!uncollapsed_paths.is_empty()) {
-		paths.append_array(uncollapsed_paths);
-	}
-	if (p_uncollapse_root && file_system) {
-		const FileSystemDirectory *file_system_root = file_system->get_root();
-		if (!paths.has(file_system_root->get_path())) {
-			paths.push_back(file_system_root->get_path());
+	Vector<String> paths;
+
+	if (loading_uncollapsed_paths) {
+		paths = uncollapsed_paths;
+	} else {
+		paths = tree->get_uncollapsed_paths();
+		// if (!uncollapsed_paths.is_empty()) {
+		// 	paths.append_array(uncollapsed_paths);
+		// }
+
+		if (p_uncollapse_root && file_system) {
+			const FileSystemDirectory *file_system_root = file_system->get_root();
+			if (!paths.has(file_system_root->get_path())) {
+				paths.push_back(file_system_root->get_path());
+			}
 		}
 	}
 
@@ -305,17 +313,22 @@ Vector<String> NavigationPane::_get_uncollapsed_paths(bool p_uncollapse_root) {
 }
 
 void NavigationPane::_clear_uncollapsed_paths() {
-	if (!uncollapsed_paths.is_empty()) {
-		bool loaded = true;
-		Vector<String> updated_paths = tree->get_uncollapsed_paths();
+	if (!loading_uncollapsed_paths) {
+		return;
+	}
+
+	bool loaded = true;
+	Vector<String> paths = tree->get_uncollapsed_paths();
+	if (paths.size() == uncollapsed_paths.size()) {
 		for (const String &path : uncollapsed_paths) {
-			if (!updated_paths.has(path)) {
+			if (!paths.has(path)) {
 				loaded = false;
 				break;
 			}
 		}
-		// print_line("loaded: ", loaded, updated_paths);
+		// print_line("loaded: ", loaded, paths);
 		if (loaded) {
+			loading_uncollapsed_paths = false;
 			uncollapsed_paths.clear();
 		}
 	}
@@ -353,6 +366,7 @@ void NavigationPane::apply_config_data(const Dictionary &p_dict) {
 	ERR_FAIL_NULL(file_system);
 
 	if (p_dict.has("uncollapsed_paths")) {
+		loading_uncollapsed_paths = true;
 		uncollapsed_paths.clear();
 
 		Vector<String> paths = p_dict.get("uncollapsed_paths", Vector<String>());

@@ -22,6 +22,7 @@ private:
 
 	bool updating_tree = false;
 
+	bool loading_uncollapsed_paths = false;
 	Vector<String> uncollapsed_paths;
 	String selected_path = "";
 
