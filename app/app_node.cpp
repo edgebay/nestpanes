@@ -327,7 +327,7 @@ void AppNode::_add_to_main_menu(const String &p_name, PopupMenu *p_menu) {
 	}
 }
 
-void AppNode::_init_main_menu() {
+void AppNode::_create_main_menu() {
 	bool global_menu = !bool(EDITOR_GET("interface/app/use_embedded_menu")) && NativeMenu::get_singleton()->has_feature(NativeMenu::FEATURE_GLOBAL_MENU);
 	bool dark_mode = DisplayServer::get_singleton()->is_dark_mode_supported() && DisplayServer::get_singleton()->is_dark_mode();
 	bool can_expand = false; // Windows is not supported.
@@ -354,10 +354,10 @@ void AppNode::_init_main_menu() {
 	view_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
 	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", TTRC("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
-	view_menu->set_item_checked(-1, layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
+	// view_menu->set_item_checked(-1, layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
 
 	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/right_sidebar", TTRC("Right Sidebar"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::B), VIEW_RIGHT_SIDEBAR);
-	view_menu->set_item_checked(-1, layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
+	// view_menu->set_item_checked(-1, layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
 
 	help_menu = memnew(PopupMenu);
 	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
@@ -381,6 +381,11 @@ void AppNode::_init_main_menu() {
 	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
 }
 
+void AppNode::_update_main_menu() {
+	view_menu->set_item_checked(view_menu->get_item_index(VIEW_LEFT_SIDEBAR), layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
+	view_menu->set_item_checked(view_menu->get_item_index(VIEW_RIGHT_SIDEBAR), layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
+}
+
 void AppNode::_on_area_visibility_changed(const String &p_name, bool p_visible) {
 	if (p_name == LEFT_SIDEBAR_NAME) {
 		int index = view_menu->get_item_index(VIEW_LEFT_SIDEBAR);
@@ -393,9 +398,10 @@ void AppNode::_on_area_visibility_changed(const String &p_name, bool p_visible) 
 
 void AppNode::_notification(int p_what) {
 	switch (p_what) {
-			// case NOTIFICATION_READY: {
-			// 	_load_layout();
-			// } break;
+		case NOTIFICATION_READY: {
+			_load_layout();
+			_update_main_menu();
+		} break;
 
 		case NOTIFICATION_ENTER_TREE: {
 			// Theme has already been created in the constructor, so we can skip that step.
@@ -419,6 +425,10 @@ void AppNode::_notification(int p_what) {
 		case AppSettings::NOTIFICATION_APP_SETTINGS_CHANGED: {
 			follow_system_theme = APP_GET("interface/theme/follow_system_theme");
 			use_system_accent_color = APP_GET("interface/theme/use_system_accent_color");
+
+			if (AppSettings::get_singleton()->check_changed_settings_in_group("interface/app")) {
+				_update_main_menu_type();
+			}
 		} break;
 	}
 }
@@ -563,8 +573,7 @@ AppNode::AppNode() {
 	// Default layout.
 	gui_main = hbox;
 
-	_load_layout(); // TODO: child icon invalid
-	_init_main_menu();
+	_create_main_menu();
 
 	APP_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
 	APP_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);

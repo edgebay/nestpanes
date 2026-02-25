@@ -104,7 +104,8 @@ private:
 
 	void _update_main_menu_type();
 	void _add_to_main_menu(const String &p_name, PopupMenu *p_menu);
-	void _init_main_menu();
+	void _create_main_menu();
+	void _update_main_menu();
 
 	void _on_area_visibility_changed(const String &p_name, bool p_visible);
 
