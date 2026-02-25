@@ -248,7 +248,7 @@ void FileContextMenu::add_file_item(int p_id) {
 		} break;
 
 		case FILE_MENU_OPEN_IN_NEW_TAB: {
-			add_item(RTR("Open in New Ttab"), p_id); // , Key::B);
+			add_item(RTR("Open in New Tab"), p_id); // , Key::B);
 		} break;
 
 		case FILE_MENU_OPEN_IN_NEW_WINDOW: {

@@ -51,7 +51,7 @@ void AppAbout::_license_tree_selected() {
 }
 
 AppAbout::AppAbout() {
-	set_title(TTRC("About"));
+	set_title(RTR("About"));
 	set_hide_on_ok(true);
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
@@ -95,7 +95,7 @@ AppAbout::AppAbout() {
 	license_text_label = memnew(RichTextLabel);
 	license_text_label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	license_text_label->set_threaded(true);
-	license_text_label->set_name(TTRC("License"));
+	license_text_label->set_name(RTR("License"));
 	license_text_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	license_text_label->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	license_text_label->set_text(String::utf8(LICENSE_TEXT));
@@ -104,12 +104,12 @@ AppAbout::AppAbout() {
 	// Thirdparty License.
 
 	VBoxContainer *license_thirdparty = memnew(VBoxContainer);
-	license_thirdparty->set_name(TTRC("Third-party Licenses"));
+	license_thirdparty->set_name(RTR("Third-party Licenses"));
 	license_thirdparty->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tc->add_child(license_thirdparty);
 
 	// TODO: modify tpl_string?
-	String tpl_string = String(APP_VERSION_NAME) + TTRC(" relies on a number of third-party free and open source libraries, all compatible with the terms of its MIT license. The following is an exhaustive list of all such third-party components with their respective copyright statements and license terms.");
+	String tpl_string = String(APP_VERSION_NAME) + RTR(" relies on a number of third-party free and open source libraries, all compatible with the terms of its MIT license. The following is an exhaustive list of all such third-party components with their respective copyright statements and license terms.");
 	Label *tpl_label = memnew(Label(tpl_string));
 	tpl_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	tpl_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
@@ -128,14 +128,14 @@ AppAbout::AppAbout() {
 	_tpl_tree->set_hide_root(true);
 	TreeItem *root = _tpl_tree->create_item();
 	TreeItem *tpl_ti_all = _tpl_tree->create_item(root);
-	tpl_ti_all->set_text(0, TTRC("All Components"));
+	tpl_ti_all->set_text(0, RTR("All Components"));
 	tpl_ti_all->set_auto_translate_mode(0, AUTO_TRANSLATE_MODE_ALWAYS);
 	TreeItem *tpl_ti_tp = _tpl_tree->create_item(root);
-	tpl_ti_tp->set_text(0, TTRC("Components"));
+	tpl_ti_tp->set_text(0, RTR("Components"));
 	tpl_ti_tp->set_auto_translate_mode(0, AUTO_TRANSLATE_MODE_ALWAYS);
 	tpl_ti_tp->set_selectable(0, false);
 	TreeItem *tpl_ti_lc = _tpl_tree->create_item(root);
-	tpl_ti_lc->set_text(0, TTRC("Licenses"));
+	tpl_ti_lc->set_text(0, RTR("Licenses"));
 	tpl_ti_lc->set_auto_translate_mode(0, AUTO_TRANSLATE_MODE_ALWAYS);
 	tpl_ti_lc->set_selectable(0, false);
 	String long_text = "";

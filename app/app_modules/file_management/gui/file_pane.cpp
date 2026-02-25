@@ -18,7 +18,7 @@
 #include "app/app_modules/file_management/file_system.h"
 
 String FilePane::_get_pane_title() const {
-	return "Folder";
+	return RTR("Folder");
 }
 
 Ref<Texture2D> FilePane::_get_pane_icon() const {
@@ -241,12 +241,12 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 }
 
 void FilePane::_update_status_bar() {
-	String info = vformat(RTR("Total %d"), tree->get_root()->get_child_count());
+	int total_count = tree->get_root()->get_child_count();
+	String info = vformat(RTRN("%d item", "%d items", total_count), total_count);
 	int selected_count = tree->get_selected_paths().size();
 	// print_line("status: ", info, selected_count);
 	if (selected_count) {
-		// vformat(RTRN("%d item", "%d items", some_integer), some_integer)
-		info = vformat(RTR("Selected %d"), selected_count) + " | " + info;
+		info = vformat(RTR("%d selected"), selected_count) + " | " + info;
 	}
 	item_count->set_text(info);
 }
@@ -538,7 +538,7 @@ FilePane::FilePane() :
 	address_bar->connect(SceneStringName(text_submitted), callable_mp(this, &FilePane::_on_address_submitted));
 	address_bar->connect(SceneStringName(item_selected), callable_mp(this, &FilePane::_select_history));
 
-	APP_SHORTCUT("file_management/focus_path", TTRC("Focus Path"), KeyModifierMask::CMD_OR_CTRL | Key::L);
+	APP_SHORTCUT("file_management/focus_path", RTR("Focus Path"), KeyModifierMask::CMD_OR_CTRL | Key::L);
 
 	// APP_SHORTCUT("file_management/prev", dir_prev->get_tooltip_text(), KeyModifierMask::ALT | Key::LEFT);
 	APP_SHORTCUT_ARRAY("file_management/prev",

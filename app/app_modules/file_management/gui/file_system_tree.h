@@ -15,10 +15,18 @@ public:
 		DISPLAY_MODE_LIST,
 	};
 
+	enum ColumnType {
+		COLUMN_TYPE_NAME,
+		COLUMN_TYPE_MODIFIED,
+		COLUMN_TYPE_CREATED,
+		COLUMN_TYPE_TYPE,
+		COLUMN_TYPE_SIZE,
+	};
+
 	struct ColumnSetting {
+		ColumnType type = COLUMN_TYPE_NAME;
 		int column = -1;
 		bool visible = false;
-		String title = "";
 		HorizontalAlignment alignment = HORIZONTAL_ALIGNMENT_LEFT;
 		bool clip = false;
 		int expand_ratio = -1;

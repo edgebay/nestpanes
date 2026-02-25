@@ -3,7 +3,7 @@
 #include "app/gui/app_control.h"
 
 String WelcomePane::_get_pane_title() const {
-	return "Welcome";
+	return RTR("Welcome");
 }
 
 Ref<Texture2D> WelcomePane::_get_pane_icon() const {

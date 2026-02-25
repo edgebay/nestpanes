@@ -1515,7 +1515,7 @@ AppTabContainer::AppTabContainer() {
 
 	tab_add = memnew(Button);
 	tab_add->set_flat(true);
-	tab_add->set_tooltip_text(RTR("New tab"));
+	tab_add->set_tooltip_text(RTR("New Tab"));
 	tab_bar->add_child(tab_add);
 	tab_add->connect(SceneStringName(pressed), callable_mp(this, &AppTabContainer::_on_tab_add));
 	tab_add->hide();

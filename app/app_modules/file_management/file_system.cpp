@@ -599,24 +599,24 @@ FileSystem::FileSystem() {
 	file_info.icon = FileSystemAccess::get_icon(COMPUTER_PATH);
 	file_info.type = FOLDER_TYPE; // TODO
 
-	APP_SHORTCUT("file_management/copy_path", TTRC("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
+	APP_SHORTCUT("file_management/copy_path", RTR("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
 
-	APP_SHORTCUT("file_management/show_in_explorer", TTRC("Open in File Manager"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::R);
-	APP_SHORTCUT("file_management/open_in_external_program", TTRC("Open in External Program"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::E);
-	APP_SHORTCUT("file_management/open_in_terminal", TTRC("Open in Terminal"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::T);
+	APP_SHORTCUT("file_management/show_in_explorer", RTR("Show in System Explorer"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::R);
+	APP_SHORTCUT("file_management/open_in_external_program", RTR("Open in External Program"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::E);
+	APP_SHORTCUT("file_management/open_in_terminal", RTR("Open in Terminal"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::ALT | Key::T);
 
-	APP_SHORTCUT("file_management/undo", TTRC("Undo"), KeyModifierMask::CMD_OR_CTRL | Key::Z);
-	APP_SHORTCUT("file_management/redo", TTRC("Redo"), KeyModifierMask::CMD_OR_CTRL | Key::Y);
+	APP_SHORTCUT("file_management/undo", RTR("Undo"), KeyModifierMask::CMD_OR_CTRL | Key::Z);
+	APP_SHORTCUT("file_management/redo", RTR("Redo"), KeyModifierMask::CMD_OR_CTRL | Key::Y);
 
-	APP_SHORTCUT("file_management/new_folder", TTRC("New Folder..."), Key::NONE);
-	APP_SHORTCUT("file_management/new_textfile", TTRC("New TextFile..."), Key::NONE);
+	APP_SHORTCUT("file_management/new_folder", RTR("New Folder..."), Key::NONE);
+	APP_SHORTCUT("file_management/new_textfile", RTR("New TextFile..."), Key::NONE);
 
-	APP_SHORTCUT("file_management/cut", TTRC("Cut"), KeyModifierMask::CMD_OR_CTRL | Key::X);
-	APP_SHORTCUT("file_management/copy", TTRC("Copy"), KeyModifierMask::CMD_OR_CTRL | Key::C);
-	APP_SHORTCUT("file_management/paste", TTRC("Paste"), KeyModifierMask::CMD_OR_CTRL | Key::V);
+	APP_SHORTCUT("file_management/cut", RTR("Cut"), KeyModifierMask::CMD_OR_CTRL | Key::X);
+	APP_SHORTCUT("file_management/copy", RTR("Copy"), KeyModifierMask::CMD_OR_CTRL | Key::C);
+	APP_SHORTCUT("file_management/paste", RTR("Paste"), KeyModifierMask::CMD_OR_CTRL | Key::V);
 
-	APP_SHORTCUT("file_management/rename", TTRC("Rename..."), Key::F2);
-	APP_SHORTCUT("file_management/delete", TTRC("Delete"), Key::KEY_DELETE);
+	APP_SHORTCUT("file_management/rename", RTR("Rename..."), Key::F2);
+	APP_SHORTCUT("file_management/delete", RTR("Delete"), Key::KEY_DELETE);
 
 	set_process(true);
 	scan(COMPUTER_PATH);

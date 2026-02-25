@@ -255,7 +255,7 @@ void AppNode::_update_main_menu_type() {
 
 	if (use_menu_button && !global_menu) {
 		main_menu_button = memnew(MenuButton);
-		main_menu_button->set_text(TTRC("Main Menu"));
+		main_menu_button->set_text(RTR("Main Menu"));
 		main_menu_button->set_theme_type_variation("MainScreenButton");
 		main_menu_button->set_focus_mode(Control::FOCUS_NONE);
 		if (is_inside_tree()) {
@@ -335,50 +335,50 @@ void AppNode::_create_main_menu() {
 	_update_main_menu_type();
 
 	file_menu = memnew(PopupMenu);
-	_add_to_main_menu(TTRC("File"), file_menu);
+	_add_to_main_menu(RTR("File"), file_menu);
 
 	file_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
 	// TODO: Use Ctrl+T to create new tab, Ctrl+N to create new file.
-	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", TTRC("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::N), FILE_NEW_TAB);
-	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", TTRC("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::T), FILE_NEW_TAB);
+	// file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", RTR("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::N), FILE_NEW_TAB);
+	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/new_tab", RTR("New Tab"), KeyModifierMask::CMD_OR_CTRL + Key::T), FILE_NEW_TAB);
 	file_menu->add_separator();
-	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/close_tab", TTRC("Close Tab"), KeyModifierMask::CTRL + Key::W), FILE_CLOSE_TAB);
+	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/close_tab", RTR("Close Tab"), KeyModifierMask::CTRL + Key::W), FILE_CLOSE_TAB);
 
 	file_menu->add_separator();
-	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/file_quit", TTRC("Quit"), KeyModifierMask::CMD_OR_CTRL + Key::Q), FILE_QUIT, true);
+	file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/file_quit", RTR("Quit"), KeyModifierMask::CMD_OR_CTRL + Key::Q), FILE_QUIT, true);
 
 	view_menu = memnew(PopupMenu);
-	_add_to_main_menu(TTRC("View"), view_menu);
+	_add_to_main_menu(RTR("View"), view_menu);
 
 	view_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
-	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", TTRC("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
+	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/left_sidebar", RTR("Left Sidebar"), KeyModifierMask::CMD_OR_CTRL + Key::B), VIEW_LEFT_SIDEBAR);
 	// view_menu->set_item_checked(-1, layout_manager->is_area_visible(LEFT_SIDEBAR_NAME));
 
-	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/right_sidebar", TTRC("Right Sidebar"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::B), VIEW_RIGHT_SIDEBAR);
+	view_menu->add_check_shortcut(ED_SHORTCUT_AND_COMMAND("app/right_sidebar", RTR("Right Sidebar"), KeyModifierMask::CMD_OR_CTRL + KeyModifierMask::SHIFT + Key::B), VIEW_RIGHT_SIDEBAR);
 	// view_menu->set_item_checked(-1, layout_manager->is_area_visible(RIGHT_SIDEBAR_NAME));
 
 	help_menu = memnew(PopupMenu);
 	if (global_menu && NativeMenu::get_singleton()->has_system_menu(NativeMenu::HELP_MENU_ID)) {
 		help_menu->set_system_menu(NativeMenu::HELP_MENU_ID);
 	}
-	_add_to_main_menu(TTRC("Help"), help_menu);
+	_add_to_main_menu(RTR("Help"), help_menu);
 
 	help_menu->connect(SceneStringName(id_pressed), callable_mp(this, &AppNode::_menu_option));
 
 	// TODO: SHORTCUT_AND_COMMAND
-	// ED_SHORTCUT_AND_COMMAND("app/editor_help", TTRC("Search Help..."), Key::F1);
+	// ED_SHORTCUT_AND_COMMAND("app/editor_help", RTR("Search Help..."), Key::F1);
 	// ED_SHORTCUT_OVERRIDE("app/editor_help", "macos", KeyModifierMask::ALT | Key::SPACE);
 	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode), ED_GET_SHORTCUT("app/editor_help"), HELP_SEARCH);
 	// help_menu->add_separator();
-	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/online_docs", TTRC("Online Documentation")), HELP_DOCS);
+	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/online_docs", RTR("Online Documentation")), HELP_DOCS);
 	// help_menu->add_separator();
-	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/github", "GitHub"), HELP_GITHUB);
-	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/report_a_bug", TTRC("Report a Bug")), HELP_REPORT_A_BUG);
+	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/github", RTR("GitHub")), HELP_GITHUB);
+	// help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/report_a_bug", RTR("Report a Bug")), HELP_REPORT_A_BUG);
 	help_menu->add_separator();
-	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/about", TTRC("About")), HELP_ABOUT);
-	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/support_development", TTRC("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
+	help_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("app/about", RTR("About")), HELP_ABOUT);
+	// help_menu->add_icon_shortcut(get_app_theme_native_menu_icon(SNAME("Heart"), global_menu, dark_mode), ED_SHORTCUT_AND_COMMAND("app/support_development", RTR("Support Godot Development")), HELP_SUPPORT_GODOT_DEVELOPMENT);
 }
 
 void AppNode::_update_main_menu() {
@@ -575,8 +575,8 @@ AppNode::AppNode() {
 
 	_create_main_menu();
 
-	APP_SHORTCUT("app/next_tab", TTRC("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
-	APP_SHORTCUT("app/prev_tab", TTRC("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
+	APP_SHORTCUT("app/next_tab", RTR("Next Tab"), KeyModifierMask::CTRL + Key::TAB);
+	APP_SHORTCUT("app/prev_tab", RTR("Previous Tab"), KeyModifierMask::CTRL + KeyModifierMask::SHIFT + Key::TAB);
 
 	// TODO: command_palette
 

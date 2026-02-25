@@ -10,7 +10,7 @@
 #include "app/app_modules/file_management/file_system.h"
 
 String NavigationPane::_get_pane_title() const {
-	return "Navigation";
+	return RTR("Navigation");
 }
 
 Ref<Texture2D> NavigationPane::_get_pane_icon() const {

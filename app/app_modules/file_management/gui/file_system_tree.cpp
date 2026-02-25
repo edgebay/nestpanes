@@ -13,11 +13,11 @@
 
 static const int default_column_count = 5;
 static FileSystemTree::ColumnSetting default_column_settings[default_column_count] = {
-	{ 0, true, TTRC("Name"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 3 },
-	{ 1, true, TTRC("Modified"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ 2, false, TTRC("Created"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ 3, true, TTRC("Type"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ 4, true, TTRC("Size"), HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ FileSystemTree::COLUMN_TYPE_NAME, 0, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 3 },
+	{ FileSystemTree::COLUMN_TYPE_MODIFIED, 1, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ FileSystemTree::COLUMN_TYPE_CREATED, 2, false, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ FileSystemTree::COLUMN_TYPE_TYPE, 3, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ FileSystemTree::COLUMN_TYPE_SIZE, 4, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
 };
 
 void FileSystemTree::_notification(int p_what) {
@@ -57,6 +57,11 @@ void FileSystemTree::_notification(int p_what) {
 			// 	}
 			// }
 		} break;
+			// case NOTIFICATION_TRANSLATION_CHANGED:
+			// case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
+			// case NOTIFICATION_THEME_CHANGED: {
+			// 	_update_display_mode();
+			// } break;
 	}
 }
 
@@ -88,7 +93,7 @@ void FileSystemTree::_update_display_mode() {
 		set_column_titles_visible(true);
 	}
 
-	ERR_FAIL_COND(column_count >= column_settings.size());
+	ERR_FAIL_COND(column_count > column_settings.size());
 
 	uint32_t column = 0;
 	for (uint32_t i = 0; i < column_settings.size() && column < column_count; i++) {
@@ -97,7 +102,26 @@ void FileSystemTree::_update_display_mode() {
 			continue;
 		}
 
-		set_column_title(column, setting.title);
+		String title = "";
+		switch (setting.type) {
+			case COLUMN_TYPE_NAME:
+				title = RTR("Name");
+				break;
+			case COLUMN_TYPE_MODIFIED:
+				title = RTR("Modified");
+				break;
+			case COLUMN_TYPE_CREATED:
+				title = RTR("Created");
+				break;
+			case COLUMN_TYPE_TYPE:
+				title = RTR("Type");
+				break;
+			case COLUMN_TYPE_SIZE:
+				title = RTR("Size");
+				break;
+		}
+
+		set_column_title(column, title);
 		set_column_title_alignment(column, setting.alignment);
 		set_column_clip_content(column, setting.clip);
 		if (setting.expand_ratio < 0) {
@@ -177,37 +201,42 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 			continue;
 		}
 
-		// TODO: Does translation affect it?
-		if (setting.title == "Name") {
-			item->set_text(column, p_fi.name);
-			item->set_icon(column, icon);
-		} else if (setting.title == "Modified") {
-			String modified_time = "";
-			if (p_fi.modified_time > 0) {
-				modified_time = FileSystem::parse_time(p_fi.modified_time);
-			}
-			item->set_text(column, modified_time);
-		} else if (setting.title == "Created") {
-			String creation_time = "";
-			if (p_fi.creation_time > 0) {
-				creation_time = FileSystem::parse_time(p_fi.creation_time);
-			}
-			item->set_text(column, creation_time);
-		} else if (setting.title == "Type") {
-			String type = p_fi.type;
-			if (type == FOLDER_TYPE) {
-				type = RTR("FOLDER");
-			} else {
-				type = type.to_upper();
-			}
-			item->set_text(column, type);
-		} else if (setting.title == "Size") {
-			String size = "";
-			if (p_fi.type != FOLDER_TYPE) {
-				size = FileSystem::parse_size(p_fi.size);
-			}
-			item->set_text(column, size);
-			item->set_text_alignment(column, HorizontalAlignment::HORIZONTAL_ALIGNMENT_RIGHT);
+		switch (setting.type) {
+			case COLUMN_TYPE_NAME: {
+				item->set_text(column, p_fi.name);
+				item->set_icon(column, icon);
+			} break;
+			case COLUMN_TYPE_MODIFIED: {
+				String modified_time = "";
+				if (p_fi.modified_time > 0) {
+					modified_time = FileSystem::parse_time(p_fi.modified_time);
+				}
+				item->set_text(column, modified_time);
+			} break;
+			case COLUMN_TYPE_CREATED: {
+				String creation_time = "";
+				if (p_fi.creation_time > 0) {
+					creation_time = FileSystem::parse_time(p_fi.creation_time);
+				}
+				item->set_text(column, creation_time);
+			} break;
+			case COLUMN_TYPE_TYPE: {
+				String type = p_fi.type;
+				if (type == FOLDER_TYPE) {
+					type = RTR("FOLDER");
+				} else {
+					type = type.to_upper();
+				}
+				item->set_text(column, type);
+			} break;
+			case COLUMN_TYPE_SIZE: {
+				String size = "";
+				if (p_fi.type != FOLDER_TYPE) {
+					size = FileSystem::parse_size(p_fi.size);
+				}
+				item->set_text(column, size);
+				item->set_text_alignment(column, HorizontalAlignment::HORIZONTAL_ALIGNMENT_RIGHT);
+			} break;
 		}
 		// item->set_editable(column, true);
 		// item->set_selectable(column, true);
@@ -309,7 +338,7 @@ void FileSystemTree::_build_folder_menu() {
 
 		// context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_TEXTFILE);
 		// context_menu->add_file_item(FileContextMenu::FILE_MENU_NEW_FOLDER);
-		context_menu->add_item(RTR("New File..."), FileContextMenu::FILE_MENU_NEW_TEXTFILE);
+		context_menu->add_item(RTR("New TextFile..."), FileContextMenu::FILE_MENU_NEW_TEXTFILE);
 		context_menu->add_item(RTR("New Folder..."), FileContextMenu::FILE_MENU_NEW_FOLDER);
 
 		context_menu->add_separator();
@@ -446,13 +475,13 @@ bool FileSystemTree::_rename_operation_confirm(const String &p_from, const Strin
 
 	if (p_new_name.length() == 0) {
 		// TODO: hint
-		// print_line(TTRC("No name provided."));
+		// print_line(RTR("No name provided."));
 		rename_error = true;
 	} else if (p_new_name.contains_char('/') || p_new_name.contains_char('\\') || p_new_name.contains_char(':')) {
-		// print_line(TTRC("Name contains invalid characters."));
+		// print_line(RTR("Name contains invalid characters."));
 		rename_error = true;
 	} else if (p_new_name[0] == '.') {
-		// print_line(TTRC("This filename begins with a dot rendering the file invisible to the app.\nIf you want to rename it anyway, use your operating system's file manager."));
+		// print_line(RTR("This filename begins with a dot rendering the file invisible to the app.\nIf you want to rename it anyway, use your operating system's file manager."));
 		rename_error = true;
 	}
 
