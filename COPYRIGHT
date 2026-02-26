@@ -19,3 +19,9 @@ Files: app/*
 Comment: NestPanes
 Copyright: 2025-2026, Bay
 License: Expat
+
+Files: main/icon.png
+ app/themes/icons/Logo.svg
+Comment: NestPanes logo
+Copyright: 2026, Bay
+License: CC-BY-4.0

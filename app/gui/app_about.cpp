@@ -20,7 +20,7 @@
 void AppAbout::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_TRANSLATION_CHANGED: {
-			_about_text_label->set_text(String(U"© 2025-2026 Bay.\n"));
+			_about_text_label->set_text(String(U"© 2025-2026 Bay."));
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
@@ -39,7 +39,7 @@ void AppAbout::_notification(int p_what) {
 			license_text_label->add_theme_constant_override(SceneStringName(line_separation), 4 * APP_SCALE);
 			license_text_label->end_bulk_theme_override();
 
-			_logo->set_texture(get_theme_icon(SNAME("Logo"), SNAME("AppIcons"))); // TODO: Logo
+			_logo->set_texture(get_theme_icon(SNAME("Logo"), SNAME("AppIcons")));
 		} break;
 	}
 }
@@ -68,6 +68,7 @@ AppAbout::AppAbout() {
 	hbc->add_child(_logo);
 
 	VBoxContainer *version_info_vbc = memnew(VBoxContainer);
+	version_info_vbc->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
 
 	// Add a dummy control node for spacing.
 	Control *v_spacer = memnew(Control);
@@ -77,7 +78,6 @@ AppAbout::AppAbout() {
 
 	_about_text_label = memnew(Label);
 	_about_text_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
-	_about_text_label->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
 	_about_text_label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	version_info_vbc->add_child(_about_text_label);
 
@@ -108,7 +108,6 @@ AppAbout::AppAbout() {
 	license_thirdparty->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tc->add_child(license_thirdparty);
 
-	// TODO: modify tpl_string?
 	String tpl_string = String(APP_VERSION_NAME) + RTR(" relies on a number of third-party free and open source libraries, all compatible with the terms of its MIT license. The following is an exhaustive list of all such third-party components with their respective copyright statements and license terms.");
 	Label *tpl_label = memnew(Label(tpl_string));
 	tpl_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
