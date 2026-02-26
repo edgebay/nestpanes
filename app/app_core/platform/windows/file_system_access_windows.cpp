@@ -801,8 +801,8 @@ Error FileSystemAccessWindows::_create_file(const String &p_dir, const String &p
 		return OK;
 	}
 
-	HANDLE hFile = CreateFile(
-			(file.utf8().get_data()),
+	HANDLE hFile = CreateFileW(
+			(LPCWSTR)(file.utf16().get_data()),
 			GENERIC_WRITE,
 			0, // 不共享
 			nullptr, // 默认安全属性
