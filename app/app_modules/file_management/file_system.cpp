@@ -471,6 +471,7 @@ void FileSystem::_scan() {
 	}
 
 	if (changed) {
+		// print_line("fs changed: ", path);
 		emit_signal(SNAME("file_system_changed"), path);
 	}
 }
@@ -547,6 +548,7 @@ void FileSystem::_scan_root() {
 	}
 
 	dir->scanned = true;
+	// print_line("fs changed root: ", dir->get_path());
 	emit_signal(SNAME("file_system_changed"), dir->get_path());
 }
 

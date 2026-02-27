@@ -466,6 +466,7 @@ void FileSystemTree::_on_item_edited() {
 
 	TreeItem *ti = get_edited();
 	int col_index = get_edited_column();
+	ERR_FAIL_COND(col_index < 0);
 
 	Dictionary d = ti->get_metadata(0);
 	String from = d["path"];
@@ -589,10 +590,12 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			if (path.is_empty()) {
 				break;
 			} else if (FileSystemAccess::dir_exists(path)) {
+				grab_focus(!has_focus(true));
 				bool result = edit_selected(true); // TODO: Note select_mode
 				String name = path.get_file();
 				set_editor_selection(0, name.length());
 			} else if (FileSystemAccess::file_exists(path)) {
+				grab_focus(!has_focus(true));
 				bool result = edit_selected(true); // TODO: Note select_mode
 				String name = path.get_file();
 				set_editor_selection(0, name.rfind_char('.'));

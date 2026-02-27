@@ -280,6 +280,8 @@ bool TreeItem::is_indeterminate(int p_column) const {
 }
 
 void TreeItem::propagate_check(int p_column, bool p_emit_signal) {
+	ERR_FAIL_INDEX(p_column, cells.size());
+
 	bool ch = cells[p_column].checked;
 
 	if (p_emit_signal) {
@@ -2164,6 +2166,9 @@ void Tree::update_column(int p_col) {
 }
 
 void Tree::update_item_cell(TreeItem *p_item, int p_col) const {
+	ERR_FAIL_NULL(p_item);
+	ERR_FAIL_INDEX(p_col, p_item->cells.size());
+
 	String valtext;
 
 	p_item->cells.write[p_col].text_buf->clear();
@@ -2265,6 +2270,8 @@ void Tree::update_item_cache(TreeItem *p_item) const {
 }
 
 int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 &p_draw_size, TreeItem *p_item, int &r_self_height) {
+	ERR_FAIL_NULL_V(p_item, -1);
+
 	const real_t bottom_margin = theme_cache.panel_style->get_margin(SIDE_BOTTOM); // Extra stylebox space below the content
 	const real_t draw_height = p_draw_size.height + bottom_margin; // Visible height including bottom margin
 
@@ -2952,6 +2959,9 @@ bool Tree::_is_sibling_branch_selected(TreeItem *p_from) const {
 }
 
 void Tree::select_single_item(TreeItem *p_selected, TreeItem *p_current, int p_col, TreeItem *p_prev, bool *r_in_range, bool p_force_deselect) {
+	ERR_FAIL_NULL(p_selected);
+	ERR_FAIL_INDEX(p_col, p_selected->cells.size());
+
 	popup_editor->hide();
 
 	TreeItem::Cell &selected_cell = p_selected->cells.write[p_col];
@@ -3134,6 +3144,7 @@ int Tree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, int 
 		int col_width = find_result.column_width;
 		int col_ofs = find_result.column_offset;
 		int x = find_result.pos_x;
+		ERR_FAIL_INDEX_V(col, p_item->cells.size(), -1);
 		const TreeItem::Cell &c = p_item->cells[col];
 
 		if (find_result.button_index >= 0) {
@@ -3508,6 +3519,7 @@ void Tree::value_editor_changed(double p_value) {
 		return;
 	}
 
+	ERR_FAIL_INDEX(popup_edited_item_col, popup_edited_item->cells.size());
 	const TreeItem::Cell &c = popup_edited_item->cells[popup_edited_item_col];
 
 	line_editor->set_text(String::num(p_value, Math::range_step_decimals(c.step)));
@@ -3595,6 +3607,7 @@ void Tree::_go_left() {
 }
 
 void Tree::_go_right() {
+	ERR_FAIL_INDEX(selected_col, selected_item->cells.size());
 	int buttons = (selected_item && selected_col >= 0 && selected_col < columns.size()) ? selected_item->cells[selected_col].buttons.size() : 0;
 	if (get_tree()->is_accessibility_enabled() && selected_button < buttons - 1) {
 		selected_button++;
@@ -4022,6 +4035,7 @@ void Tree::gui_input(const Ref<InputEvent> &p_event) {
 					Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
 				}
 			} else {
+				ERR_FAIL_INDEX(popup_edited_item_col, popup_edited_item->cells.size());
 				const TreeItem::Cell &c = popup_edited_item->cells[popup_edited_item_col];
 				float diff_y = -mm->get_relative().y;
 				diff_y = Math::pow(Math::abs(diff_y), 1.8f) * SIGN(diff_y);
@@ -4515,8 +4529,11 @@ bool Tree::edit_selected(bool p_force_edit) {
 }
 
 Rect2 Tree::_get_item_focus_rect(const TreeItem *p_item) const {
+	// ERR_FAIL_NULL_V(p_item, Rect2());
+	// ERR_FAIL_INDEX_V(selected_col, p_item->cells.size(), Rect2());
+
 	Rect2 rect;
-	if (select_mode == SELECT_ROW) {
+	if (select_mode == SELECT_ROW && selected_col >= 0 && selected_col < p_item->cells.size()) {
 		rect = p_item->cells[selected_col].focus_rect;
 	} else {
 		rect = p_item->focus_rect;
