@@ -86,6 +86,8 @@ public:
 	static bool is_valid_path(const String &p_path);
 	static bool is_valid_dir_path(const String &p_path);
 	// static String fix_path(const String &p_path);
+	static bool is_root(const String &p_path);
+	static bool is_drive(const String &p_path);
 
 	static String parse_time(uint64_t p_timestamp, bool p_use_local_time = true);
 	static String parse_size(uint64_t p_bytes);

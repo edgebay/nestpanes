@@ -175,7 +175,8 @@ TreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, TreeItem *p_paren
 	Dictionary d;
 	d["name"] = p_fi.name;
 	d["path"] = path;
-	d["is_dir"] = is_dir;
+	d["is_dir"] = is_dir; // TODO: Remove, use type
+	d["type"] = p_fi.type;
 	item->set_metadata(0, d);
 
 	return item;
@@ -251,7 +252,8 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 	Dictionary d;
 	d["name"] = p_fi.name;
 	d["path"] = p_fi.path;
-	d["is_dir"] = is_dir;
+	d["is_dir"] = is_dir; // TODO: Remove, use type
+	d["type"] = p_fi.type;
 	item->set_metadata(0, d);
 
 	return item;
@@ -405,7 +407,12 @@ void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p
 		_build_selected_items_menu();
 	} else {
 		Dictionary d = cursor_item->get_metadata(0);
-		if (d["is_dir"]) {
+		String type = d["type"];
+		if (FileSystemAccess::is_root_type(type)) {
+			return;
+		} else if (FileSystemAccess::is_drive_type(type)) {
+			return;
+		} else if (FileSystemAccess::is_dir_type(type)) {
 			_build_folder_menu();
 		} else {
 			_build_file_menu();
@@ -437,7 +444,7 @@ void FileSystemTree::_on_empty_clicked(const Vector2 &p_pos, MouseButton p_butto
 	ERR_FAIL_NULL(root_item);
 
 	String path = root_item->get_metadata(0);
-	if (path.is_empty()) {
+	if (path.is_empty() || path == COMPUTER_PATH) { // TODO: use FileSystemAccess::is_root_type(type)
 		return;
 	}
 

@@ -118,6 +118,9 @@ public:
 	static bool is_root_type(const FileInfo &p_info);
 	static bool is_drive_type(const FileInfo &p_info);
 	static bool is_dir_type(const FileInfo &p_info);
+	static bool is_root_type(const String &p_type);
+	static bool is_drive_type(const String &p_type);
+	static bool is_dir_type(const String &p_type);
 
 	// TODO: return Error
 	static bool cut(const Vector<String> &p_files);

@@ -177,6 +177,25 @@ bool FileSystem::is_valid_dir_path(const String &p_path) {
 	return p_path == COMPUTER_PATH || FileSystemAccess::dir_exists(p_path);
 }
 
+bool FileSystem::is_root(const String &p_path) {
+	return p_path == COMPUTER_PATH;
+}
+
+bool FileSystem::is_drive(const String &p_path) {
+	// TODO: Optimize
+	List<FileInfo> drives;
+	Error err = FileSystemAccess::list_drives(drives);
+	if (err == OK) {
+		for (const FileInfo &drive : drives) {
+			if (drive.path == p_path) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 // String FileSystem::fix_path(const String &p_path) {
 // 	String path;
 // 	path = p_path.simplify_path();

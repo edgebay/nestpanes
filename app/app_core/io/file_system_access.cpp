@@ -76,15 +76,27 @@ bool FileSystemAccess::dir_exists(const String &p_dir) {
 }
 
 bool FileSystemAccess::is_root_type(const FileInfo &p_info) {
-	return p_info.type == ROOT_TYPE;
+	return is_root_type(p_info.type);
 }
 
 bool FileSystemAccess::is_drive_type(const FileInfo &p_info) {
-	return p_info.type == DRIVE_TYPE;
+	return is_drive_type(p_info.type);
 }
 
 bool FileSystemAccess::is_dir_type(const FileInfo &p_info) {
-	return p_info.type == FOLDER_TYPE || p_info.type == DRIVE_TYPE || p_info.type == ROOT_TYPE;
+	return is_dir_type(p_info.type);
+}
+
+bool FileSystemAccess::is_root_type(const String &p_type) {
+	return p_type == ROOT_TYPE;
+}
+
+bool FileSystemAccess::is_drive_type(const String &p_type) {
+	return p_type == DRIVE_TYPE;
+}
+
+bool FileSystemAccess::is_dir_type(const String &p_type) {
+	return p_type == FOLDER_TYPE || p_type == DRIVE_TYPE || p_type == ROOT_TYPE;
 }
 
 bool FileSystemAccess::cut(const Vector<String> &p_files) {
