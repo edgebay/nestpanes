@@ -72,8 +72,9 @@ protected:
 	}
 
 	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false) const = 0;
-	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) const = 0;
+#if 0 // TODO: handle DRIVE_TYPE
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const = 0;
+#endif
 	virtual Error _list_drives(List<FileInfo> &r_drives) const = 0;
 
 	virtual bool _path_exists(const String &p_file) const = 0;
@@ -101,8 +102,10 @@ public:
 	FILE_SYSTEM_ACCESS_FUNC0(list_dir_end);
 
 	static Ref<Texture2D> get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false);
-	static Error get_file_info(const String &p_file_path, FileInfo &r_info);
+	FILE_SYSTEM_ACCESS_FUNC2_V(Error, FAILED, get_file_info, (const String &), file_path, (FileInfo &), info);
+#if 0 // TODO: handle DRIVE_TYPE
 	static Error list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME);
+#endif
 	static Error list_drives(List<FileInfo> &r_drives);
 
 	static Error make_dir(const String &p_dir);
@@ -111,6 +114,10 @@ public:
 	static bool path_exists(const String &p_path);
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);
+
+	static bool is_root_type(const FileInfo &p_info);
+	static bool is_drive_type(const FileInfo &p_info);
+	static bool is_dir_type(const FileInfo &p_info);
 
 	// TODO: return Error
 	static bool cut(const Vector<String> &p_files);

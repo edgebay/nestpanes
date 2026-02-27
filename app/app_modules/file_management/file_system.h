@@ -73,7 +73,7 @@ private:
 
 	FileSystemDirectory *file_system_root = nullptr;
 
-	FileSystemDirectory *_create_dir(const String &p_path) const;
+	FileSystemDirectory *_create_dir(const String &p_path);
 	void _scan();
 	void _scan_root();
 	void _replace_dir(FileSystemDirectory *p_old, FileSystemDirectory *p_new);
@@ -85,8 +85,7 @@ protected:
 public:
 	static bool is_valid_path(const String &p_path);
 	static bool is_valid_dir_path(const String &p_path);
-	// TODO
-	// static String normalize_path(const String &p_path);
+	// static String fix_path(const String &p_path);
 
 	static String parse_time(uint64_t p_timestamp, bool p_use_local_time = true);
 	static String parse_size(uint64_t p_bytes);

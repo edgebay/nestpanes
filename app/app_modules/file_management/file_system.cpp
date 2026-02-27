@@ -78,7 +78,13 @@ FileSystemDirectory *FileSystemDirectory::get_subdir(int p_idx) const {
 
 FileSystemDirectory *FileSystemDirectory::get_subdir_by_path(const String &p_path) const {
 	for (FileSystemDirectory *dir : subdirs) {
-		if (dir->get_path() == p_path) {
+		String path = dir->get_path();
+#ifdef WINDOWS_ENABLED
+		if (path == p_path || path.to_lower() == p_path.to_lower()) {
+			// TODO: Sync the name case to the actual filesystem name.
+#else
+		if (path == p_path) {
+#endif
 			return dir;
 		}
 	}
@@ -88,7 +94,13 @@ FileSystemDirectory *FileSystemDirectory::get_subdir_by_path(const String &p_pat
 
 FileSystemDirectory *FileSystemDirectory::get_subdir_by_name(const String &p_name) const {
 	for (FileSystemDirectory *dir : subdirs) {
-		if (dir->get_name() == p_name) {
+		String name = dir->get_name();
+#ifdef WINDOWS_ENABLED
+		if (name == p_name || name.to_lower() == p_name.to_lower()) {
+			// TODO: Sync the name case to the actual filesystem name.
+#else
+		if (name == p_name) {
+#endif
 			return dir;
 		}
 	}
@@ -107,6 +119,7 @@ const FileInfo *FileSystemDirectory::get_file(int p_idx) const {
 
 const FileInfo *FileSystemDirectory::get_file_by_path(const String &p_path) const {
 	for (FileInfo *fi : files) {
+		// TODO: Sync the name case to the actual filesystem name.
 		if (fi->path == p_path) {
 			return fi;
 		}
@@ -117,6 +130,7 @@ const FileInfo *FileSystemDirectory::get_file_by_path(const String &p_path) cons
 
 const FileInfo *FileSystemDirectory::get_file_by_name(const String &p_name) const {
 	for (FileInfo *fi : files) {
+		// TODO: Sync the name case to the actual filesystem name.
 		if (fi->name == p_name) {
 			return fi;
 		}
@@ -141,7 +155,7 @@ void FileSystemDirectory::clear() {
 
 void FileSystemDirectory::setup(FileSystemDirectory *p_parent, const FileInfo &p_info) {
 	ERR_FAIL_NULL(p_parent);
-	ERR_FAIL_COND(p_info.type != FOLDER_TYPE);
+	ERR_FAIL_COND(!FileSystemAccess::is_dir_type(p_info));
 
 	parent = p_parent;
 	info = p_info;
@@ -162,6 +176,13 @@ bool FileSystem::is_valid_path(const String &p_path) {
 bool FileSystem::is_valid_dir_path(const String &p_path) {
 	return p_path == COMPUTER_PATH || FileSystemAccess::dir_exists(p_path);
 }
+
+// String FileSystem::fix_path(const String &p_path) {
+// 	String path;
+// 	path = p_path.simplify_path();
+// 	// path = p_path.replace_char('/', '\\'); // TODO
+// 	return path;
+// }
 
 String FileSystem::parse_time(uint64_t p_timestamp, bool p_use_local_time) {
 	String time = "";
@@ -263,7 +284,7 @@ const FileInfo *FileSystem::get_file(const String &p_path) const {
 	return found ? dir->get_file_by_name(file) : nullptr;
 }
 
-FileSystemDirectory *FileSystem::_create_dir(const String &p_path) const {
+FileSystemDirectory *FileSystem::_create_dir(const String &p_path) {
 	if (p_path == file_system_root->get_path()) {
 		return file_system_root;
 	}
@@ -279,21 +300,30 @@ FileSystemDirectory *FileSystem::_create_dir(const String &p_path) const {
 
 	Vector<String> names = path.split("/");
 
+	Vector<String> paths;
+
 	bool created = false;
 	bool found = false;
 	FileSystemDirectory *dir = file_system_root;
 	for (int i = 0; i < names.size(); i++) {
 		String name = names[i];
 		FileSystemDirectory *subdir = dir->get_subdir_by_name(name);
+		// print_line("find: ", name, subdir, dir->get_path());
 		if (subdir) {
 			found = true;
 			dir = subdir;
 			continue;
 		}
 
-		String subdir_path = dir->get_path().path_join(name);
+		String subdir_path;
+		if (dir == file_system_root) {
+			subdir_path = name;
+		} else {
+			subdir_path = dir->get_path().path_join(name);
+		}
 		FileInfo file_info;
 		Error err = FileSystemAccess::get_file_info(subdir_path, file_info);
+		// print_line("fi: ", subdir_path, err);
 		if (err != OK) {
 			created = false;
 			found = false;
@@ -304,12 +334,18 @@ FileSystemDirectory *FileSystem::_create_dir(const String &p_path) const {
 		subdir->setup(dir, file_info);
 		dir->subdirs.push_back(subdir);
 
+		dir->scanned = true;
+		paths.push_back(dir->get_path());
+
 		dir = subdir;
 		created = true;
 	}
 	if (!found && !created) {
 		return nullptr;
 	}
+
+	// print_line("create, scan: ", paths);
+	scan(paths, true);
 
 	return dir;
 }
@@ -374,7 +410,7 @@ void FileSystem::_scan() {
 			// print_line("next: ", file_info.name);
 
 			if (file_info.name != "." && file_info.name != "..") {
-				if (file_info.type == FOLDER_TYPE) {
+				if (FileSystemAccess::is_dir_type(file_info)) {
 					FileSystemDirectory *subdir = memnew(FileSystemDirectory);
 					subdir->setup(dir, file_info);
 					dir->subdirs.push_back(subdir);
@@ -438,7 +474,7 @@ void FileSystem::_scan_root() {
 			file_info.name = "Z:";
 			file_info.path = file_info.name;
 			file_info.icon = FileSystemAccess::get_icon(COMPUTER_PATH);
-			file_info.type = FOLDER_TYPE;
+			file_info.type = DRIVE_TYPE;
 			drives.push_back(file_info);
 		}
 #endif
@@ -513,7 +549,18 @@ void FileSystem::_replace_dir(FileSystemDirectory *p_old, FileSystemDirectory *p
 		// print_line("move sub subdirs: ", i, path, to_dirs.size());
 		for (int j = 0; j < to_dirs.size(); j++) {
 			FileSystemDirectory *to_subdir = to_dirs[j];
-			if (to_subdir->get_path() == path) {
+			String to_path = to_subdir->get_path();
+			// print_line("compare path: ", path, to_path);
+
+#ifdef WINDOWS_ENABLED
+			if (to_path == path || to_path.to_lower() == path.to_lower()) {
+				// TODO: Sync the name case to the actual filesystem name.
+				// if (to_path != path) {
+				// 	print_line("fix path: ", path, to_path);
+				// }
+#else
+			if (to_path == path) {
+#endif
 				// print_line("found subdirs: ", j);
 
 				for (FileSystemDirectory *dir : subdir->subdirs) {
@@ -597,7 +644,7 @@ FileSystem::FileSystem() {
 	file_info.name = COMPUTER_PATH;
 	file_info.path = COMPUTER_PATH;
 	file_info.icon = FileSystemAccess::get_icon(COMPUTER_PATH);
-	file_info.type = FOLDER_TYPE; // TODO
+	file_info.type = ROOT_TYPE;
 
 	APP_SHORTCUT("file_management/copy_path", RTR("Copy Path"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::C);
 

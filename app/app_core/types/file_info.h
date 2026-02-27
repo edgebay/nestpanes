@@ -6,6 +6,8 @@
 #include "scene/resources/texture.h"
 
 #define FOLDER_TYPE "folder"
+#define DRIVE_TYPE "drive"
+#define ROOT_TYPE "root"
 
 enum class FileSortOption {
 	FILE_SORT_NAME = 0,

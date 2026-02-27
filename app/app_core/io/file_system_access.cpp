@@ -38,15 +38,12 @@ Ref<Texture2D> FileSystemAccess::get_icon(const String &p_file_path, bool p_is_d
 	return FileSystemAccess::get_singleton()->_get_icon(p_file_path, p_is_dir, p_is_hidden);
 }
 
-Error FileSystemAccess::get_file_info(const String &p_file_path, FileInfo &r_info) {
-	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
-	return FileSystemAccess::get_singleton()->_get_file_info(p_file_path, r_info);
-}
-
+#if 0 // TODO: handle DRIVE_TYPE
 Error FileSystemAccess::list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
 	return FileSystemAccess::get_singleton()->_list_file_infos(p_dir, r_subdirs, r_files, p_file_sort);
 }
+#endif
 
 Error FileSystemAccess::list_drives(List<FileInfo> &r_drives) {
 	ERR_FAIL_NULL_V_MSG(FileSystemAccess::get_singleton(), FAILED, "FileSystemAccess not instantiated yet.");
@@ -76,6 +73,18 @@ bool FileSystemAccess::file_exists(const String &p_file) {
 
 bool FileSystemAccess::dir_exists(const String &p_dir) {
 	return DirAccess::dir_exists_absolute(p_dir);
+}
+
+bool FileSystemAccess::is_root_type(const FileInfo &p_info) {
+	return p_info.type == ROOT_TYPE;
+}
+
+bool FileSystemAccess::is_drive_type(const FileInfo &p_info) {
+	return p_info.type == DRIVE_TYPE;
+}
+
+bool FileSystemAccess::is_dir_type(const FileInfo &p_info) {
+	return p_info.type == FOLDER_TYPE || p_info.type == DRIVE_TYPE || p_info.type == ROOT_TYPE;
 }
 
 bool FileSystemAccess::cut(const Vector<String> &p_files) {

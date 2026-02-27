@@ -137,7 +137,7 @@ void FileSystemTree::_update_display_mode() {
 TreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, TreeItem *p_parent, int p_index) {
 	ERR_FAIL_NULL_V(p_parent, nullptr);
 
-	bool is_dir = p_fi.type == FOLDER_TYPE;
+	bool is_dir = FileSystemAccess::is_dir_type(p_fi);
 	Ref<Texture2D> icon = p_fi.icon;
 	if (!icon.is_valid()) {
 		Ref<Texture2D> folder = get_app_theme_icon(SNAME("Folder")); // TODO
@@ -184,7 +184,7 @@ TreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, TreeItem *p_paren
 TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_parent, int p_index) {
 	ERR_FAIL_NULL_V(p_parent, nullptr);
 
-	bool is_dir = p_fi.type == FOLDER_TYPE;
+	bool is_dir = FileSystemAccess::is_dir_type(p_fi);
 	Ref<Texture2D> icon = p_fi.icon;
 	if (!icon.is_valid()) {
 		Ref<Texture2D> folder = get_app_theme_icon(SNAME("Folder")); // TODO
@@ -222,8 +222,12 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 			} break;
 			case COLUMN_TYPE_TYPE: {
 				String type = p_fi.type;
-				if (type == FOLDER_TYPE) {
-					type = RTR("FOLDER");
+				if (FileSystemAccess::is_root_type(p_fi)) {
+					type = "";
+				} else if (FileSystemAccess::is_drive_type(p_fi)) {
+					type = ""; // RTR("Disk"); // TODO: Distinguish local disk and network drive.
+				} else if (FileSystemAccess::is_dir_type(p_fi)) {
+					type = RTR("Folder");
 				} else {
 					type = type.to_upper();
 				}
@@ -231,7 +235,7 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 			} break;
 			case COLUMN_TYPE_SIZE: {
 				String size = "";
-				if (p_fi.type != FOLDER_TYPE) {
+				if (!FileSystemAccess::is_dir_type(p_fi)) {
 					size = FileSystem::parse_size(p_fi.size);
 				}
 				item->set_text(column, size);
@@ -616,6 +620,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 
 		case FileContextMenu::FILE_MENU_NEW_TEXTFILE: {
 			String dir = p_selected.is_empty() ? "" : p_selected[0];
+			// print_line("new text dir: ", dir);
 			if (!FileSystemAccess::dir_exists(dir)) {
 				break;
 			}
@@ -623,13 +628,16 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			String new_name = RTR("new file");
 			String name = new_name + ".txt";
 			String path = dir.path_join(name);
+			// print_line("path: ", new_name, path, FileSystemAccess::file_exists(path));
 			int i = 1;
 			while (FileSystemAccess::file_exists(path)) {
 				name = vformat("%s (%d).txt", new_name, i);
 				path = dir.path_join(name);
+				// print_line("i: ", i, name, path);
 				i++;
 			}
 			Error err = FileSystemAccess::create_file(dir, name);
+			// print_line("create file: ", err);
 			if (err == OK) {
 				// deselect_all(); // TODO
 				to_select = path;

@@ -155,6 +155,8 @@ Ref<Texture2D> FileSystemAccessWindows::_get_this_pc_icon() const {
 }
 
 Error FileSystemAccessWindows::_list_dir_begin(const String &p_path) {
+	ERR_FAIL_COND_V_MSG(p_path == COMPUTER_PATH, ERR_INVALID_PARAMETER, "Use list_drives() to list computer drives.");
+
 	GLOBAL_LOCK_FUNCTION
 
 	list_dir_end();
@@ -205,7 +207,7 @@ Error FileSystemAccessWindows::_get_next(FileInfo &r_info) {
 		r_info.type = name.get_extension();
 		r_info.size = (static_cast<uint64_t>(p->fu.nFileSizeHigh) << 32) + p->fu.nFileSizeLow;
 	} else {
-		r_info.type = FOLDER_TYPE;
+		r_info.type = FOLDER_TYPE; // Won't be a drive.
 		r_info.size = 0;
 	}
 
@@ -237,7 +239,9 @@ Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, boo
 
 	DWORD file_attributes = p_is_dir ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
 
-	// 请求获取图标（大图标）
+	// 请求获取图标
+	// DWORD res = SHGetFileInfoW(
+	// 		(LPCWSTR)(p_file_path.utf16().get_data()),
 	DWORD res = SHGetFileInfo(
 			(p_file_path.utf8().get_data()),
 			file_attributes,
@@ -274,16 +278,24 @@ Ref<Texture2D> FileSystemAccessWindows::_get_icon(const String &p_file_path, boo
 	return texture;
 }
 
-Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInfo &r_info) const {
+// TODO
+// 判断是否是本地磁盘（固定磁盘或可移动磁盘）
+bool is_local_drive(const String &p_drive_ath) {
+	UINT driveType = GetDriveTypeW((LPCWSTR)(p_drive_ath.utf16().get_data()));
+	return (driveType == DRIVE_FIXED || driveType == DRIVE_REMOVABLE);
+}
+
+Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInfo &r_info) {
+	// print_line("get fi: ", p_file_path);
 	WIN32_FILE_ATTRIBUTE_DATA fileData;
-	// if (!GetFileAttributesEx((LPCWSTR)(p_file_path.utf16().get_data()), GetFileExInfoStandard, &fileData)) {
-	if (!GetFileAttributesEx((p_file_path.utf8().get_data()), GetFileExInfoStandard, &fileData)) {
+	if (!GetFileAttributesExW((LPCWSTR)(p_file_path.utf16().get_data()), GetFileExInfoStandard, &fileData)) {
 		return FAILED;
 	}
 
 	bool is_dir = (fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 	bool is_hidden = (fileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0;
 
+	// TODO: Sync the name case to the actual filesystem name.
 	r_info.name = p_file_path.get_file();
 	r_info.path = p_file_path;
 
@@ -299,12 +311,28 @@ Error FileSystemAccessWindows::_get_file_info(const String &p_file_path, FileInf
 		r_info.size = ((uint64_t)fileData.nFileSizeHigh << 32) | fileData.nFileSizeLow;
 	} else {
 		r_info.type = FOLDER_TYPE;
+		if (p_file_path.length() <= 3) {
+			List<FileInfo> drives;
+			Error err = _list_drives(drives);
+			// print_line("check drives: ", err);
+			if (err == OK) {
+				for (const FileInfo &drive : drives) {
+					if (drive.path == p_file_path) {
+						r_info.type = DRIVE_TYPE;
+						break;
+					}
+				}
+			}
+		}
+
 		r_info.size = 0;
 	}
+	// print_line("type: ", r_info.type);
 
 	return OK;
 }
 
+#if 0 // TODO: handle DRIVE_TYPE
 Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort) const {
 	if (p_dir == COMPUTER_PATH) {
 		return _list_drives(r_subdirs);
@@ -366,6 +394,7 @@ Error FileSystemAccessWindows::_list_file_infos(const String &p_dir, List<FileIn
 
 	return OK;
 }
+#endif
 
 Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 	const uint64_t MAX_DRIVES = 26;
@@ -386,7 +415,7 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 
 			file_info.hidden = false;
 
-			file_info.type = FOLDER_TYPE;
+			file_info.type = DRIVE_TYPE;
 			file_info.size = 0;
 
 			r_drives.push_back(file_info);

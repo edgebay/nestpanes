@@ -99,6 +99,8 @@ PaneBase *PaneManager::create(const StringName &p_type) {
 }
 
 void PaneManager::destroy(PaneBase *p_pane) {
+	ERR_FAIL_NULL(p_pane);
+
 	String type = p_pane->get_class_name();
 
 	if (pane_map.has(type)) {

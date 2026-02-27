@@ -176,12 +176,11 @@ void FilePane::_update_ui() {
 	}
 
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
-	// print_line("update ui: ", dir, current_path);
+	// print_line("update ui: ", current_path, dir, dir->get_name(), dir->get_path());
 	if (!dir) {
 		file_system->scan(current_path, true);
 		return;
 	}
-
 	_update_ui_nocheck(dir);
 }
 
@@ -199,7 +198,7 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 		dir_up->set_disabled(true);
 	}
 
-	address_bar->set_text(current_path);
+	address_bar->set_text(p_dir->get_path());
 	// TODO
 	// for (local_history) histories->add_item(history);
 	// histories->select(local_history_pos);
@@ -308,6 +307,7 @@ void FilePane::_on_address_submitted(const String &p_path) {
 		return;
 	}
 
+	// TODO: Sync the name case to the actual filesystem name.
 	set_path(p_path);
 }
 
@@ -372,12 +372,14 @@ void FilePane::_on_file_system_changed(const String &p_path) {
 }
 
 void FilePane::_set_path(const String &p_path, bool p_update_history) {
-	// print_line("set path: ", p_path, current_path, file_system->is_valid_dir_path(p_path), p_update_history);
-	if (current_path == p_path || (!file_system->is_valid_dir_path(p_path))) {
+	String path = p_path.simplify_path();
+	// print_line("set path: ", p_path, path, current_path, file_system->is_valid_dir_path(path), p_update_history);
+	if (current_path == path || (!file_system->is_valid_dir_path(path))) {
 		return;
 	}
 
-	current_path = p_path;
+	// TODO: Sync the name case to the actual filesystem name.
+	current_path = path;
 	emit_signal(SNAME("path_changed"), this);
 
 	if (p_update_history) {

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: NestPanes 0.1\n"
 "Report-Msgid-Bugs-To: https://github.com/edgebay/nestpanes\n"
-"POT-Creation-Date: 2026-02-25 23:35+0800\n"
+"POT-Creation-Date: 2026-02-27 16:28+0800\n"
 "PO-Revision-Date: 2026-02-25 20:49+0800\n"
 "Last-Translator: Bay <edgebay025@gmail.com>\n"
 "Language-Team: Chinese\n"
@@ -161,9 +161,6 @@ msgstr "类型"
 
 msgid "Size"
 msgstr "大小"
-
-msgid "FOLDER"
-msgstr "文件夹"
 
 msgid "new folder"
 msgstr "新建文件夹"

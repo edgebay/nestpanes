@@ -22,8 +22,10 @@ protected:
 	virtual void _list_dir_end() override;
 
 	virtual Ref<Texture2D> _get_icon(const String &p_file_path, bool p_is_dir = false, bool p_is_hidden = false) const override;
-	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) const override;
+	virtual Error _get_file_info(const String &p_file_path, FileInfo &r_info) override;
+#if 0 // TODO: handle DRIVE_TYPE
 	virtual Error _list_file_infos(const String &p_dir, List<FileInfo> &r_subdirs, List<FileInfo> &r_files, FileSortOption p_file_sort = FileSortOption::FILE_SORT_NAME) const override;
+#endif
 	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
 
 	virtual bool _path_exists(const String &p_path) const override;
