@@ -170,6 +170,7 @@ TreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, TreeItem *p_paren
 	// 	item->set_custom_bg_color(0, parent_bg_color);
 	// }
 
+	item->set_editable(0, true);
 	item->set_selectable(0, true);
 
 	Dictionary d;
@@ -206,6 +207,7 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 			case COLUMN_TYPE_NAME: {
 				item->set_text(column, p_fi.name);
 				item->set_icon(column, icon);
+				item->set_editable(column, true);
 			} break;
 			case COLUMN_TYPE_MODIFIED: {
 				String modified_time = "";
@@ -213,6 +215,7 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 					modified_time = FileSystem::parse_time(p_fi.modified_time);
 				}
 				item->set_text(column, modified_time);
+				item->set_editable(column, false);
 			} break;
 			case COLUMN_TYPE_CREATED: {
 				String creation_time = "";
@@ -220,6 +223,7 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 					creation_time = FileSystem::parse_time(p_fi.creation_time);
 				}
 				item->set_text(column, creation_time);
+				item->set_editable(column, false);
 			} break;
 			case COLUMN_TYPE_TYPE: {
 				String type = p_fi.type;
@@ -233,6 +237,7 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 					type = type.to_upper();
 				}
 				item->set_text(column, type);
+				item->set_editable(column, false);
 			} break;
 			case COLUMN_TYPE_SIZE: {
 				String size = "";
@@ -241,9 +246,9 @@ TreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, TreeItem *p_paren
 				}
 				item->set_text(column, size);
 				item->set_text_alignment(column, HorizontalAlignment::HORIZONTAL_ALIGNMENT_RIGHT);
+				item->set_editable(column, false);
 			} break;
 		}
-		// item->set_editable(column, true);
 		// item->set_selectable(column, true);
 
 		column++;
@@ -512,14 +517,17 @@ bool FileSystemTree::_rename_operation_confirm(const String &p_from, const Strin
 void FileSystemTree::_on_draw() {
 	if (rename_item) {
 		TreeItem *item = get_selected();
-		if (item && edit_selected(true)) { // TODO: Note select_mode
-			Dictionary d = item->get_metadata(0);
-			String path = d["path"];
-			String name = path.get_file();
-			if (FileSystemAccess::file_exists(path)) {
-				set_editor_selection(0, name.rfind_char('.'));
-			} else {
-				set_editor_selection(0, name.length());
+		if (item) { // TODO: Note select_mode
+			item->select(0);
+			if (edit_selected()) {
+				Dictionary d = item->get_metadata(0);
+				String path = d["path"];
+				String name = path.get_file();
+				if (FileSystemAccess::file_exists(path)) {
+					set_editor_selection(0, name.rfind_char('.'));
+				} else {
+					set_editor_selection(0, name.length());
+				}
 			}
 		}
 		rename_item = false;
@@ -590,15 +598,23 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			if (path.is_empty()) {
 				break;
 			} else if (FileSystemAccess::dir_exists(path)) {
-				grab_focus(!has_focus(true));
-				bool result = edit_selected(true); // TODO: Note select_mode
-				String name = path.get_file();
-				set_editor_selection(0, name.length());
+				TreeItem *item = get_selected();
+				if (item) {
+					item->select(0);
+					grab_focus(!has_focus(true));
+					bool result = edit_selected(); // TODO: Note select_mode
+					String name = path.get_file();
+					set_editor_selection(0, name.length());
+				}
 			} else if (FileSystemAccess::file_exists(path)) {
-				grab_focus(!has_focus(true));
-				bool result = edit_selected(true); // TODO: Note select_mode
-				String name = path.get_file();
-				set_editor_selection(0, name.rfind_char('.'));
+				TreeItem *item = get_selected();
+				if (item) {
+					item->select(0);
+					grab_focus(!has_focus(true));
+					bool result = edit_selected(); // TODO: Note select_mode
+					String name = path.get_file();
+					set_editor_selection(0, name.rfind_char('.'));
+				}
 			}
 		} break;
 
