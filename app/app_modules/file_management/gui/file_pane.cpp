@@ -156,25 +156,6 @@ void FilePane::_update_icons() {
 void FilePane::_update_ui() {
 	ERR_FAIL_NULL(file_system);
 
-	// Return the parent directory if current_path does not exist.
-	String path = current_path;
-	while (!file_system->is_valid_dir_path(path)) {
-		String base = path.get_base_dir();
-		if (base == path) {
-			if (!file_system->is_valid_dir_path(base)) {
-				path = file_system->get_root()->get_path();
-				break;
-			}
-		}
-		path = base;
-	}
-	if (path != current_path) {
-		print_line("update path");
-		// TODO: hint
-		set_path(path);
-		return;
-	}
-
 	FileSystemDirectory *dir = file_system->get_dir(current_path);
 	// print_line("update ui: ", current_path, dir, dir->get_name(), dir->get_path());
 	if (!dir) {
@@ -371,6 +352,17 @@ void FilePane::_on_file_system_changed(const String &p_path) {
 	callable_mp(this, &FilePane::_update_ui).call_deferred();
 }
 
+void FilePane::_on_reset_path(const String &p_from_path, const String &p_to_path) {
+	if (p_from_path != current_path) {
+		return;
+	}
+
+	// TODO: hint
+
+	// TODO: remove invalid path from history.
+	set_path(p_to_path);
+}
+
 void FilePane::_set_path(const String &p_path, bool p_update_history) {
 	String path = p_path.simplify_path();
 	// print_line("set path: ", p_path, path, current_path, file_system->is_valid_dir_path(path), p_update_history);
@@ -430,6 +422,7 @@ void FilePane::set_file_system(FileSystem *p_file_system) {
 
 	file_system = p_file_system;
 	file_system->connect("file_system_changed", callable_mp(this, &FilePane::_on_file_system_changed));
+	file_system->connect("reset_path", callable_mp(this, &FilePane::_on_reset_path));
 
 	context_menu->set_file_system(file_system);
 

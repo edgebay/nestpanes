@@ -80,6 +80,7 @@ private:
 	void _set_path(const String &p_path, bool p_update_history = true);
 
 	void _on_file_system_changed(const String &p_path);
+	void _on_reset_path(const String &p_from_path, const String &p_to_path);
 
 protected:
 	void _notification(int p_what);

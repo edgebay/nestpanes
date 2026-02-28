@@ -633,7 +633,23 @@ void FileSystem::scan(const String &p_path, bool p_update) {
 void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
 	for (String path : p_paths) {
 		path = path.simplify_path();
-		if (!is_valid_dir_path(path)) {
+
+		// Return the parent directory if the path does not exist.
+		String valid_path = path;
+		while (!is_valid_dir_path(valid_path)) {
+			// print_line("invalid path: ", valid_path);
+			String base = valid_path.get_base_dir();
+			if (base.is_empty() || base == valid_path) {
+				if (!is_valid_dir_path(base)) {
+					valid_path = get_root()->get_path();
+					break;
+				}
+			}
+			valid_path = base;
+		}
+		if (valid_path != path) {
+			// print_line("reset path: ", path, valid_path);
+			emit_signal(SNAME("reset_path"), path, valid_path);
 			continue;
 		}
 
@@ -656,6 +672,7 @@ void FileSystem::scan(const Vector<String> &p_paths, bool p_update) {
 
 void FileSystem::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("file_system_changed", PropertyInfo(Variant::STRING, "path")));
+	ADD_SIGNAL(MethodInfo("reset_path", PropertyInfo(Variant::STRING, "from_path"), PropertyInfo(Variant::STRING, "to_path")));
 }
 
 FileSystem::FileSystem() {
