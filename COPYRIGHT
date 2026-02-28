@@ -1,0 +1,27 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Comment:
+ Licensing information for files in this repository
+ =========================================================================
+ .
+ This file is written as a machine-readable format following the debian/copyright
+ specification. Globbing patterns (e.g. "Files: *") mean that they affect
+ all corresponding files (also recursively in subfolders), apart from those
+ with a more explicit copyright statement.
+ .
+ Licenses are given with their debian/copyright short name (or SPDX identifier
+ if no standard short name exists) and are all included in plain text at the
+ end of this file (in alphabetical order).
+Upstream-Name: NestPanes
+Upstream-Contact: Bay <edgebay025@gmail.com>
+Source: https://github.com/edgebay/nestpanes
+
+Files: app/*
+Comment: NestPanes
+Copyright: 2025-2026, Bay
+License: Expat
+
+Files: main/icon.png
+ app/themes/icons/Logo.svg
+Comment: NestPanes logo
+Copyright: 2026, Bay
+License: CC-BY-4.0

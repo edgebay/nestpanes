@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+import os
+
+import app_builders
+
+Import("env")
+
+env.app_sources = []
+
+# translations
+translation_targets = {
+	"#app/translations/app_translations.gen.cpp": Glob("#app/translations/po/*"),
+}
+for target_cpp, sources in translation_targets.items():
+	target_h = os.path.splitext(target_cpp)[0] + ".h"
+	env.CommandNoCache(
+		[target_h, target_cpp],
+		sources,
+		env.Run(app_builders.make_translations),
+	)
+
+env.add_source_files(env.app_sources, "*.cpp")
+env.add_source_files(env.app_sources, translation_targets.keys())
+
+SConscript("app_core/SCsub")
+SConscript("app_modules/SCsub")
+SConscript("gui/SCsub")
+SConscript("settings/SCsub")
+SConscript("themes/SCsub")
+SConscript("translations/SCsub")
+
+lib = env.add_library("app", env.app_sources)
+env.Prepend(LIBS=[lib])
