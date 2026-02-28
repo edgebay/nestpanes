@@ -2,42 +2,68 @@
 
 [简体中文](README_zh.md) | English
 
-A Windows desktop application based on the [Godot 4.5-stable source code](https://github.com/godotengine/godot/tree/4.5-stable).
+A Windows desktop application based on the [Godot 4.6-stable source code](https://github.com/godotengine/godot/tree/4.6-stable).
+
+![screenshot](screenshot.png)
 
 ## Features
 
-**核心功能**
+**Core Features**
 
-- 文件管理
-	- 文件浏览
-	- 基础文件操作
+- File Management
+	- File Browsing
+	- File Navigation
+	- Basic File Operations
 
-**界面布局**
+**UI Layout**
 
-- 多标签页
-- 可拆分视图
-	- 拖放标签页拆分
+- Multiple Tabs
+- Splittable View
+	- Drag-and-drop Tab Splitting
+- Save & Restore
 
 ## Roadmap
 
-- 文件管理
-	- 状态信息
-	- 详细信息
-	- 文件搜索
-	- 图片预览
-- 文本编辑器
+- File Management
+	- File Browsing Improvements
+		- File List: Add support for sorting, multi-selection, and drag-to-move operations
+		- Path Bar: Add history path display and navigation
+	- File Search
+	- Image Preview
+- Settings
+- Themes
 
 ---
 
-## Building
+## Keyboard Shortcuts
+
+| Action               | Windows          |
+| -------------------- | ---------------- |
+| New Tab              | `Ctrl+T`         |
+| Close Tab            | `Ctrl+W`         |
+| Next Tab             | `Ctrl+Tab`       |
+| Previous Tab         | `Ctrl+Shift+Tab` |
+| Toggle Left Sidebar  | `Ctrl+B`         |
+| Toggle Right Sidebar | `Ctrl+Shift+B`   |
+| Quit                 | `Ctrl+Q`         |
+
+---
+
+## Building from Source
+
+### Environment Setup
+
+Please refer to the Godot Engine development documentation for setup instructions.
+
+### Building
 
 ```
 scons
 ```
 
-## Unit testing
+### Testing
 
-Compile with the `tests` build option:
+Build with the `tests` flag:
 
 ```
 scons tests=yes
