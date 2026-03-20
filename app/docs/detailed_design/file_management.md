@@ -97,7 +97,16 @@ file_management/
 
 #### 类：`FileSystemTree`
 
-##### 树视图与列表视图实现方案
+| 属性     | 说明                                                         |
+| -------- | ------------------------------------------------------------ |
+| **文件** | `app/app_modules/file_management/gui/file_system_tree.cpp/h` |
+| **职责** | 文件树/列表统一控件，支持树视图和列表视图两种显示模式        |
+
+---
+
+##### 设计背景
+
+###### 树视图与列表视图实现方案
 
 **采用单一类 `FileSystemTree`，通过配置参数切换显示模式**
 
@@ -105,7 +114,30 @@ file_management/
 1. 树视图和列表视图共享大量逻辑：选择、右键菜单、拖放、键盘导航、文件图标赋值等
 2. 两者的主要差异仅在：是否显示展开/折叠箭头、是否展示子节点、布局排列方式
 3. 统一类可避免交互逻辑的重复实现和同步维护问题
-4. 当前文档中文件列表的交互矩阵已经和文件树非常相似
+
+###### 继承基类选择：`Control`（而非 `Tree`）
+
+初版实现继承自 Godot 内置 `Tree` 控件，在使用过程中暴露出以下无法在子类中解决的限制：
+
+| #   | 限制                       | 具体问题                                                                                                                                                       |
+| --- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **SelectMode 互斥**        | `Tree` 的 `SELECT_ROW` 与 `SELECT_MULTI` 互斥——列表视图需要按行选中，同时需要多选。目前只能取 `SELECT_ROW` 而放弃 `SELECT_MULTI`，反之亦然。                   |
+| 2   | **无法实现框选**           | `Tree` 的 `draw_item` 等绘制方法均为 **非虚函数**，子类无法覆盖绘制流程；即使在 `NOTIFICATION_DRAW` 中额外绘制框选矩形，也会被 Tree 的内部重绘覆盖或层级错误。 |
+| 3   | **默认输入处理拦截快捷键** | `Tree::gui_input` 内置了增量搜索、方向键折叠/展开、PageUp/Down 等逻辑，这些行为会影响其他控件的键盘事件触发及处理。                                            |
+
+因此，计划将 `FileSystemTree` 的基类从 `Tree` 改为 `Control`，自行管理项数据、绘制、输入和滚动。
+
+---
+
+##### UI 设计
+
+- FileSystemTree
+	- Title - SplitContainer
+	- Items - FileSystemTreeItem
+
+- 标题行由拆分容器和多个可点击子节点构成，每个子节点对应一列的列标题，支持调整列宽
+
+---
 
 ##### 交互事件矩阵 (Interaction Event Matrix) - 文件树
 
@@ -157,7 +189,7 @@ file_management/
 ##### 交互事件矩阵 (Interaction Event Matrix) - 文件列表
 
 > 与文件树矩阵的关键差异：
-> - 文件夹/驱动器的双击行为为“上报触发”（进入目录）而非“展开/折叠”
+> - 文件夹/驱动器的双击行为为"上报触发"（进入目录）而非"展开/折叠"
 > - Ctrl+滚轮滚动用于切换查看方式（列表/详细信息）
 > - 支持 Ctrl+A 全选和 Ctrl+V 粘贴到当前目录
 > - 无左/右箭头键的展开/折叠操作
@@ -206,6 +238,204 @@ file_management/
 | **End**            | 跳至末项                                       | 同左                       | 同左                           | 同左                       |
 | **PageUp**         | 上翻页                                         | 同左                       | 同左                           | 同左                       |
 | **PageDown**       | 下翻页                                         | 同左                       | 同左                           | 同左                       |
+
+---
+
+##### 参考图表
+
+###### 绘制流程
+
+```mermaid
+flowchart TD
+    A[NOTIFICATION_DRAW] --> B{display_mode}
+    B -->|TREE| C[计算 content_rect]
+    B -->|LIST| D[绘制列标题行]
+    D --> C
+    C --> E[遍历可见项]
+    E --> F[_draw_item]
+    F --> G{项是否在可视区域}
+    G -->|否, 在上方| H[跳过, 累加 ofs_y]
+    G -->|否, 在下方| I[终止遍历]
+    G -->|是| J[_draw_item_row]
+    J --> K[绘制行背景\n选中/悬停/普通]
+    K --> L{树模式?}
+    L -->|是| M[绘制缩进 + 折叠箭头]
+    L -->|否| N[跳过缩进]
+    M --> O[绘制图标 + 名称列]
+    N --> O
+    O --> P{列表模式?}
+    P -->|是| Q[绘制其余列\n修改时间/类型/大小]
+    P -->|否| R[跳过]
+    Q --> S[缓存 row_rect]
+    R --> S
+    S --> T{有子项且未折叠?}
+    T -->|是| U[递归 _draw_item\nindent + 1]
+    T -->|否| V[继续下一项]
+    U --> V
+    V --> E
+    E --> X[_draw_box_selection\n仅框选中]
+    X --> Y[_update_scrollbars]
+```
+
+---
+
+###### 鼠标输入处理流程
+
+```mermaid
+flowchart TD
+    A[gui_input] --> B{事件类型}
+    B -->|MouseButton| C[_gui_input_mouse_button]
+    C --> D{按钮}
+    D -->|LEFT pressed| E[get_item_at_position]
+    E --> F{命中项?}
+    F -->|否| G{列标题区域?}
+    G -->|是| H[处理列排序]
+    G -->|否| I[deselect_all\n开始检测拖拽]
+    F -->|是| J{点击折叠箭头?}
+    J -->|是| K[toggle_item_collapsed]
+    J -->|否| L{修饰键?}
+    L -->|Ctrl| M[toggle_item_selected]
+    L -->|Shift| N[select_range\nanchor → item]
+    L -->|无| O[select_item\n开始检测拖拽]
+    D -->|LEFT released| P{拖拽中?}
+    P -->|BOX_SELECTION| Q[_end_box_selection]
+    P -->|ITEM| R[完成拖放]
+    P -->|NONE| S[结束检测]
+    D -->|LEFT double| T[emit item_activated]
+    D -->|RIGHT pressed| U[_handle_right_click]
+    U --> V{命中项?}
+    V -->|否| W[deselect_all\n_build_empty_menu\npopup]
+    V -->|是| X{已在多选中?}
+    X -->|是| Y[_build_selected_items_menu\npopup]
+    X -->|否| Z[select_item\n按类型构建菜单\npopup]
+    D -->|WHEEL| AA[滚动处理]
+```
+
+###### 键盘输入处理流程
+
+```mermaid
+flowchart TD
+    A[_gui_input_key pressed] --> B{按键}
+    B -->|UP/DOWN| C{修饰键?}
+    C -->|无| D[移动 cursor\nselect_item]
+    C -->|Shift| E[移动 cursor\nselect_range\nanchor → cursor]
+    C -->|Ctrl| F[仅移动 cursor\n不改变选中]
+    C -->|Ctrl+Shift| G[移动 cursor\n累加选中范围]
+    B -->|LEFT| H{树模式?}
+    H -->|是| I{当前项展开?}
+    I -->|是| J[折叠当前项]
+    I -->|否| K[cursor 移至父节点]
+    H -->|否| L[忽略]
+    B -->|RIGHT| M{树模式?}
+    M -->|是| N{当前项折叠?}
+    N -->|是| O[展开当前项]
+    N -->|否| P[cursor 移至第一个子节点]
+    M -->|否| L
+    B -->|ENTER| Q{当前项是目录?\n且树模式}
+    Q -->|是| R[toggle_item_collapsed]
+    Q -->|否| S[emit item_activated]
+    B -->|F2| T[edit_item cursor]
+    B -->|DELETE| U[process_menu_id DELETE]
+    B -->|HOME| V[cursor 移至首项]
+    B -->|END| W[cursor 移至末项]
+    B -->|PAGEUP| X[cursor 上移\n一页可见行数]
+    B -->|PAGEDOWN| Y[cursor 下移\n一页可见行数]
+    B -->|SPACE| Z[选中焦点项]
+    D --> AA[ensure_cursor_visible]
+    E --> AA
+    F --> AA
+    G --> AA
+```
+
+---
+
+###### 框选状态机
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+
+    Idle --> DetectingDrag : 左键按下空白区域\n/ 记录 drag_from
+
+    DetectingDrag --> BoxSelecting : 鼠标移动 > 阈值\n/ 快照选中状态
+    DetectingDrag --> Idle : 左键释放 (未超阈值)\n/ deselect_all
+
+    BoxSelecting --> BoxSelecting : 鼠标移动\n/ 更新 drag_to\n碰撞检测更新选中\nqueue_redraw
+    BoxSelecting --> Idle : 左键释放\n/ _end_box_selection\n发射信号
+    BoxSelecting --> Idle : 右键按下\n/ _cancel_box_selection\n恢复快照
+
+    note right of BoxSelecting
+        碰撞检测逻辑:
+        无修饰键: 仅选中矩形内项
+        Ctrl: 切换矩形内项 (基于快照)
+        Shift: 选中矩形内项 (累加)
+    end note
+```
+
+---
+
+###### 重命名流程
+
+```mermaid
+flowchart TD
+    A[触发重命名] --> B{来源}
+    B -->|F2 键| C[edit_item cursor]
+    B -->|右键菜单| D[process_menu_id RENAME]
+    B -->|新建后自动| E["rename_item = true\nto_select = path"]
+    C --> F[定位 LineEdit\n到项名称区域]
+    D --> F
+    E --> G[下帧 _on_draw 检测]
+    G --> H{rename_item?}
+    H -->|是| F
+    H -->|否| I[跳过]
+    F --> J[显示 LineEdit\n填入当前名称]
+    J --> K{文件还是文件夹?}
+    K -->|文件| L[选中不含扩展名部分\nset_editor_selection\n0 到 rfind '.']
+    K -->|文件夹| M[全选名称\nset_editor_selection\n0 到 length]
+    L --> N[等待用户输入]
+    M --> N
+    N --> O{用户操作}
+    O -->|Enter| P[_on_line_edit_confirmed]
+    O -->|Esc / 失焦| Q[_on_line_edit_cancelled\n恢复原名]
+    P --> R[_rename_operation_confirm]
+    R --> S{验证通过?}
+    S -->|是| T[FileSystemAccess::rename\n设置 to_select\n触发 scan]
+    S -->|否| U[恢复原名\n提示错误]
+```
+
+---
+
+###### 外部组件交互
+
+```mermaid
+flowchart LR
+    subgraph NavigationPane
+        NP[NavigationPane]
+    end
+    subgraph FilePane
+        FP[FilePane]
+    end
+    subgraph FileSystemTree
+        FST[FileSystemTree]
+    end
+    subgraph FileContextMenu
+        FCM[FileContextMenu]
+    end
+    subgraph FileSystem
+        FS[FileSystem]
+    end
+
+    NP -->|"set_display_mode(TREE)\nadd_item / clear\nget_uncollapsed_paths\nprocess_menu_id"| FST
+    FP -->|"set_display_mode(LIST)\nadd_item / clear\nget_selected_paths\nprocess_menu_id"| FST
+    FST -->|"item_activated\nmulti_selected\nitem_collapsed\nempty_clicked"| NP
+    FST -->|"item_activated\nmulti_selected\nitem_mouse_selected\nempty_clicked"| FP
+    FST -->|"set_context_menu\n_build_*_menu\npopup"| FCM
+    FCM -->|"id_pressed"| FST
+    FST -->|"process_menu_id\n→ file_option"| FCM
+    FCM -->|"file_option →\nFileSystemAccess 操作"| FS
+    FS -->|"file_system_changed\nreset_path"| NP
+    FS -->|"file_system_changed\nreset_path"| FP
+```
 
 ---
 
