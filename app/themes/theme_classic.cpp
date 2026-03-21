@@ -1755,5 +1755,11 @@ void ThemeClassic::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMan
 		// ForegroundPanel.
 		p_theme->set_type_variation("PanelForeground", "Panel");
 		p_theme->set_stylebox(SceneStringName(panel), "PanelForeground", p_config.base_empty_style);
+
+		// TreeTable.
+		p_theme->set_type_variation("TreeTable", "Tree");
+
+		// FileSystemTree.
+		p_theme->set_type_variation("FileSystemTree", "Tree");
 	}
 }

@@ -189,10 +189,10 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 }
 
 void FilePane::_add_item(const FileInfo &p_fi) {
-	TreeItem *root = tree->get_root();
+	FileSystemTreeItem *root = tree->get_root();
 	ERR_FAIL_NULL(root);
 
-	TreeItem *item = tree->add_item(p_fi, root);
+	FileSystemTreeItem *item = tree->add_item(p_fi, root);
 	// print_line("add item: ", item, item->get_text(0));
 }
 
@@ -200,7 +200,7 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 	ERR_FAIL_NULL(p_dir);
 
 	tree->clear();
-	TreeItem *root = tree->create_item();
+	FileSystemTreeItem *root = tree->create_item();
 	root->set_metadata(0, current_path);
 
 	// list dirs
@@ -234,7 +234,7 @@ void FilePane::_update_status_bar() {
 void FilePane::_on_item_activated() {
 	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
 
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}
@@ -262,7 +262,7 @@ void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected)
 		return;
 	}
 
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}

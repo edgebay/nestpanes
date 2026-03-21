@@ -121,7 +121,7 @@ void NavigationPane::_update_tree() {
 	// print_line("uncollapse: ", uncollapse_root, paths);
 
 	tree->clear();
-	TreeItem *root = tree->create_item();
+	FileSystemTreeItem *root = tree->create_item();
 	_create_tree(root, file_system_root, paths);
 
 	_clear_uncollapsed_paths();
@@ -132,7 +132,7 @@ void NavigationPane::_update_tree() {
 	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 }
 
-void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir) {
+void NavigationPane::_update_subtree(FileSystemTreeItem *p_parent, const FileSystemDirectory *p_dir) {
 	ERR_FAIL_NULL(file_system);
 	ERR_FAIL_NULL(p_parent);
 	ERR_FAIL_NULL(p_dir);
@@ -172,13 +172,13 @@ void NavigationPane::_update_subtree(TreeItem *p_parent, const FileSystemDirecto
 	tree->connect("item_collapsed", callable_mp(this, &NavigationPane::_tree_item_collapsed));
 }
 
-void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
+void NavigationPane::_create_tree(FileSystemTreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths) {
 	ERR_FAIL_NULL(p_parent);
 	ERR_FAIL_NULL(p_dir);
 
 	// Create a tree item for the subdirectory.
 
-	TreeItem *subdirectory_item = tree->add_item(p_dir->get_info(), p_parent);
+	FileSystemTreeItem *subdirectory_item = tree->add_item(p_dir->get_info(), p_parent);
 
 	String path = p_dir->get_path();
 	if (selected_path == path || (selected_path.get_base_dir() == path)) {
@@ -210,11 +210,11 @@ void NavigationPane::_create_tree(TreeItem *p_parent, const FileSystemDirectory 
 	}
 }
 
-void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_file_info) {
+void NavigationPane::_create_file_item(FileSystemTreeItem *p_parent, const FileInfo *p_file_info) {
 	ERR_FAIL_NULL(p_parent);
 	ERR_FAIL_NULL(p_file_info);
 
-	TreeItem *file_item = tree->add_item(*p_file_info, p_parent);
+	FileSystemTreeItem *file_item = tree->add_item(*p_file_info, p_parent);
 	file_item->set_collapsed(true); // default value is false.
 
 	if (selected_path == p_file_info->path) {
@@ -224,7 +224,7 @@ void NavigationPane::_create_file_item(TreeItem *p_parent, const FileInfo *p_fil
 }
 
 void NavigationPane::_on_item_activated() {
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}
@@ -235,7 +235,7 @@ void NavigationPane::_on_item_activated() {
 
 	// print_line("on item_activated", path, is_dir);
 	if (is_dir) {
-		callable_mp(selected, &TreeItem::set_collapsed).call_deferred(!selected->is_collapsed());
+		callable_mp(selected, &FileSystemTreeItem::set_collapsed).call_deferred(!selected->is_collapsed());
 	} else {
 		emit_signal(SNAME("item_activated"), path, is_dir);
 	}
@@ -246,7 +246,7 @@ void NavigationPane::_on_multi_selected(Object *p_item, int p_column, bool p_sel
 		return;
 	}
 
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}
@@ -258,7 +258,7 @@ void NavigationPane::_on_multi_selected(Object *p_item, int p_column, bool p_sel
 	emit_signal(SceneStringName(item_selected), path, is_dir);
 }
 
-void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
+void NavigationPane::_tree_item_collapsed(FileSystemTreeItem *p_item) {
 	Dictionary d = p_item->get_metadata(0);
 	String path = d["path"];
 
@@ -269,8 +269,8 @@ void NavigationPane::_tree_item_collapsed(TreeItem *p_item) {
 	_data_changed();
 }
 
-TreeItem *NavigationPane::_search_item(const String &p_path) {
-	for (TreeItem *current = tree->get_root(); current; current = current->get_next_in_tree()) {
+FileSystemTreeItem *NavigationPane::_search_item(const String &p_path) {
+	for (FileSystemTreeItem *current = tree->get_root(); current; current = current->get_next_in_tree()) {
 		Dictionary d = current->get_metadata(0);
 		if (d["path"] == p_path) {
 			return current;
@@ -280,7 +280,7 @@ TreeItem *NavigationPane::_search_item(const String &p_path) {
 }
 
 void NavigationPane::_on_file_system_changed(const String &p_path) {
-	TreeItem *item = _search_item(p_path);
+	FileSystemTreeItem *item = _search_item(p_path);
 	FileSystemDirectory *dir = file_system->get_dir(p_path);
 	// print_line("fs changed: ", p_path, item, dir);
 	if (item && dir) {

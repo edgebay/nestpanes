@@ -4,7 +4,7 @@
 
 class FileContextMenu;
 class FileSystemTree;
-class TreeItem;
+class FileSystemTreeItem;
 
 struct FileInfo;
 class FileSystem;
@@ -33,15 +33,15 @@ private:
 	void _process_shortcut_input(int p_option, const Vector<String> &p_selected);
 
 	void _update_tree();
-	void _update_subtree(TreeItem *p_parent, const FileSystemDirectory *p_dir);
-	void _create_tree(TreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
-	void _create_file_item(TreeItem *p_parent, const FileInfo *p_file_info);
+	void _update_subtree(FileSystemTreeItem *p_parent, const FileSystemDirectory *p_dir);
+	void _create_tree(FileSystemTreeItem *p_parent, const FileSystemDirectory *p_dir, const Vector<String> &p_uncollapsed_paths = Vector<String>());
+	void _create_file_item(FileSystemTreeItem *p_parent, const FileInfo *p_file_info);
 
 	void _on_item_activated();
 	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
-	void _tree_item_collapsed(TreeItem *p_item);
+	void _tree_item_collapsed(FileSystemTreeItem *p_item);
 
-	TreeItem *_search_item(const String &p_path);
+	FileSystemTreeItem *_search_item(const String &p_path);
 	void _on_file_system_changed(const String &p_path);
 
 	Vector<String> _get_uncollapsed_paths(bool p_uncollapse_root = false);

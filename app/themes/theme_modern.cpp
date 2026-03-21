@@ -1969,5 +1969,8 @@ void ThemeModern::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMana
 			style_cursor_unfocused->set_border_width(SIDE_RIGHT, Math::ceil(EDSCALE));
 			p_theme->set_stylebox("cursor_unfocused", "TreeTable", style_cursor_unfocused);
 		}
+
+		// FileSystemTree.
+		p_theme->set_type_variation("FileSystemTree", "Tree");
 	}
 }
