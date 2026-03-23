@@ -33,7 +33,6 @@ private:
 	friend class FileSystemTree;
 
 	struct Cell {
-		mutable RID accessibility_cell_element;
 		TreeCellMode mode = FileSystemTreeItem::CELL_MODE_STRING;
 
 		Ref<Texture2D> icon;
@@ -68,7 +67,6 @@ private:
 		bool custom_bg_color = false;
 		bool custom_bg_outline = false;
 		Color bg_color;
-		bool custom_button = false;
 		bool expand_right = false;
 		Color icon_color = Color(1, 1, 1);
 		Ref<StyleBox> custom_stylebox;
@@ -84,18 +82,6 @@ private:
 
 		Callable custom_draw_callback;
 
-		struct Button {
-			mutable RID accessibility_button_element;
-			int id = 0;
-			bool disabled = false;
-			Ref<Texture2D> texture;
-			Color color = Color(1, 1, 1, 1);
-			String tooltip;
-			String description;
-		};
-
-		Vector<Button> buttons;
-
 		Ref<Font> custom_font;
 		int custom_font_size = -1;
 
@@ -107,9 +93,6 @@ private:
 		Size2 get_icon_size() const;
 		void draw_icon(const RID &p_where, const Point2 &p_pos, const Size2 &p_size = Size2(), const Rect2i &p_region = Rect2i(), const Color &p_color = Color()) const;
 	};
-
-	mutable RID accessibility_row_element;
-	mutable bool accessibility_row_dirty = true;
 
 	Vector<Cell> cells;
 
@@ -152,22 +135,6 @@ private:
 	}
 
 	_FORCE_INLINE_ void _unlink_from_tree() {
-		if (accessibility_row_element.is_valid()) {
-			DisplayServer::get_singleton()->accessibility_free_element(accessibility_row_element);
-			accessibility_row_element = RID();
-		}
-		for (Cell &cell : cells) {
-			if (cell.accessibility_cell_element.is_valid()) {
-				DisplayServer::get_singleton()->accessibility_free_element(cell.accessibility_cell_element);
-				cell.accessibility_cell_element = RID();
-			}
-			for (Cell::Button &btn : cell.buttons) {
-				if (btn.accessibility_button_element.is_valid()) {
-					DisplayServer::get_singleton()->accessibility_free_element(btn.accessibility_button_element);
-					btn.accessibility_button_element = RID();
-				}
-			}
-		}
 		FileSystemTreeItem *p = get_prev();
 		if (p) {
 			p->next = next;
@@ -192,11 +159,6 @@ private:
 
 protected:
 	static void _bind_methods();
-
-#ifndef DISABLE_DEPRECATED
-	void _add_button_bind_compat_76829(int p_column, const Ref<Texture2D> &p_button, int p_id, bool p_disabled, const String &p_tooltip);
-	static void _bind_compatibility_methods();
-#endif
 
 	// Bind helpers.
 	Dictionary _get_range_config(int p_column) {
@@ -287,22 +249,6 @@ public:
 	void set_icon_max_width(int p_column, int p_max);
 	int get_icon_max_width(int p_column) const;
 
-	void clear_buttons();
-	void add_button(int p_column, const Ref<Texture2D> &p_button, int p_id = -1, bool p_disabled = false, const String &p_tooltip = "", const String &p_description = "");
-	int get_button_count(int p_column) const;
-	String get_button_tooltip_text(int p_column, int p_index) const;
-	Ref<Texture2D> get_button(int p_column, int p_index) const;
-	int get_button_id(int p_column, int p_index) const;
-	void erase_button(int p_column, int p_index);
-	int get_button_by_id(int p_column, int p_id) const;
-	Color get_button_color(int p_column, int p_index) const;
-	void set_button_tooltip_text(int p_column, int p_index, const String &p_tooltip);
-	void set_button(int p_column, int p_index, const Ref<Texture2D> &p_button);
-	void set_button_description(int p_column, int p_index, const String &p_description);
-	void set_button_color(int p_column, int p_index, const Color &p_color);
-	void set_button_disabled(int p_column, int p_index, bool p_disabled);
-	bool is_button_disabled(int p_column, int p_index) const;
-
 	// Range works for mode number or mode combo.
 	void set_range(int p_column, double p_value);
 	double get_range(int p_column) const;
@@ -314,9 +260,6 @@ public:
 	void set_metadata(int p_column, const Variant &p_meta);
 	Variant get_metadata(int p_column) const;
 
-#ifndef DISABLE_DEPRECATED
-	void set_custom_draw(int p_column, Object *p_object, const StringName &p_callback);
-#endif // DISABLE_DEPRECATED
 	void set_custom_draw_callback(int p_column, const Callable &p_callback);
 	Callable get_custom_draw_callback(int p_column) const;
 
@@ -363,9 +306,6 @@ public:
 	void set_custom_bg_color(int p_column, const Color &p_color, bool p_bg_outline = false);
 	void clear_custom_bg_color(int p_column);
 	Color get_custom_bg_color(int p_column) const;
-
-	void set_custom_as_button(int p_column, bool p_button);
-	bool is_custom_set_as_button(int p_column) const;
 
 	void set_tooltip_text(int p_column, const String &p_tooltip);
 	String get_tooltip_text(int p_column) const;
@@ -555,7 +495,6 @@ private:
 	Rect2 custom_popup_rect;
 	int edited_col = -1;
 	int selected_col = -1;
-	int selected_button = -1;
 	int popup_edited_item_col = -1;
 	bool hide_root = false;
 	SelectMode select_mode = SELECT_SINGLE;
@@ -565,7 +504,6 @@ private:
 	int drop_mode_flags = 0;
 
 	struct ColumnInfo {
-		mutable RID accessibility_col_element;
 		int custom_min_width = 0;
 		int expand_ratio = 1;
 		bool expand = true;
@@ -589,7 +527,6 @@ private:
 	bool show_column_titles = false;
 
 	bool popup_edit_committed = true;
-	RID accessibility_scroll_element;
 	RID header_ci; // Separate canvas item for drawing column headers
 	RID content_ci; // Separate canvas item for drawing tree rows
 
@@ -735,7 +672,6 @@ private:
 		enum ClickType {
 			CLICK_NONE,
 			CLICK_TITLE,
-			CLICK_BUTTON,
 		};
 
 		ClickType click_type = Cache::CLICK_NONE;
@@ -836,11 +772,6 @@ private:
 	Rect2 _get_content_rect() const; // Considering the background stylebox and scrollbars.
 	Rect2 _get_item_focus_rect(const FileSystemTreeItem *p_item) const;
 
-	void _check_item_accessibility(FileSystemTreeItem *p_item, PackedStringArray &r_warnings, int &r_row) const;
-
-	void _accessibility_clean_info(FileSystemTreeItem *p_item);
-	void _accessibility_update_item(Point2 &r_ofs, FileSystemTreeItem *p_item, int &r_row, int p_level);
-
 	void _update_display_mode();
 
 	FileSystemTreeItem *_add_tree_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
@@ -876,28 +807,7 @@ protected:
 	void _notification(int p_what);
 	static void _bind_methods();
 
-	void _accessibility_action_scroll_down(const Variant &p_data);
-	void _accessibility_action_scroll_left(const Variant &p_data);
-	void _accessibility_action_scroll_right(const Variant &p_data);
-	void _accessibility_action_scroll_up(const Variant &p_data);
-	void _accessibility_action_scroll_set(const Variant &p_data);
-	void _accessibility_action_scroll_into_view(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_focus(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_blur(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_collapse(const Variant &p_data, FileSystemTreeItem *p_item);
-	void _accessibility_action_expand(const Variant &p_data, FileSystemTreeItem *p_item);
-	void _accessibility_action_set_text_value(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_set_num_value(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_set_bool_value(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_set_inc(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_set_dec(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_edit_custom(const Variant &p_data, FileSystemTreeItem *p_item, int p_col);
-	void _accessibility_action_button_press(const Variant &p_data, FileSystemTreeItem *p_item, int p_col, int p_btn);
-
 public:
-	PackedStringArray get_accessibility_configuration_warnings() const override;
-	virtual RID get_focused_accessibility_element() const override;
-
 	virtual void set_self_modulate(const Color &p_self_modulate) override;
 
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
