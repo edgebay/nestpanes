@@ -10,7 +10,6 @@ class HScrollBar;
 class HSlider;
 class LineEdit;
 class Popup;
-class PopupMenu;
 class TextEdit;
 class Timer;
 class FileContextMenu;
@@ -24,9 +23,7 @@ public:
 	enum TreeCellMode {
 		CELL_MODE_STRING,
 		CELL_MODE_CHECK,
-		CELL_MODE_RANGE,
 		CELL_MODE_ICON,
-		CELL_MODE_CUSTOM,
 	};
 
 private:
@@ -51,12 +48,7 @@ private:
 		Control::TextDirection text_direction = Control::TEXT_DIRECTION_INHERITED;
 		TextServer::AutowrapMode autowrap_mode = TextServer::AUTOWRAP_OFF;
 		bool dirty = true;
-		double min = 0.0;
-		double max = 100.0;
-		double step = 1.0;
-		double val = 0.0;
 		int icon_max_w = 0;
-		bool expr = false;
 		bool checked = false;
 		bool indeterminate = false;
 		bool editable = false;
@@ -79,8 +71,6 @@ private:
 
 		Variant meta;
 		String tooltip;
-
-		Callable custom_draw_callback;
 
 		Ref<Font> custom_font;
 		int custom_font_size = -1;
@@ -160,19 +150,6 @@ private:
 protected:
 	static void _bind_methods();
 
-	// Bind helpers.
-	Dictionary _get_range_config(int p_column) {
-		Dictionary d;
-		double min = 0.0, max = 0.0, step = 0.0;
-		get_range_config(p_column, min, max, step);
-		d["min"] = min;
-		d["max"] = max;
-		d["step"] = step;
-		d["expr"] = false;
-
-		return d;
-	}
-
 	void _call_recursive_bind(const Variant **p_args, int p_argcount, Callable::CallError &r_error);
 
 public:
@@ -249,19 +226,8 @@ public:
 	void set_icon_max_width(int p_column, int p_max);
 	int get_icon_max_width(int p_column) const;
 
-	// Range works for mode number or mode combo.
-	void set_range(int p_column, double p_value);
-	double get_range(int p_column) const;
-
-	void set_range_config(int p_column, double p_min, double p_max, double p_step, bool p_exp = false);
-	void get_range_config(int p_column, double &r_min, double &r_max, double &r_step) const;
-	bool is_range_exponential(int p_column) const;
-
 	void set_metadata(int p_column, const Variant &p_meta);
 	Variant get_metadata(int p_column) const;
-
-	void set_custom_draw_callback(int p_column, const Callable &p_callback);
-	Callable get_custom_draw_callback(int p_column) const;
 
 	void set_collapsed(bool p_collapsed);
 	bool is_collapsed();
@@ -534,17 +500,9 @@ private:
 	Popup *popup_editor = nullptr;
 	LineEdit *line_editor = nullptr;
 	TextEdit *text_editor = nullptr;
-	HSlider *value_editor = nullptr;
-	bool updating_value_editor = false;
 	uint64_t focus_in_id = 0;
-	PopupMenu *popup_menu = nullptr;
 
 	Vector<ColumnInfo> columns;
-
-	Timer *range_click_timer = nullptr;
-	FileSystemTreeItem *range_item_last = nullptr;
-	bool range_up_last = false;
-	void _range_click_timeout();
 
 	int compute_item_height(FileSystemTreeItem *p_item) const;
 	int get_item_height(FileSystemTreeItem *p_item) const;
@@ -562,11 +520,6 @@ private:
 	void _apply_multiline_edit(bool p_hide_focus = false);
 	void _text_editor_popup_modal_close();
 	void _text_editor_gui_input(const Ref<InputEvent> &p_event);
-	void value_editor_changed(double p_value);
-	void _update_popup_menu(const FileSystemTreeItem::Cell &p_cell);
-	void _update_value_editor(const FileSystemTreeItem::Cell &p_cell);
-
-	void popup_select(int p_option);
 
 	void item_edited(int p_column, FileSystemTreeItem *p_item, MouseButton p_custom_mouse_index = MouseButton::NONE);
 	void item_changed(int p_column, FileSystemTreeItem *p_item);
@@ -725,11 +678,6 @@ private:
 
 	FindColumnButtonResult _find_column_and_button_at_pos(int p_x, const FileSystemTreeItem *p_item, int p_x_ofs, int p_x_limit) const;
 
-	float drag_speed = 0.0;
-	float drag_from = 0.0;
-	float drag_accum = 0.0;
-	bool drag_touching = false;
-	bool drag_touching_deaccel = false;
 	bool click_handled = false;
 	bool allow_rmb_select = false;
 	bool scrolling = false;

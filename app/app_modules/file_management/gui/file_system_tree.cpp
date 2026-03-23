@@ -7,7 +7,6 @@
 #include "core/os/os.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/line_edit.h"
-#include "scene/gui/popup_menu.h"
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/text_edit.h"
@@ -160,10 +159,6 @@ void FileSystemTreeItem::set_cell_mode(int p_column, TreeCellMode p_mode) {
 
 	Cell &c = cells.write[p_column];
 	c.mode = p_mode;
-	c.min = 0;
-	c.max = 100;
-	c.step = 1;
-	c.val = 0;
 	c.checked = false;
 	c.icon = Ref<Texture2D>();
 	c.text = "";
@@ -338,26 +333,11 @@ void FileSystemTreeItem::set_text(int p_column, String p_text) {
 	cells.write[p_column].text = p_text;
 	cells.write[p_column].dirty = true;
 
-	if (cells[p_column].mode == FileSystemTreeItem::CELL_MODE_RANGE) {
-		Vector<String> strings = p_text.split(",");
-		cells.write[p_column].min = INT_MAX;
-		cells.write[p_column].max = INT_MIN;
-		for (int i = 0; i < strings.size(); i++) {
-			int value = i;
-			if (!strings[i].get_slicec(':', 1).is_empty()) {
-				value = strings[i].get_slicec(':', 1).to_int();
-			}
-			cells.write[p_column].min = MIN(cells[p_column].min, value);
-			cells.write[p_column].max = MAX(cells[p_column].max, value);
-		}
-		cells.write[p_column].step = 0;
+	// Don't auto translate if it's in string mode and editable, as the text can be changed to anything by the user.
+	if (tree && (!cells[p_column].editable || cells[p_column].mode != FileSystemTreeItem::CELL_MODE_STRING)) {
+		cells.write[p_column].xl_text = atr(p_column, p_text);
 	} else {
-		// Don't auto translate if it's in string mode and editable, as the text can be changed to anything by the user.
-		if (tree && (!cells[p_column].editable || cells[p_column].mode != FileSystemTreeItem::CELL_MODE_STRING)) {
-			cells.write[p_column].xl_text = atr(p_column, p_text);
-		} else {
-			cells.write[p_column].xl_text = p_text;
-		}
+		cells.write[p_column].xl_text = p_text;
 	}
 
 	cells.write[p_column].cached_minimum_size_dirty = true;
@@ -608,58 +588,6 @@ int FileSystemTreeItem::get_icon_max_width(int p_column) const {
 	return cells[p_column].icon_max_w;
 }
 
-void FileSystemTreeItem::set_range(int p_column, double p_value) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-	if (cells[p_column].step > 0) {
-		p_value = Math::snapped(p_value, cells[p_column].step);
-	}
-	if (p_value < cells[p_column].min) {
-		p_value = cells[p_column].min;
-	}
-	if (p_value > cells[p_column].max) {
-		p_value = cells[p_column].max;
-	}
-
-	if (cells[p_column].val == p_value) {
-		return;
-	}
-
-	cells.write[p_column].val = p_value;
-	cells.write[p_column].dirty = true;
-	_changed_notify(p_column);
-}
-
-double FileSystemTreeItem::get_range(int p_column) const {
-	ERR_FAIL_INDEX_V(p_column, cells.size(), 0);
-	return cells[p_column].val;
-}
-
-bool FileSystemTreeItem::is_range_exponential(int p_column) const {
-	ERR_FAIL_INDEX_V(p_column, cells.size(), false);
-	return cells[p_column].expr;
-}
-
-void FileSystemTreeItem::set_range_config(int p_column, double p_min, double p_max, double p_step, bool p_exp) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-
-	if (cells[p_column].min == p_min && cells[p_column].max == p_max && cells[p_column].step == p_step && cells[p_column].expr == p_exp) {
-		return;
-	}
-
-	cells.write[p_column].min = p_min;
-	cells.write[p_column].max = p_max;
-	cells.write[p_column].step = p_step;
-	cells.write[p_column].expr = p_exp;
-	_changed_notify(p_column);
-}
-
-void FileSystemTreeItem::get_range_config(int p_column, double &r_min, double &r_max, double &r_step) const {
-	ERR_FAIL_INDEX(p_column, cells.size());
-	r_min = cells[p_column].min;
-	r_max = cells[p_column].max;
-	r_step = cells[p_column].step;
-}
-
 void FileSystemTreeItem::set_metadata(int p_column, const Variant &p_meta) {
 	ERR_FAIL_INDEX(p_column, cells.size());
 	cells.write[p_column].meta = p_meta;
@@ -669,20 +597,6 @@ Variant FileSystemTreeItem::get_metadata(int p_column) const {
 	ERR_FAIL_INDEX_V(p_column, cells.size(), Variant());
 
 	return cells[p_column].meta;
-}
-
-void FileSystemTreeItem::set_custom_draw_callback(int p_column, const Callable &p_callback) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-
-	cells.write[p_column].custom_draw_callback = p_callback;
-
-	_changed_notify(p_column);
-}
-
-Callable FileSystemTreeItem::get_custom_draw_callback(int p_column) const {
-	ERR_FAIL_INDEX_V(p_column, cells.size(), Callable());
-
-	return cells[p_column].custom_draw_callback;
 }
 
 void FileSystemTreeItem::set_collapsed(bool p_collapsed) {
@@ -1494,11 +1408,6 @@ Size2 FileSystemTreeItem::get_minimum_size(int p_column) {
 			Size2i check_size = parent_tree->theme_cache.checked->get_size();
 			size.width += check_size.width + parent_tree->theme_cache.h_separation;
 			content_height = MAX(content_height, check_size.height);
-		} else if (cell.mode == CELL_MODE_RANGE) {
-			Ref<Texture2D> icon = cell.text.is_empty() ? parent_tree->theme_cache.updown : parent_tree->theme_cache.select_arrow;
-			Size2i icon_size = icon->get_size();
-			size.width += icon_size.width + parent_tree->theme_cache.h_separation;
-			content_height = MAX(content_height, icon_size.height);
 		}
 		if (cell.icon.is_valid()) {
 			Size2i icon_size = parent_tree->_get_cell_icon_size(cell);
@@ -1608,16 +1517,8 @@ void FileSystemTreeItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_icon_modulate", "column", "modulate"), &FileSystemTreeItem::set_icon_modulate);
 	ClassDB::bind_method(D_METHOD("get_icon_modulate", "column"), &FileSystemTreeItem::get_icon_modulate);
 
-	ClassDB::bind_method(D_METHOD("set_range", "column", "value"), &FileSystemTreeItem::set_range);
-	ClassDB::bind_method(D_METHOD("get_range", "column"), &FileSystemTreeItem::get_range);
-	ClassDB::bind_method(D_METHOD("set_range_config", "column", "min", "max", "step", "expr"), &FileSystemTreeItem::set_range_config, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("get_range_config", "column"), &FileSystemTreeItem::_get_range_config);
-
 	ClassDB::bind_method(D_METHOD("set_metadata", "column", "meta"), &FileSystemTreeItem::set_metadata);
 	ClassDB::bind_method(D_METHOD("get_metadata", "column"), &FileSystemTreeItem::get_metadata);
-
-	ClassDB::bind_method(D_METHOD("set_custom_draw_callback", "column", "callback"), &FileSystemTreeItem::set_custom_draw_callback);
-	ClassDB::bind_method(D_METHOD("get_custom_draw_callback", "column"), &FileSystemTreeItem::get_custom_draw_callback);
 
 	ClassDB::bind_method(D_METHOD("set_custom_stylebox", "column", "stylebox"), &FileSystemTreeItem::set_custom_stylebox);
 	ClassDB::bind_method(D_METHOD("get_custom_stylebox", "column"), &FileSystemTreeItem::get_custom_stylebox);
@@ -1712,9 +1613,7 @@ void FileSystemTreeItem::_bind_methods() {
 
 	BIND_ENUM_CONSTANT(CELL_MODE_STRING);
 	BIND_ENUM_CONSTANT(CELL_MODE_CHECK);
-	BIND_ENUM_CONSTANT(CELL_MODE_RANGE);
 	BIND_ENUM_CONSTANT(CELL_MODE_ICON);
-	BIND_ENUM_CONSTANT(CELL_MODE_CUSTOM);
 }
 
 FileSystemTreeItem::FileSystemTreeItem(FileSystemTree *p_tree) {
@@ -1909,40 +1808,14 @@ void FileSystemTree::update_item_cell(FileSystemTreeItem *p_item, int p_col) con
 	String valtext;
 
 	p_item->cells.write[p_col].text_buf->clear();
-	if (p_item->cells[p_col].mode == FileSystemTreeItem::CELL_MODE_RANGE) {
-		if (!p_item->cells[p_col].text.is_empty()) {
-			if (!p_item->cells[p_col].editable) {
-				return;
-			}
-
-			int option = (int)p_item->cells[p_col].val;
-
-			valtext = p_item->atr(p_col, ETR("(Other)"));
-			Vector<String> strings = p_item->cells[p_col].text.split(",");
-			for (int j = 0; j < strings.size(); j++) {
-				int value = j;
-				if (!strings[j].get_slicec(':', 1).is_empty()) {
-					value = strings[j].get_slicec(':', 1).to_int();
-				}
-				if (option == value) {
-					valtext = p_item->atr(p_col, strings[j].get_slicec(':', 0));
-					break;
-				}
-			}
-
-		} else {
-			valtext = String::num(p_item->cells[p_col].val, Math::range_step_decimals(p_item->cells[p_col].step));
-		}
+	// Don't auto translate if it's in string mode and editable, as the text can be changed to anything by the user.
+	if (!p_item->cells[p_col].editable || p_item->cells[p_col].mode != FileSystemTreeItem::CELL_MODE_STRING) {
+		p_item->cells.write[p_col].xl_text = p_item->atr(p_col, p_item->cells[p_col].text);
 	} else {
-		// Don't auto translate if it's in string mode and editable, as the text can be changed to anything by the user.
-		if (!p_item->cells[p_col].editable || p_item->cells[p_col].mode != FileSystemTreeItem::CELL_MODE_STRING) {
-			p_item->cells.write[p_col].xl_text = p_item->atr(p_col, p_item->cells[p_col].text);
-		} else {
-			p_item->cells.write[p_col].xl_text = p_item->cells[p_col].text;
-		}
-
-		valtext = p_item->cells[p_col].xl_text;
+		p_item->cells.write[p_col].xl_text = p_item->cells[p_col].text;
 	}
+
+	valtext = p_item->cells[p_col].xl_text;
 
 	if (!p_item->cells[p_col].suffix.is_empty()) {
 		if (!valtext.is_empty()) {
@@ -2286,61 +2159,6 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 					draw_item_rect(p_item->cells[i], item_rect, cell_color, icon_col, outline_size, font_outline_color);
 
 				} break;
-				case FileSystemTreeItem::CELL_MODE_RANGE: {
-					if (!p_item->cells[i].text.is_empty()) {
-						if (!p_item->cells[i].editable) {
-							break;
-						}
-
-						Ref<Texture2D> downarrow = theme_cache.select_arrow;
-						int cell_width = item_rect.size.x - downarrow->get_width();
-
-						if (rtl) {
-							if (outline_size > 0 && font_outline_color.a > 0) {
-								p_item->cells[i].text_buf->draw_outline(ci, text_pos + Vector2(cell_width - text_width, 0), outline_size, font_outline_color);
-							}
-							p_item->cells[i].text_buf->draw(ci, text_pos + Vector2(cell_width - text_width, 0), cell_color);
-						} else {
-							if (outline_size > 0 && font_outline_color.a > 0) {
-								p_item->cells[i].text_buf->draw_outline(ci, text_pos, outline_size, font_outline_color);
-							}
-							p_item->cells[i].text_buf->draw(ci, text_pos, cell_color);
-						}
-
-						Point2i arrow_pos = item_rect.position;
-						arrow_pos.x += item_rect.size.x - downarrow->get_width();
-						arrow_pos.y += Math::floor(((item_rect.size.y - downarrow->get_height())) / 2.0);
-
-						downarrow->draw(ci, arrow_pos);
-					} else {
-						Ref<Texture2D> updown = theme_cache.updown;
-
-						int cell_width = item_rect.size.x - updown->get_width();
-
-						if (rtl) {
-							if (outline_size > 0 && font_outline_color.a > 0) {
-								p_item->cells[i].text_buf->draw_outline(ci, text_pos + Vector2(cell_width - text_width, 0), outline_size, font_outline_color);
-							}
-							p_item->cells[i].text_buf->draw(ci, text_pos + Vector2(cell_width - text_width, 0), cell_color);
-						} else {
-							if (outline_size > 0 && font_outline_color.a > 0) {
-								p_item->cells[i].text_buf->draw_outline(ci, text_pos, outline_size, font_outline_color);
-							}
-							p_item->cells[i].text_buf->draw(ci, text_pos, cell_color);
-						}
-
-						if (!p_item->cells[i].editable) {
-							break;
-						}
-
-						Point2i updown_pos = item_rect.position;
-						updown_pos.x += item_rect.size.x - updown->get_width();
-						updown_pos.y += Math::floor(((item_rect.size.y - updown->get_height())) / 2.0);
-
-						updown->draw(ci, updown_pos);
-					}
-
-				} break;
 				case FileSystemTreeItem::CELL_MODE_ICON: {
 					if (p_item->cells[i].icon.is_null()) {
 						break;
@@ -2350,38 +2168,6 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 					icon_ofs += item_rect.position;
 
 					p_item->cells[i].icon->draw_rect(ci, Rect2(icon_ofs, icon_size), false, icon_col);
-
-				} break;
-				case FileSystemTreeItem::CELL_MODE_CUSTOM: {
-					if (p_item->cells[i].custom_draw_callback.is_valid()) {
-						Variant args[] = { p_item, Rect2(item_rect) };
-						const Variant *argptrs[] = { &args[0], &args[1] };
-
-						Callable::CallError ce;
-						Variant ret;
-						p_item->cells[i].custom_draw_callback.callp(argptrs, 2, ret, ce);
-						if (ce.error != Callable::CallError::CALL_OK) {
-							ERR_PRINT("Error calling custom draw method: " + Variant::get_callable_error_text(p_item->cells[i].custom_draw_callback, argptrs, 2, ce) + ".");
-						}
-					}
-
-					if (!p_item->cells[i].editable) {
-						draw_item_rect(p_item->cells[i], item_rect, cell_color, icon_col, outline_size, font_outline_color);
-						break;
-					}
-
-					Ref<Texture2D> downarrow = theme_cache.select_arrow;
-
-					Rect2i ir = item_rect;
-
-					Point2i arrow_pos = item_rect.position;
-					arrow_pos.x += item_rect.size.x - downarrow->get_width();
-					arrow_pos.y += Math::floor(((item_rect.size.y - downarrow->get_height())) / 2.0);
-					ir.size.width -= downarrow->get_width();
-
-					draw_item_rect(p_item->cells[i], ir, cell_color, icon_col, outline_size, font_outline_color);
-
-					downarrow->draw(ci, arrow_pos);
 
 				} break;
 			}
@@ -2718,55 +2504,6 @@ Rect2 FileSystemTree::search_item_rect(FileSystemTreeItem *p_from, FileSystemTre
 	return Rect2();
 }
 
-void FileSystemTree::_range_click_timeout() {
-	if (range_item_last && !range_drag_enabled && Input::get_singleton()->is_mouse_button_pressed(MouseButton::LEFT)) {
-		Point2 pos = get_local_mouse_position() - theme_cache.panel_style->get_offset();
-		if (show_column_titles) {
-			pos.y -= _get_title_button_height();
-
-			if (pos.y < 0) {
-				range_click_timer->stop();
-				return;
-			}
-		}
-
-		if (!root) {
-			return;
-		}
-
-		click_handled = false;
-		Ref<InputEventMouseButton> mb;
-		mb.instantiate();
-
-		int x_limit = _get_content_rect().size.x;
-
-		cache.rtl = is_layout_rtl();
-
-		propagate_mouse_activated = false; // Done from outside, so signal handler can't clear the tree in the middle of emit (which is a common case).
-		blocked++;
-		propagate_mouse_event(pos + theme_cache.offset, 0, 0, x_limit + theme_cache.offset.width, false, root, MouseButton::LEFT, mb);
-		blocked--;
-
-		if (range_click_timer->is_one_shot()) {
-			range_click_timer->set_wait_time(0.05);
-			range_click_timer->set_one_shot(false);
-			range_click_timer->start();
-		}
-
-		if (!click_handled) {
-			range_click_timer->stop();
-		}
-
-		if (propagate_mouse_activated) {
-			emit_signal(SNAME("item_activated"));
-			propagate_mouse_activated = false;
-		}
-
-	} else {
-		range_click_timer->stop();
-	}
-}
-
 int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, int x_limit, bool p_double_click, FileSystemTreeItem *p_item, MouseButton p_button, const Ref<InputEventWithModifiers> &p_mod) {
 	if (p_item && !p_item->is_visible_in_tree()) {
 		// Skip any processing of invisible items.
@@ -2782,11 +2519,6 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 	bool skip = (p_item == root && hide_root);
 
 	if (!skip && p_pos.y < item_h) {
-		// Check event!
-		if (range_click_timer->get_time_left() > 0 && p_item != range_item_last) {
-			return -1;
-		}
-
 		if (!p_item->disable_folding && !hide_folding && p_item->first_child && (p_pos.x < (x_ofs + theme_cache.item_margin))) {
 			if (enable_recursive_folding && p_mod->is_shift_pressed()) {
 				p_item->set_collapsed_recursive(!p_item->is_collapsed());
@@ -2824,7 +2556,7 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 		if (p_button == MouseButton::LEFT || (p_button == MouseButton::RIGHT && allow_rmb_select)) {
 			// Process selection.
 
-			if (p_double_click && (!c.editable || c.mode == FileSystemTreeItem::CELL_MODE_CUSTOM || c.mode == FileSystemTreeItem::CELL_MODE_ICON)) {
+			if (p_double_click && (!c.editable || c.mode == FileSystemTreeItem::CELL_MODE_ICON)) {
 				// Emits the `item_activated` signal.
 				propagate_mouse_activated = true;
 
@@ -2901,86 +2633,8 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 				click_handled = true;
 
 			} break;
-			case FileSystemTreeItem::CELL_MODE_RANGE: {
-				if (!c.text.is_empty()) {
-					_update_popup_menu(c);
-					popup_menu->set_size(Size2(col_width, 0));
-
-					int pos_x = 0;
-					Point2 panel_ofs = theme_cache.panel_style->get_offset();
-					if (is_layout_rtl()) {
-						pos_x = get_size().width - col_ofs - panel_ofs.x - popup_menu->get_size().width;
-					} else {
-						pos_x = col_ofs + panel_ofs.x;
-					}
-					popup_menu->set_position(get_screen_position() + Point2i(pos_x, _get_title_button_height() + y_ofs + item_h + panel_ofs.y) - theme_cache.offset);
-
-					popup_menu->popup();
-					popup_edited_item = p_item;
-					popup_edited_item_col = col;
-					bring_up_editor = false;
-				} else {
-					if (x >= (col_width - item_h / 2)) {
-						// Touching the combo.
-						bool up = p_pos.y < (item_h / 2);
-
-						if (p_button == MouseButton::LEFT) {
-							if (range_click_timer->get_time_left() == 0) {
-								range_item_last = p_item;
-								range_up_last = up;
-
-								range_click_timer->set_wait_time(0.6);
-								range_click_timer->set_one_shot(true);
-								range_click_timer->start();
-
-							} else if (up != range_up_last) {
-								return -1; // Break. Avoid changing direction on mouse held.
-							}
-
-							p_item->set_range(col, c.val + (up ? 1.0 : -1.0) * c.step);
-
-							item_edited(col, p_item, p_button);
-
-						} else if (p_button == MouseButton::RIGHT) {
-							p_item->set_range(col, (up ? c.max : c.min));
-							item_edited(col, p_item, p_button);
-						} else if (p_button == MouseButton::WHEEL_UP) {
-							p_item->set_range(col, c.val + c.step);
-							item_edited(col, p_item, p_button);
-						} else if (p_button == MouseButton::WHEEL_DOWN) {
-							p_item->set_range(col, c.val - c.step);
-							item_edited(col, p_item, p_button);
-						}
-
-						bring_up_editor = false;
-
-					} else {
-						editor_text = String::num(p_item->cells[col].val, Math::range_step_decimals(p_item->cells[col].step));
-						if (select_mode == SELECT_MULTI && get_viewport()->get_processed_events_count() == focus_in_id) {
-							bring_up_editor = false;
-						}
-					}
-				}
-				click_handled = true;
-
-			} break;
 			case FileSystemTreeItem::CELL_MODE_ICON: {
 				bring_up_editor = false;
-			} break;
-			case FileSystemTreeItem::CELL_MODE_CUSTOM: {
-				edited_item = p_item;
-				edited_col = col;
-				bool on_arrow = x > col_width - theme_cache.select_arrow->get_width();
-
-				custom_popup_rect = Rect2i(get_global_position() + Point2i(col_ofs, _get_title_button_height() + y_ofs + item_h - theme_cache.offset.y), Size2(get_column_width(col), item_h));
-
-				if (on_arrow) {
-					emit_signal(SNAME("custom_popup_edited"), ((bool)(x >= (col_width - item_h / 2))));
-				} else {
-					item_edited(col, p_item, p_button);
-				}
-				click_handled = true;
-				return -1;
 			} break;
 		};
 
@@ -3035,10 +2689,6 @@ void FileSystemTree::_text_editor_popup_modal_close() {
 
 	if (popup_editor->get_hide_reason() == Popup::HIDE_REASON_CANCELED) {
 		return; // ESC pressed, app focus lost, or forced close from code.
-	}
-
-	if (value_editor && value_editor->has_point(value_editor->get_local_mouse_position())) {
-		return;
 	}
 
 	if (!popup_edited_item) {
@@ -3123,17 +2773,6 @@ void FileSystemTree::_line_editor_submit(String p_text) {
 		case FileSystemTreeItem::CELL_MODE_STRING: {
 			c.text = p_text;
 		} break;
-		case FileSystemTreeItem::CELL_MODE_RANGE: {
-			c.val = p_text.to_float();
-			if (c.step > 0) {
-				c.val = Math::snapped(c.val, c.step);
-			}
-			if (c.val < c.min) {
-				c.val = c.min;
-			} else if (c.val > c.max) {
-				c.val = c.max;
-			}
-		} break;
 		default: {
 			ERR_FAIL();
 		}
@@ -3142,68 +2781,6 @@ void FileSystemTree::_line_editor_submit(String p_text) {
 	grab_focus(hide_focus);
 	item_edited(popup_edited_item_col, popup_edited_item);
 	queue_redraw();
-}
-
-void FileSystemTree::value_editor_changed(double p_value) {
-	if (updating_value_editor) {
-		return;
-	}
-	if (!popup_edited_item) {
-		return;
-	}
-
-	ERR_FAIL_INDEX(popup_edited_item_col, popup_edited_item->cells.size());
-	const FileSystemTreeItem::Cell &c = popup_edited_item->cells[popup_edited_item_col];
-
-	line_editor->set_text(String::num(p_value, Math::range_step_decimals(c.step)));
-
-	queue_redraw();
-}
-
-void FileSystemTree::_update_popup_menu(const FileSystemTreeItem::Cell &p_cell) {
-	if (popup_menu == nullptr) {
-		popup_menu = memnew(PopupMenu);
-		popup_menu->set_shrink_width(false);
-		popup_menu->hide();
-		add_child(popup_menu, false, INTERNAL_MODE_FRONT);
-		popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &FileSystemTree::popup_select));
-	}
-	popup_menu->clear();
-	for (int i = 0; i < p_cell.text.get_slice_count(","); i++) {
-		String s = p_cell.text.get_slicec(',', i);
-		popup_menu->add_item(s.get_slicec(':', 0), s.get_slicec(':', 1).is_empty() ? i : s.get_slicec(':', 1).to_int());
-	}
-}
-
-void FileSystemTree::_update_value_editor(const FileSystemTreeItem::Cell &p_cell) {
-	if (value_editor == nullptr) {
-		value_editor = memnew(HSlider);
-		value_editor->set_v_size_flags(SIZE_EXPAND_FILL);
-		value_editor->hide();
-		popup_editor_vb->add_child(value_editor);
-		value_editor->connect(SceneStringName(value_changed), callable_mp(this, &FileSystemTree::value_editor_changed));
-	}
-	updating_value_editor = true;
-	value_editor->set_min(p_cell.min);
-	value_editor->set_max(p_cell.max);
-	value_editor->set_step(p_cell.step);
-	value_editor->set_value(p_cell.val);
-	value_editor->set_exp_ratio(p_cell.expr);
-	updating_value_editor = false;
-}
-
-void FileSystemTree::popup_select(int p_option) {
-	if (!popup_edited_item) {
-		return;
-	}
-
-	if (popup_edited_item_col < 0 || popup_edited_item_col > columns.size()) {
-		return;
-	}
-
-	popup_edited_item->cells.write[popup_edited_item_col].val = p_option;
-	queue_redraw();
-	item_edited(popup_edited_item_col, popup_edited_item);
 }
 
 void FileSystemTree::_go_left() {
@@ -4459,45 +4036,6 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 	if (mm.is_valid()) {
 		hovered_pos = mm->get_position();
 		_determine_hovered_item();
-
-		bool rtl = is_layout_rtl();
-		if (pressing_for_editor && popup_pressing_edited_item && !popup_pressing_edited_item->cells.is_empty() && (popup_pressing_edited_item->get_cell_mode(popup_pressing_edited_item_column) == FileSystemTreeItem::CELL_MODE_RANGE)) {
-			// This needs to happen now, because the popup can be closed when pressing another item, and must remain the popup edited item until it actually closes.
-			popup_edited_item = popup_pressing_edited_item;
-			popup_edited_item_col = popup_pressing_edited_item_column;
-
-			popup_pressing_edited_item = nullptr;
-			popup_pressing_edited_item_column = -1;
-
-			if (!range_drag_enabled) {
-				// Range drag.
-				Vector2 cpos = mm->get_position();
-				if (rtl) {
-					cpos.x = get_size().width - cpos.x;
-				}
-				if (cpos.distance_to(pressing_pos) > 2) {
-					range_drag_enabled = true;
-					range_drag_capture_pos = cpos;
-					range_drag_base = popup_edited_item->get_range(popup_edited_item_col);
-					Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
-				}
-			} else {
-				ERR_FAIL_INDEX(popup_edited_item_col, popup_edited_item->cells.size());
-				const FileSystemTreeItem::Cell &c = popup_edited_item->cells[popup_edited_item_col];
-				float diff_y = -mm->get_relative().y;
-				diff_y = Math::pow(Math::abs(diff_y), 1.8f) * SIGN(diff_y);
-				diff_y *= 0.1;
-				range_drag_base = CLAMP(range_drag_base + c.step * diff_y, c.min, c.max);
-				popup_edited_item->set_range(popup_edited_item_col, range_drag_base);
-				item_edited(popup_edited_item_col, popup_edited_item);
-			}
-		}
-
-		if (drag_touching && !drag_touching_deaccel) {
-			drag_accum -= mm->get_relative().y;
-			v_scroll->set_value(drag_from + drag_accum);
-			drag_speed = -mm->get_velocity().y;
-		}
 	}
 
 	Ref<InputEventMouseButton> mb = p_event;
@@ -4535,8 +4073,6 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 					single_select_defer = nullptr;
 				}
 
-				range_click_timer->stop();
-
 				if (pressing_for_editor) {
 					if (range_drag_enabled) {
 						range_drag_enabled = false;
@@ -4565,16 +4101,6 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 						}
 					}
 					pressing_for_editor = false;
-				}
-
-				if (drag_touching) {
-					if (drag_speed == 0) {
-						drag_touching_deaccel = false;
-						drag_touching = false;
-						set_process_internal(false);
-					} else {
-						drag_touching_deaccel = true;
-					}
 				}
 			}
 
@@ -4650,25 +4176,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 					break;
 				}
 
-				if (drag_touching) {
-					set_process_internal(false);
-					drag_touching_deaccel = false;
-					drag_touching = false;
-					drag_speed = 0;
-					drag_from = 0;
-				}
-
 				if (!click_handled) {
-					drag_speed = 0;
-					drag_accum = 0;
-					drag_from = v_scroll->get_value();
-
-					drag_touching = DisplayServer::get_singleton()->is_touchscreen_available();
-					drag_touching_deaccel = false;
-					if (drag_touching) {
-						set_process_internal(true);
-					}
-
 					if (mb->get_button_index() == MouseButton::LEFT) {
 						if (get_item_at_position(mb->get_position()) == nullptr && !mb->is_shift_pressed() && !mb->is_command_or_control_pressed()) {
 							emit_signal(SNAME("nothing_selected"));
@@ -4861,36 +4369,10 @@ bool FileSystemTree::edit_selected(bool p_force_edit) {
 		s->set_checked(col, !c.checked);
 		item_edited(col, s);
 		return true;
-	} else if (c.mode == FileSystemTreeItem::CELL_MODE_CUSTOM) {
-		edited_item = s;
-		edited_col = col;
-		custom_popup_rect = Rect2i(get_global_position() + rect.position, rect.size);
-		emit_signal(SNAME("custom_popup_edited"), false);
-		item_edited(col, s);
-
-		return true;
-	} else if (c.mode == FileSystemTreeItem::CELL_MODE_RANGE && !c.text.is_empty()) {
-		_update_popup_menu(c);
-		popup_menu->set_size(Size2(rect.size.width, 0));
-		popup_menu->set_position(get_screen_position() + rect.position + Point2i(0, rect.size.height));
-		popup_menu->popup();
-		popup_edited_item = s;
-		popup_edited_item_col = col;
-
-		return true;
-	} else if ((c.mode == FileSystemTreeItem::CELL_MODE_STRING && !c.edit_multiline) || c.mode == FileSystemTreeItem::CELL_MODE_RANGE) {
-		int value_editor_height = 0;
-		if (c.mode == FileSystemTreeItem::CELL_MODE_RANGE) {
-			_update_value_editor(c);
-			value_editor_height = value_editor->get_minimum_size().height;
-			value_editor->show();
-		} else if (value_editor) {
-			value_editor->hide();
-		}
-
+	} else if (c.mode == FileSystemTreeItem::CELL_MODE_STRING && !c.edit_multiline) {
 		Rect2 popup_rect;
 		// `floor()` centers vertically.
-		Vector2 ofs(0, Math::floor((MAX(line_editor->get_minimum_size().height, rect.size.height - value_editor_height) - rect.size.height) / 2));
+		Vector2 ofs(0, Math::floor((MAX(line_editor->get_minimum_size().height, rect.size.height) - rect.size.height) / 2));
 
 		// Account for icon.
 		real_t icon_ofs = 0;
@@ -4898,7 +4380,7 @@ bool FileSystemTree::edit_selected(bool p_force_edit) {
 			icon_ofs = _get_cell_icon_size(c).x * popup_scale + theme_cache.icon_h_separation;
 		}
 
-		popup_rect.size = rect.size + Vector2(-icon_ofs, value_editor_height);
+		popup_rect.size = rect.size + Vector2(-icon_ofs, 0);
 
 		popup_rect.position = rect.position - ofs;
 		popup_rect.position.x += icon_ofs;
@@ -4910,7 +4392,7 @@ bool FileSystemTree::edit_selected(bool p_force_edit) {
 		bool hide_focus = !has_focus(true);
 
 		line_editor->clear();
-		line_editor->set_text(c.mode == FileSystemTreeItem::CELL_MODE_STRING ? c.text : String::num(c.val, Math::range_step_decimals(c.step)));
+		line_editor->set_text(c.text);
 		line_editor->select_all();
 		line_editor->show();
 
@@ -5088,10 +4570,6 @@ void FileSystemTree::_notification(int p_what) {
 			}
 		} break;
 
-		case NOTIFICATION_VISIBILITY_CHANGED: {
-			drag_touching = false;
-		} break;
-
 		case NOTIFICATION_DRAG_END: {
 			drop_mode_flags = 0;
 			scrolling = false;
@@ -5108,42 +4586,6 @@ void FileSystemTree::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_INTERNAL_PROCESS: {
-			if (drag_touching) {
-				if (drag_touching_deaccel) {
-					float pos = v_scroll->get_value();
-					pos += drag_speed * get_process_delta_time();
-
-					bool turnoff = false;
-					if (pos < 0) {
-						pos = 0;
-						turnoff = true;
-						set_process_internal(false);
-						drag_touching = false;
-						drag_touching_deaccel = false;
-					}
-					if (pos > (v_scroll->get_max() - v_scroll->get_page())) {
-						pos = v_scroll->get_max() - v_scroll->get_page();
-						turnoff = true;
-					}
-
-					v_scroll->set_value(pos);
-					float sgn = drag_speed < 0 ? -1 : 1;
-					float val = Math::abs(drag_speed);
-					val -= 1000 * get_process_delta_time();
-
-					if (val < 0) {
-						turnoff = true;
-					}
-					drag_speed = sgn * val;
-
-					if (turnoff) {
-						set_process_internal(false);
-						drag_touching = false;
-						drag_touching_deaccel = false;
-					}
-				}
-			}
-
 			Point2 mouse_position = get_viewport()->get_mouse_position() - get_global_position();
 			if (scrolling && get_rect().grow(theme_cache.scroll_border).has_point(mouse_position)) {
 				Point2 point;
@@ -6429,20 +5871,10 @@ int FileSystemTree::get_drop_section_at_position(const Point2 &p_pos) const {
 }
 
 bool FileSystemTree::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
-	if (drag_touching) {
-		// Disable data drag & drop when touch dragging.
-		return false;
-	}
-
 	return Control::can_drop_data(p_point, p_data);
 }
 
 Variant FileSystemTree::get_drag_data(const Point2 &p_point) {
-	if (drag_touching) {
-		// Disable data drag & drop when touch dragging.
-		return Variant();
-	}
-
 	return Control::get_drag_data(p_point);
 }
 
@@ -7059,10 +6491,6 @@ FileSystemTree::FileSystemTree() {
 
 	add_child(h_scroll, false, INTERNAL_MODE_FRONT);
 	add_child(v_scroll, false, INTERNAL_MODE_FRONT);
-
-	range_click_timer = memnew(Timer);
-	range_click_timer->connect("timeout", callable_mp(this, &FileSystemTree::_range_click_timeout));
-	add_child(range_click_timer, false, INTERNAL_MODE_FRONT);
 
 	dropping_unfold_timer = memnew(Timer);
 	dropping_unfold_timer->set_one_shot(true);
