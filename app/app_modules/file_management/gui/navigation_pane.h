@@ -38,7 +38,7 @@ private:
 	void _create_file_item(FileSystemTreeItem *p_parent, const FileInfo *p_file_info);
 
 	void _on_item_activated();
-	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
+	void _on_item_selected(Object *p_item, bool p_selected);
 	void _tree_item_collapsed(FileSystemTreeItem *p_item);
 
 	FileSystemTreeItem *_search_item(const String &p_path);

@@ -52,8 +52,6 @@ private:
 		bool checked = false;
 		bool indeterminate = false;
 		bool editable = false;
-		bool selected = false;
-		bool selectable = true;
 		bool custom_color = false;
 		Color color;
 		bool custom_bg_color = false;
@@ -63,7 +61,6 @@ private:
 		Color icon_color = Color(1, 1, 1);
 		Ref<StyleBox> custom_stylebox;
 
-		Rect2 focus_rect;
 		Size2i cached_minimum_size;
 		bool cached_minimum_size_dirty = true;
 
@@ -86,6 +83,9 @@ private:
 
 	Vector<Cell> cells;
 
+	bool selected = false;
+	bool selectable = true;
+
 	Rect2 focus_rect;
 	bool collapsed = false; // Won't show children.
 	bool visible = true;
@@ -107,8 +107,6 @@ private:
 
 	void _changed_notify(int p_cell);
 	void _changed_notify();
-	void _cell_selected(int p_cell);
-	void _cell_deselected(int p_cell);
 	void _handle_visibility_changed(bool p_visible);
 	void _propagate_visibility_changed(bool p_parent_visible_in_tree);
 
@@ -247,14 +245,13 @@ public:
 	void set_custom_stylebox(int p_column, const Ref<StyleBox> &p_stylebox);
 	Ref<StyleBox> get_custom_stylebox(int p_column) const;
 
-	void set_selectable(int p_column, bool p_selectable);
-	bool is_selectable(int p_column) const;
+	void set_selectable(bool p_selectable);
+	bool is_selectable() const;
 
-	bool is_selected(int p_column);
-	bool is_any_column_selected() const;
-	void select(int p_column);
-	void deselect(int p_column);
-	void set_as_cursor(int p_column);
+	bool is_selected();
+	void select();
+	void deselect();
+	void set_as_cursor();
 
 	void set_editable(int p_column, bool p_editable);
 	bool is_editable(int p_column);
@@ -333,12 +330,6 @@ class FileSystemTree : public Control {
 	GDCLASS(FileSystemTree, Control);
 
 public:
-	enum SelectMode {
-		SELECT_SINGLE,
-		SELECT_ROW,
-		SELECT_MULTI
-	};
-
 	enum DropModeFlags {
 		DROP_MODE_DISABLED = 0,
 		DROP_MODE_ON_ITEM = 1,
@@ -442,7 +433,6 @@ private:
 	int drop_mode_section = 0;
 
 	FileSystemTreeItem *single_select_defer = nullptr;
-	int single_select_defer_column = 0;
 
 	int pressed_button = -1;
 	bool pressing_for_editor = false;
@@ -459,11 +449,9 @@ private:
 	float content_scale_factor = 0.0;
 
 	Rect2 custom_popup_rect;
-	int edited_col = -1;
-	int selected_col = -1;
+	// int edited_col = -1; // TODO
 	int popup_edited_item_col = -1;
 	bool hide_root = false;
-	SelectMode select_mode = SELECT_SINGLE;
 
 	int blocked = 0;
 
@@ -514,7 +502,7 @@ private:
 	void update_item_cache(FileSystemTreeItem *p_item) const;
 	void draw_item_rect(const FileSystemTreeItem::Cell &p_cell, const Rect2i &p_rect, const Color &p_color, const Color &p_icon_color, int p_ol_size, const Color &p_ol_color) const;
 	int draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 &p_draw_size, FileSystemTreeItem *p_item, int &r_self_height);
-	void select_single_item(FileSystemTreeItem *p_selected, FileSystemTreeItem *p_current, int p_col, FileSystemTreeItem *p_prev = nullptr, bool *r_in_range = nullptr, bool p_force_deselect = false);
+	void select_item(FileSystemTreeItem *p_selected, FileSystemTreeItem *p_current, FileSystemTreeItem *p_prev = nullptr, bool *r_in_range = nullptr, bool p_force_deselect = false);
 	int propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, int x_limit, bool p_double_click, FileSystemTreeItem *p_item, MouseButton p_button, const Ref<InputEventWithModifiers> &p_mod);
 	void _line_editor_submit(String p_text);
 	void _apply_multiline_edit(bool p_hide_focus = false);
@@ -523,8 +511,8 @@ private:
 
 	void item_edited(int p_column, FileSystemTreeItem *p_item, MouseButton p_custom_mouse_index = MouseButton::NONE);
 	void item_changed(int p_column, FileSystemTreeItem *p_item);
-	void item_selected(int p_column, FileSystemTreeItem *p_item);
-	void item_deselected(int p_column, FileSystemTreeItem *p_item);
+	void item_selected(FileSystemTreeItem *p_item);
+	void item_deselected(FileSystemTreeItem *p_item);
 	void update_min_size_for_item_change();
 
 	void propagate_set_columns(FileSystemTreeItem *p_item);
@@ -638,7 +626,6 @@ private:
 
 		FileSystemTreeItem *hover_item = nullptr;
 		int hover_column = -1;
-		int hover_button_index_in_column = -1;
 
 		bool rtl = false;
 	} cache;
@@ -725,6 +712,7 @@ private:
 	FileSystemTreeItem *_add_tree_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
 	FileSystemTreeItem *_add_list_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
 
+	// TODO: Refactor
 	void _on_item_activated();
 	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
 
@@ -790,11 +778,8 @@ public:
 	bool is_root_hidden() const;
 	FileSystemTreeItem *get_next_selected(FileSystemTreeItem *p_item);
 	FileSystemTreeItem *get_selected() const;
-	void set_selected(FileSystemTreeItem *p_item, int p_column = 0);
-	int get_selected_column() const;
+	void set_selected(FileSystemTreeItem *p_item);
 	int get_pressed_button() const;
-	void set_select_mode(SelectMode p_mode);
-	SelectMode get_select_mode() const;
 	void deselect_all();
 	bool is_anything_selected();
 
@@ -820,7 +805,6 @@ public:
 	bool are_column_titles_visible() const;
 
 	FileSystemTreeItem *get_edited() const;
-	int get_edited_column() const;
 
 	void ensure_cursor_is_visible();
 
@@ -903,6 +887,5 @@ public:
 	~FileSystemTree();
 };
 
-VARIANT_ENUM_CAST(FileSystemTree::SelectMode);
 VARIANT_ENUM_CAST(FileSystemTree::DropModeFlags);
 VARIANT_ENUM_CAST(FileSystemTree::ScrollHintMode);

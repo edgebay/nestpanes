@@ -62,7 +62,7 @@ private:
 	void _update_status_bar();
 
 	void _on_item_activated();
-	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
+	void _on_item_selected(Object *p_item, bool p_selected);
 
 	void _on_item_mouse_selected(const Vector2 &p_pos, MouseButton p_button);
 	void _on_empty_clicked(const Vector2 &p_pos, MouseButton p_button);

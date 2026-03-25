@@ -182,10 +182,10 @@ void NavigationPane::_create_tree(FileSystemTreeItem *p_parent, const FileSystem
 
 	String path = p_dir->get_path();
 	if (selected_path == path || (selected_path.get_base_dir() == path)) {
-		subdirectory_item->select(0);
+		subdirectory_item->select();
 		// Keep select an item when re-created a tree
 		// To prevent crashing when nothing is selected.
-		subdirectory_item->set_as_cursor(0);
+		subdirectory_item->set_as_cursor();
 	}
 
 	bool uncollapsed = p_uncollapsed_paths.has(path);
@@ -218,8 +218,8 @@ void NavigationPane::_create_file_item(FileSystemTreeItem *p_parent, const FileI
 	file_item->set_collapsed(true); // default value is false.
 
 	if (selected_path == p_file_info->path) {
-		file_item->select(0);
-		file_item->set_as_cursor(0);
+		file_item->select();
+		file_item->set_as_cursor();
 	}
 }
 
@@ -241,7 +241,7 @@ void NavigationPane::_on_item_activated() {
 	}
 }
 
-void NavigationPane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
+void NavigationPane::_on_item_selected(Object *p_item, bool p_selected) {
 	if (!p_selected) {
 		return;
 	}
@@ -399,7 +399,7 @@ NavigationPane::NavigationPane() :
 
 	// double-clicking selected.
 	tree->connect("item_activated", callable_mp(this, &NavigationPane::_on_item_activated));
-	tree->connect("multi_selected", callable_mp(this, &NavigationPane::_on_multi_selected));
+	tree->connect("item_selected", callable_mp(this, &NavigationPane::_on_item_selected));
 	// TODO: edit
 	// tree->connect("item_edited", callable_mp(this, &NavigationPane::_item_edited));
 

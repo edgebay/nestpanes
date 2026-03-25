@@ -80,18 +80,6 @@ void FileSystemTreeItem::_changed_notify() {
 	}
 }
 
-void FileSystemTreeItem::_cell_selected(int p_cell) {
-	if (tree) {
-		tree->item_selected(p_cell, this);
-	}
-}
-
-void FileSystemTreeItem::_cell_deselected(int p_cell) {
-	if (tree) {
-		tree->item_deselected(p_cell, this);
-	}
-}
-
 void FileSystemTreeItem::_change_tree(FileSystemTree *p_tree) {
 	if (p_tree == tree) {
 		return;
@@ -119,10 +107,7 @@ void FileSystemTreeItem::_change_tree(FileSystemTree *p_tree) {
 		}
 
 		if (tree->selected_item == this) {
-			for (int i = 0; i < tree->selected_item->cells.size(); i++) {
-				tree->selected_item->cells.write[i].selected = false;
-			}
-
+			tree->selected_item->selected = false;
 			tree->selected_item = nullptr;
 		}
 
@@ -610,13 +595,9 @@ void FileSystemTreeItem::set_collapsed(bool p_collapsed) {
 			ci = ci->parent;
 		}
 		if (ci) { // Collapsing cursor/selected, move it!
-
-			if (tree->select_mode == FileSystemTree::SELECT_MULTI) {
-				tree->selected_item = this;
-				emit_signal(SNAME("cell_selected"));
-			} else {
-				select(tree->selected_col);
-			}
+			tree->selected_item = this;
+			// TODO
+			// emit_signal(SNAME("item_selected"), selected_item, true);
 
 			tree->queue_redraw();
 		}
@@ -688,10 +669,8 @@ void FileSystemTreeItem::set_visible(bool p_visible) {
 	visible = p_visible;
 	if (tree) {
 		if (!visible) {
-			for (int i = 0; i < tree->columns.size(); i++) {
-				if (cells[i].selected) {
-					deselect(i);
-				}
+			if (selected) {
+				deselect();
 			}
 		}
 
@@ -1155,54 +1134,38 @@ void FileSystemTreeItem::move_after(FileSystemTreeItem *p_item) {
 	validate_cache();
 }
 
-void FileSystemTreeItem::set_selectable(int p_column, bool p_selectable) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-	cells.write[p_column].selectable = p_selectable;
+void FileSystemTreeItem::set_selectable(bool p_selectable) {
+	selectable = p_selectable;
 }
 
-bool FileSystemTreeItem::is_selectable(int p_column) const {
-	ERR_FAIL_INDEX_V(p_column, cells.size(), false);
-	return cells[p_column].selectable;
+bool FileSystemTreeItem::is_selectable() const {
+	return selectable;
 }
 
-bool FileSystemTreeItem::is_selected(int p_column) {
-	ERR_FAIL_INDEX_V(p_column, cells.size(), false);
-	return cells[p_column].selectable && cells[p_column].selected;
+bool FileSystemTreeItem::is_selected() {
+	return selectable && selected;
 }
 
-bool FileSystemTreeItem::is_any_column_selected() const {
-	for (const Cell &cell : cells) {
-		if (cell.selectable && cell.selected) {
-			return true;
-		}
-	}
-	return false;
-}
-
-void FileSystemTreeItem::set_as_cursor(int p_column) {
-	ERR_FAIL_INDEX(p_column, cells.size());
+// TODO
+void FileSystemTreeItem::set_as_cursor() {
 	if (!tree) {
 		return;
 	}
-	if (tree->select_mode != FileSystemTree::SELECT_MULTI) {
-		return;
-	}
-	if (tree->selected_item == this && tree->selected_col == p_column) {
+	if (tree->selected_item == this) {
 		return;
 	}
 	tree->selected_item = this;
-	tree->selected_col = p_column;
 	tree->queue_redraw();
 }
 
-void FileSystemTreeItem::select(int p_column) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-	_cell_selected(p_column);
+void FileSystemTreeItem::select() {
+	ERR_FAIL_NULL(tree);
+	tree->item_selected(this);
 }
 
-void FileSystemTreeItem::deselect(int p_column) {
-	ERR_FAIL_INDEX(p_column, cells.size());
-	_cell_deselected(p_column);
+void FileSystemTreeItem::deselect() {
+	ERR_FAIL_NULL(tree);
+	tree->item_deselected(this);
 }
 
 void FileSystemTreeItem::set_editable(int p_column, bool p_editable) {
@@ -1538,12 +1501,12 @@ void FileSystemTreeItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_custom_minimum_height", "height"), &FileSystemTreeItem::set_custom_minimum_height);
 	ClassDB::bind_method(D_METHOD("get_custom_minimum_height"), &FileSystemTreeItem::get_custom_minimum_height);
 
-	ClassDB::bind_method(D_METHOD("set_selectable", "column", "selectable"), &FileSystemTreeItem::set_selectable);
-	ClassDB::bind_method(D_METHOD("is_selectable", "column"), &FileSystemTreeItem::is_selectable);
+	ClassDB::bind_method(D_METHOD("set_selectable", "selectable"), &FileSystemTreeItem::set_selectable);
+	ClassDB::bind_method(D_METHOD("is_selectable"), &FileSystemTreeItem::is_selectable);
 
-	ClassDB::bind_method(D_METHOD("is_selected", "column"), &FileSystemTreeItem::is_selected);
-	ClassDB::bind_method(D_METHOD("select", "column"), &FileSystemTreeItem::select);
-	ClassDB::bind_method(D_METHOD("deselect", "column"), &FileSystemTreeItem::deselect);
+	ClassDB::bind_method(D_METHOD("is_selected"), &FileSystemTreeItem::is_selected);
+	ClassDB::bind_method(D_METHOD("select"), &FileSystemTreeItem::select);
+	ClassDB::bind_method(D_METHOD("deselect"), &FileSystemTreeItem::deselect);
 
 	ClassDB::bind_method(D_METHOD("set_editable", "column", "enabled"), &FileSystemTreeItem::set_editable);
 	ClassDB::bind_method(D_METHOD("is_editable", "column"), &FileSystemTreeItem::is_editable);
@@ -1920,9 +1883,6 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 				continue;
 			}
 
-			bool is_col_hovered = cache.hover_column == i;
-			bool is_cell_hovered = is_row_hovered && is_col_hovered;
-			bool is_cell_button_hovered = is_cell_hovered && cache.hover_button_index_in_column != -1;
 			int item_width = get_column_width(i);
 
 			if (i == 0) {
@@ -1971,13 +1931,13 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 				cell_rect.size.x += theme_cache.h_separation;
 			}
 
-			if (i == 0 && select_mode == SELECT_ROW) {
-				if (p_item->cells[0].selected || is_row_hovered) {
+			if (i == 0) {
+				if (p_item->selected || is_row_hovered) {
 					const Rect2 content_rect = _get_content_rect();
 					Rect2i row_rect = Rect2i(Point2i(content_rect.position.x, item_rect.position.y), Size2i(content_rect.size.x, item_rect.size.y));
 					row_rect = convert_rtl_rect(row_rect);
 
-					if (p_item->cells[0].selected) {
+					if (p_item->selected) {
 						if (is_row_hovered) {
 							if (has_focus(true)) {
 								theme_cache.hovered_selected_focus->draw(ci, row_rect);
@@ -1991,52 +1951,14 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 								theme_cache.selected->draw(ci, row_rect);
 							}
 						}
+
+						if (!p_item->focus_rect.has_area()) {
+							Rect2i r = cell_rect;
+							p_item->focus_rect = Rect2(r.position, r.size);
+						}
 					} else if (!drop_mode_flags) {
-						if (is_cell_button_hovered) {
-							theme_cache.hovered_dimmed->draw(ci, row_rect);
-						} else {
-							theme_cache.hovered->draw(ci, row_rect);
-						}
+						theme_cache.hovered->draw(ci, row_rect);
 					}
-				}
-			}
-
-			if (select_mode != SELECT_ROW) {
-				Rect2i r = convert_rtl_rect(cell_rect);
-
-				// Cell hover.
-				if (is_cell_hovered && !p_item->cells[i].selected && !drop_mode_flags) {
-					if (is_cell_button_hovered) {
-						theme_cache.hovered_dimmed->draw(ci, r);
-					} else {
-						theme_cache.hovered->draw(ci, r);
-					}
-				}
-			}
-
-			if ((select_mode == SELECT_ROW && selected_item == p_item) || (select_mode == SELECT_MULTI && selected_item == p_item && selected_col == i) || p_item->cells[i].selected || !p_item->focus_rect.has_area()) {
-				Rect2i r = cell_rect;
-
-				if (select_mode != SELECT_ROW) {
-					p_item->focus_rect = Rect2(r.position, r.size);
-					r = convert_rtl_rect(r);
-					if (p_item->cells[i].selected) {
-						if (is_cell_hovered) {
-							if (has_focus(true)) {
-								theme_cache.hovered_selected_focus->draw(ci, r);
-							} else {
-								theme_cache.hovered_selected->draw(ci, r);
-							}
-						} else {
-							if (has_focus(true)) {
-								theme_cache.selected_focus->draw(ci, r);
-							} else {
-								theme_cache.selected->draw(ci, r);
-							}
-						}
-					}
-				} else {
-					p_item->cells.write[i].focus_rect = Rect2(r.position, r.size);
 				}
 			}
 
@@ -2100,9 +2022,8 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 			if (p_item->cells[i].custom_color) {
 				cell_color = p_item->cells[i].color;
 			} else {
-				bool draw_as_hover = !drop_mode_flags && (select_mode == SELECT_ROW ? is_row_hovered : is_cell_hovered);
-				bool draw_as_hover_dim = draw_as_hover && is_cell_button_hovered;
-				cell_color = p_item->cells[i].selected && draw_as_hover ? theme_cache.font_hovered_selected_color : (p_item->cells[i].selected ? theme_cache.font_selected_color : (draw_as_hover_dim ? theme_cache.font_hovered_dimmed_color : (draw_as_hover ? theme_cache.font_hovered_color : theme_cache.font_color)));
+				bool draw_as_hover = !drop_mode_flags && is_row_hovered;
+				cell_color = p_item->selected && draw_as_hover ? theme_cache.font_hovered_selected_color : (p_item->selected ? theme_cache.font_selected_color : (draw_as_hover ? theme_cache.font_hovered_color : theme_cache.font_color));
 			}
 
 			Color font_outline_color = theme_cache.font_outline_color;
@@ -2178,12 +2099,15 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 				ofs += item_width;
 			}
 
-			if (select_mode == SELECT_MULTI && selected_item == p_item && selected_col == i) {
-				cell_rect = convert_rtl_rect(cell_rect);
+			if (i == 0 && selected_item == p_item) {
+				const Rect2 content_rect = _get_content_rect();
+				Rect2i row_rect = Rect2i(Point2i(content_rect.position.x, item_rect.position.y), Size2i(content_rect.size.x, item_rect.size.y));
+				row_rect = convert_rtl_rect(row_rect);
+
 				if (has_focus(true)) {
-					theme_cache.cursor->draw(ci, cell_rect);
+					theme_cache.cursor->draw(ci, row_rect);
 				} else {
-					theme_cache.cursor_unfocus->draw(ci, cell_rect);
+					theme_cache.cursor_unfocus->draw(ci, row_rect);
 				}
 			}
 		}
@@ -2293,7 +2217,7 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 						more_prev_ofs = theme_cache.parent_hl_line_margin;
 						prev_hl_ofs = parent_bottom_y;
 						has_sibling_selection = _is_sibling_branch_selected(c);
-					} else if (p_item->is_any_column_selected()) {
+					} else if (p_item->is_selected()) {
 						// If parent item is selected (but this item is not), we draw the line using children highlight style.
 						// Siblings of the selected branch can be drawn with a slight offset and their vertical line must appear as highlighted.
 						if (has_sibling_selection) {
@@ -2368,10 +2292,9 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 
 int FileSystemTree::_count_selected_items(FileSystemTreeItem *p_from) const {
 	int count = 0;
-	for (int i = 0; i < columns.size(); i++) {
-		if (p_from->is_selected(i)) {
-			count++;
-		}
+
+	if (p_from->is_selected()) {
+		count++;
 	}
 
 	for (FileSystemTreeItem *c = p_from->get_first_child(); c; c = c->get_next()) {
@@ -2382,7 +2305,7 @@ int FileSystemTree::_count_selected_items(FileSystemTreeItem *p_from) const {
 }
 
 bool FileSystemTree::_is_branch_selected(FileSystemTreeItem *p_from) const {
-	if (p_from->is_any_column_selected()) {
+	if (p_from->is_selected()) {
 		return true;
 	}
 
@@ -2409,79 +2332,45 @@ bool FileSystemTree::_is_sibling_branch_selected(FileSystemTreeItem *p_from) con
 	return false;
 }
 
-void FileSystemTree::select_single_item(FileSystemTreeItem *p_selected, FileSystemTreeItem *p_current, int p_col, FileSystemTreeItem *p_prev, bool *r_in_range, bool p_force_deselect) {
+void FileSystemTree::select_item(FileSystemTreeItem *p_selected, FileSystemTreeItem *p_current, FileSystemTreeItem *p_prev, bool *r_in_range, bool p_force_deselect) {
 	ERR_FAIL_NULL(p_selected);
-	ERR_FAIL_INDEX(p_col, p_selected->cells.size());
 
 	popup_editor->hide();
 
-	FileSystemTreeItem::Cell &selected_cell = p_selected->cells.write[p_col];
-
+	// Select items in the range from the previous to the currently selected item.
 	bool switched = false;
 	if (r_in_range && !*r_in_range && (p_current == p_selected || p_current == p_prev)) {
 		*r_in_range = true;
 		switched = true;
 	}
 
-	bool emitted_row = false;
-
-	for (int i = 0; i < columns.size(); i++) {
-		FileSystemTreeItem::Cell &c = p_current->cells.write[i];
-
-		if (!c.selectable) {
-			continue;
+	if (p_current->selectable) {
+		if (p_selected == p_current) {
+			selected_item = p_selected;
 		}
 
-		if (select_mode == SELECT_ROW) {
-			if (p_selected == p_current && (!c.selected || allow_reselect)) {
-				c.selected = true;
-				selected_item = p_selected;
-				if (!emitted_row) {
-					emit_signal(SceneStringName(item_selected));
-					emitted_row = true;
-				}
-			} else if (c.selected) {
+		if (!r_in_range) { // Select single item.
+			if (p_selected == p_current && (!p_current->selected || allow_reselect)) {
+				p_current->selected = true;
+				emit_signal(SNAME("item_selected"), p_current, true);
+			} else if (p_current->selected) {
+				// Deselect other selected items.
 				if (p_selected != p_current) {
-					// Deselect other rows.
-					c.selected = false;
+					p_current->selected = false;
+					emit_signal(SNAME("item_selected"), p_current, false);
 				}
 			}
-			if (&selected_cell == &c) {
-				selected_col = i;
-			}
-		} else if (select_mode == SELECT_SINGLE || select_mode == SELECT_MULTI) {
-			if (!r_in_range && &selected_cell == &c) {
-				if (!selected_cell.selected || allow_reselect) {
-					selected_cell.selected = true;
-
-					selected_item = p_selected;
-					selected_col = i;
-
-					emit_signal(SNAME("cell_selected"));
-					if (select_mode == SELECT_MULTI) {
-						emit_signal(SNAME("multi_selected"), p_current, i, true);
-					} else if (select_mode == SELECT_SINGLE) {
-						emit_signal(SceneStringName(item_selected));
-					}
-
-				} else if (select_mode == SELECT_MULTI && (selected_item != p_selected || selected_col != i)) {
-					selected_item = p_selected;
-					selected_col = i;
-					emit_signal(SNAME("cell_selected"));
+		} else { // Select the items in the range.
+			if (*r_in_range && !p_force_deselect) {
+				if (!p_current->selected) {
+					p_current->selected = true;
+					emit_signal(SNAME("item_selected"), p_current, true);
 				}
 			} else {
-				if (r_in_range && *r_in_range && !p_force_deselect) {
-					if (!c.selected && c.selectable) {
-						c.selected = true;
-						emit_signal(SNAME("multi_selected"), p_current, i, true);
-					}
-
-				} else if (!r_in_range || p_force_deselect) {
-					if (select_mode == SELECT_MULTI && c.selected) {
-						emit_signal(SNAME("multi_selected"), p_current, i, false);
-					}
-					c.selected = false;
+				if (p_current->selected) {
+					emit_signal(SNAME("item_selected"), p_current, false);
 				}
+				p_current->selected = false;
 			}
 		}
 	}
@@ -2494,7 +2383,7 @@ void FileSystemTree::select_single_item(FileSystemTreeItem *p_selected, FileSyst
 
 	while (c) {
 		if (c->is_visible()) {
-			select_single_item(p_selected, c, p_col, p_prev, r_in_range, p_current->is_collapsed() || p_force_deselect);
+			select_item(p_selected, c, p_prev, r_in_range, p_current->is_collapsed() || p_force_deselect);
 		}
 		c = c->next;
 	}
@@ -2541,7 +2430,7 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 		ERR_FAIL_INDEX_V(col, p_item->cells.size(), -1);
 		const FileSystemTreeItem::Cell &c = p_item->cells[col];
 
-		if (!p_item->disable_folding && !hide_folding && !p_item->cells[col].editable && !p_item->cells[col].selectable && p_item->get_first_child()) {
+		if (!p_item->disable_folding && !hide_folding && !p_item->cells[col].editable && !p_item->selectable && p_item->get_first_child()) {
 			if (enable_recursive_folding && p_mod->is_shift_pressed()) {
 				p_item->set_collapsed_recursive(!p_item->is_collapsed());
 			} else {
@@ -2550,8 +2439,8 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 			return -1; // Collapse/uncollapse, because nothing can be done with the item.
 		}
 
-		bool already_selected = c.selected;
-		bool already_cursor = (p_item == selected_item) && col == selected_col;
+		bool already_selected = p_item->selected;
+		bool already_cursor = (p_item == selected_item);
 
 		if (p_button == MouseButton::LEFT || (p_button == MouseButton::RIGHT && allow_rmb_select)) {
 			// Process selection.
@@ -2564,38 +2453,37 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 				return -1;
 			}
 
-			if (c.selectable) {
-				if (select_mode == SELECT_MULTI && p_mod->is_command_or_control_pressed()) {
-					if (c.selected && p_button == MouseButton::LEFT) {
-						p_item->deselect(col);
-						emit_signal(SNAME("multi_selected"), p_item, col, false);
+			if (p_item->selectable) {
+				if (p_mod->is_command_or_control_pressed()) {
+					if (p_item->selected && p_button == MouseButton::LEFT) {
+						p_item->deselect();
+						emit_signal(SNAME("item_selected"), p_item, false);
 					} else {
-						p_item->select(col);
-						emit_signal(SNAME("multi_selected"), p_item, col, true);
+						p_item->select();
+						emit_signal(SNAME("item_selected"), p_item, true);
 						emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
 					}
+				} else if (p_mod->is_shift_pressed() && selected_item && selected_item != p_item) {
+					bool inrange = false;
+
+					select_item(p_item, root, selected_item, &inrange);
+					emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
+
+					queue_redraw();
 				} else {
-					if (select_mode == SELECT_MULTI && p_mod->is_shift_pressed() && selected_item && selected_item != p_item) {
-						bool inrange = false;
+					int icount = _count_selected_items(root);
 
-						select_single_item(p_item, root, col, selected_item, &inrange);
-						emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
-					} else {
-						int icount = _count_selected_items(root);
-
-						if (select_mode == SELECT_MULTI && icount > 1 && p_button != MouseButton::RIGHT) {
-							if (!already_selected) {
-								select_single_item(p_item, root, col);
-							}
-							single_select_defer = p_item;
-							single_select_defer_column = col;
-						} else {
-							if (p_button != MouseButton::RIGHT || !c.selected) {
-								select_single_item(p_item, root, col);
-							}
-
-							emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
+					if (icount > 1 && p_button != MouseButton::RIGHT) {
+						if (!already_selected) {
+							select_item(p_item, root);
 						}
+						single_select_defer = p_item;
+					} else {
+						if (p_button != MouseButton::RIGHT || !p_item->selected) {
+							select_item(p_item, root);
+						}
+
+						emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
 					}
 					queue_redraw();
 				}
@@ -2607,14 +2495,14 @@ int FileSystemTree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y
 		}
 
 		// Editing.
-		bool bring_up_editor = allow_reselect ? (c.selected && already_selected) : c.selected;
+		bool bring_up_editor = allow_reselect ? (p_item->selected && already_selected) : p_item->selected;
 		String editor_text = c.text;
 
 		switch (c.mode) {
 			case FileSystemTreeItem::CELL_MODE_STRING: {
 				// Nothing in particular.
 
-				if (select_mode == SELECT_MULTI && (get_viewport()->get_processed_events_count() == focus_in_id || !already_cursor)) {
+				if (get_viewport()->get_processed_events_count() == focus_in_id || !already_cursor) {
 					bring_up_editor = false;
 				}
 
@@ -2784,26 +2672,16 @@ void FileSystemTree::_line_editor_submit(String p_text) {
 }
 
 void FileSystemTree::_go_left() {
-	if (selected_col == 0) {
-		if (selected_item->get_first_child() != nullptr && !selected_item->is_collapsed()) {
-			selected_item->set_collapsed(true);
-		} else {
-			if (columns.size() == 1) { // Goto parent with one column.
-				FileSystemTreeItem *parent = selected_item->get_parent();
-				if (selected_item != get_root() && parent && parent->is_selectable(selected_col) && !(hide_root && parent == get_root())) {
-					select_single_item(parent, get_root(), selected_col);
-				}
-			} else if (selected_item->get_prev_visible()) {
-				selected_col = columns.size() - 1;
-				_go_up(); // Go to upper column if possible.
-			}
-		}
+	if (selected_item->get_first_child() != nullptr && !selected_item->is_collapsed()) {
+		selected_item->set_collapsed(true);
 	} else {
-		if (select_mode == SELECT_MULTI) {
-			selected_col--;
-			emit_signal(SNAME("cell_selected"));
-		} else {
-			selected_item->select(selected_col - 1);
+		if (columns.size() == 1) { // Goto parent with one column.
+			FileSystemTreeItem *parent = selected_item->get_parent();
+			if (selected_item != get_root() && parent && parent->is_selectable() && !(hide_root && parent == get_root())) {
+				select_item(parent, get_root());
+			}
+		} else if (selected_item->get_prev_visible()) {
+			_go_up(); // Go to upper column if possible.
 		}
 	}
 	queue_redraw();
@@ -2812,21 +2690,10 @@ void FileSystemTree::_go_left() {
 }
 
 void FileSystemTree::_go_right() {
-	ERR_FAIL_INDEX(selected_col, selected_item->cells.size());
-	if (selected_col == (columns.size() - 1)) {
-		if (selected_item->get_first_child() != nullptr && selected_item->is_collapsed()) {
-			selected_item->set_collapsed(false);
-		} else if (selected_item->get_next_visible()) {
-			selected_col = 0;
-			_go_down();
-		}
-	} else {
-		if (select_mode == SELECT_MULTI) {
-			selected_col++;
-			emit_signal(SNAME("cell_selected"));
-		} else {
-			selected_item->select(selected_col + 1);
-		}
+	if (selected_item->get_first_child() != nullptr && selected_item->is_collapsed()) {
+		selected_item->set_collapsed(false);
+	} else if (selected_item->get_next_visible()) {
+		_go_down();
 	}
 	queue_redraw();
 	ensure_cursor_is_visible();
@@ -2837,29 +2704,28 @@ void FileSystemTree::_go_up() {
 	FileSystemTreeItem *prev = nullptr;
 	if (!selected_item) {
 		prev = get_last_item();
-		selected_col = 0;
 	} else {
 		prev = selected_item->get_prev_visible();
 	}
 
-	int col = MAX(selected_col, 0);
-
-	if (select_mode == SELECT_MULTI) {
+	if (display_mode == DISPLAY_MODE_TREE) {
 		if (!prev) {
 			return;
 		}
 
 		selected_item = prev;
-		emit_signal(SNAME("cell_selected"));
+		// TODO
+		// emit_signal(SNAME("item_selected"), selected_item, true);
 		queue_redraw();
 	} else {
-		while (prev && !prev->cells[col].selectable) {
+		while (prev && !prev->selectable) {
 			prev = prev->get_prev_visible();
 		}
 		if (!prev) {
 			return; // Do nothing.
 		}
-		prev->select(col);
+		// prev->select();
+		set_selected(prev);
 	}
 
 	ensure_cursor_is_visible();
@@ -2870,7 +2736,7 @@ void FileSystemTree::_shift_select_range(FileSystemTreeItem *new_item) {
 	if (!new_item) {
 		new_item = selected_item;
 	}
-	int s_col = selected_col;
+
 	bool in_range = false;
 	FileSystemTreeItem *item = root;
 
@@ -2888,20 +2754,20 @@ void FileSystemTree::_shift_select_range(FileSystemTreeItem *new_item) {
 		}
 		if (item->is_visible_in_tree()) {
 			if (in_range || at_range_edge) {
-				if (!item->is_selected(selected_col) && item->is_selectable(selected_col)) {
-					item->select(selected_col);
-					emit_signal(SNAME("multi_selected"), item, selected_col, true);
+				if (!item->is_selected() && item->is_selectable()) {
+					item->select();
+					emit_signal(SNAME("item_selected"), item, true);
 				}
-			} else if (item->is_selected(selected_col)) {
-				item->deselect(selected_col);
-				emit_signal(SNAME("multi_selected"), item, selected_col, false);
+			} else if (item->is_selected()) {
+				item->deselect();
+				emit_signal(SNAME("item_selected"), item, false);
 			}
 		}
 		item = item->get_next_in_tree(false);
 	}
 
 	selected_item = new_item;
-	selected_col = s_col;
+
 	ensure_cursor_is_visible();
 	queue_redraw();
 	accept_event();
@@ -2917,24 +2783,24 @@ void FileSystemTree::_go_down() {
 		next = selected_item->get_next_visible();
 	}
 
-	int col = MAX(selected_col, 0);
-
-	if (select_mode == SELECT_MULTI) {
+	if (display_mode == DISPLAY_MODE_TREE) {
 		if (!next) {
 			return;
 		}
 
 		selected_item = next;
-		emit_signal(SNAME("cell_selected"));
+		// TODO
+		// emit_signal(SNAME("item_selected"), selected_item, true);
 		queue_redraw();
 	} else {
-		while (next && !next->cells[col].selectable) {
+		while (next && !next->selectable) {
 			next = next->get_next_visible();
 		}
 		if (!next) {
 			return; // Do nothing.
 		}
-		next->select(col);
+		// next->select();
+		set_selected(next);
 	}
 
 	ensure_cursor_is_visible();
@@ -3000,17 +2866,12 @@ void FileSystemTree::_update_display_mode() {
 	if (display_mode == DISPLAY_MODE_TREE) {
 		column_count = 1;
 
-		set_select_mode(SELECT_MULTI);
-
 		set_theme_type_variation("FileSystemTree");
 		set_hide_folding(false);
 		set_columns(column_count);
 		set_column_titles_visible(false);
 	} else if (display_mode == DISPLAY_MODE_LIST) {
 		column_count = 4;
-
-		// set_select_mode(SELECT_MULTI);
-		set_select_mode(SELECT_ROW);
 
 		set_theme_type_variation("TreeTable");
 		set_hide_folding(true);
@@ -3096,7 +2957,7 @@ FileSystemTreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, FileSys
 	// }
 
 	// item->set_editable(0, true); // Affects double-click behavior, use force_edit.
-	item->set_selectable(0, true);
+	item->set_selectable(true);
 
 	Dictionary d;
 	d["name"] = p_fi.name;
@@ -3395,7 +3256,7 @@ void FileSystemTree::_on_item_edited() {
 	ERR_FAIL_NULL(context_menu);
 
 	FileSystemTreeItem *ti = get_edited();
-	int col_index = get_edited_column();
+	int col_index = 0; // TODO
 	ERR_FAIL_COND(col_index < 0);
 
 	Dictionary d = ti->get_metadata(0);
@@ -3442,8 +3303,8 @@ bool FileSystemTree::_rename_operation_confirm(const String &p_from, const Strin
 void FileSystemTree::_on_draw() {
 	if (rename_item) {
 		FileSystemTreeItem *item = get_selected();
-		if (item) { // TODO: Note select_mode
-			item->select(0);
+		if (item) {
+			item->set_as_cursor();
 			if (edit_selected(true)) {
 				Dictionary d = item->get_metadata(0);
 				String path = d["path"];
@@ -3525,7 +3386,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			} else if (FileSystemAccess::dir_exists(path)) {
 				FileSystemTreeItem *item = get_selected();
 				if (item) {
-					item->select(0);
+					item->set_as_cursor();
 					grab_focus(!has_focus(true));
 					bool result = edit_selected(true); // TODO: Note select_mode
 					String name = path.get_file();
@@ -3534,7 +3395,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			} else if (FileSystemAccess::file_exists(path)) {
 				FileSystemTreeItem *item = get_selected();
 				if (item) {
-					item->select(0);
+					item->set_as_cursor();
 					grab_focus(!has_focus(true));
 					bool result = edit_selected(true); // TODO: Note select_mode
 					String name = path.get_file();
@@ -3844,13 +3705,13 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			accept_event();
 		}
 
-		if (!selected_item || selected_col > (columns.size() - 1)) {
+		if (!selected_item) {
 			return;
 		}
 
 		if (k.is_valid() && k->is_shift_pressed()) {
 			selected_item->set_collapsed_recursive(false);
-		} else if (select_mode != SELECT_ROW) {
+		} else if (display_mode == DISPLAY_MODE_TREE) { // TODO: check
 			_go_right();
 		} else if (selected_item->get_first_child() != nullptr && selected_item->is_collapsed()) {
 			selected_item->set_collapsed(false);
@@ -3862,13 +3723,13 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			accept_event();
 		}
 
-		if (!selected_item || selected_col < 0) {
+		if (!selected_item) {
 			return;
 		}
 
 		if (k.is_valid() && k->is_shift_pressed()) {
 			selected_item->set_collapsed_recursive(true);
-		} else if (select_mode != SELECT_ROW) {
+		} else if (display_mode == DISPLAY_MODE_TREE) { // TODO: check
 			_go_left();
 		} else if (selected_item->get_first_child() != nullptr && !selected_item->is_collapsed()) {
 			selected_item->set_collapsed(true);
@@ -3880,19 +3741,18 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			accept_event();
 		}
 		// Shift Up Selection.
-		if (k.is_valid() && k->is_shift_pressed() && selected_item && select_mode == SELECT_MULTI) {
+		if (k.is_valid() && k->is_shift_pressed() && selected_item) {
 			FileSystemTreeItem *new_item = selected_item->get_prev_visible(false);
 			_shift_select_range(new_item);
 		} else {
 			_go_up();
 		}
-
 	} else if (p_event->is_action("ui_down") && p_event->is_pressed() && !is_command) {
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
 		// Shift Down Selection.
-		if (k.is_valid() && k->is_shift_pressed() && selected_item && select_mode == SELECT_MULTI) {
+		if (k.is_valid() && k->is_shift_pressed() && selected_item) {
 			FileSystemTreeItem *new_item = selected_item->get_next_visible(false);
 			_shift_select_range(new_item);
 		} else {
@@ -3915,7 +3775,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 		}
 		next = selected_item;
 
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 10; i++) { // TODO
 			FileSystemTreeItem *_n = next->get_next_visible();
 			if (_n) {
 				next = _n;
@@ -3927,18 +3787,20 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			return;
 		}
 
-		if (select_mode == SELECT_MULTI) {
+		if (display_mode == DISPLAY_MODE_TREE) {
 			selected_item = next;
-			emit_signal(SNAME("cell_selected"));
+			// TODO
+			// emit_signal(SNAME("item_selected"), selected_item, true);
 			queue_redraw();
 		} else {
-			while (next && !next->cells[selected_col].selectable) {
+			while (next && !next->selectable) {
 				next = next->get_next_visible();
 			}
 			if (!next) {
 				return; // Do nothing.
 			}
-			next->select(selected_col);
+			// next->select();
+			set_selected(next);
 		}
 
 		ensure_cursor_is_visible();
@@ -3953,7 +3815,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 		}
 		prev = selected_item;
 
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 10; i++) { // TODO
 			FileSystemTreeItem *_n = prev->get_prev_visible();
 			if (_n) {
 				prev = _n;
@@ -3965,33 +3827,38 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			return;
 		}
 
-		if (select_mode == SELECT_MULTI) {
+		if (display_mode == DISPLAY_MODE_TREE) {
 			selected_item = prev;
-			emit_signal(SNAME("cell_selected"));
+			// TODO
+			// emit_signal(SNAME("item_selected"), selected_item, true);
 			queue_redraw();
 		} else {
-			while (prev && !prev->cells[selected_col].selectable) {
+			while (prev && !prev->selectable) {
 				prev = prev->get_prev_visible();
 			}
 			if (!prev) {
 				return; // Do nothing.
 			}
-			prev->select(selected_col);
+			// prev->select();
+			set_selected(prev);
 		}
+
 		ensure_cursor_is_visible();
 	} else if (p_event->is_action("ui_select") && p_event->is_pressed()) {
-		if (select_mode == SELECT_MULTI) {
-			if (!selected_item) {
-				return;
-			}
-			if (selected_item->is_selected(selected_col)) {
-				selected_item->deselect(selected_col);
-				emit_signal(SNAME("multi_selected"), selected_item, selected_col, false);
-			} else if (selected_item->is_selectable(selected_col)) {
-				selected_item->select(selected_col);
-				emit_signal(SNAME("multi_selected"), selected_item, selected_col, true);
-			}
+		if (!selected_item) {
+			return;
 		}
+		// if (selected_item->is_selected()) {
+		// 	selected_item->deselect();
+		// 	emit_signal(SNAME("item_selected"), selected_item, false);
+		// } else if (selected_item->is_selectable()) {
+		// 	selected_item->select();
+		// 	emit_signal(SNAME("item_selected"), selected_item, true);
+		// }
+		if (!selected_item->is_selected()) {
+			set_selected(selected_item);
+		}
+
 		accept_event();
 	} else if (p_event->is_action("ui_accept") && p_event->is_pressed()) {
 		if (selected_item) {
@@ -4069,7 +3936,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 
 			if (mb->get_button_index() == MouseButton::LEFT) {
 				if (single_select_defer) {
-					select_single_item(single_select_defer, root, single_select_defer_column);
+					select_item(single_select_defer, root);
 					single_select_defer = nullptr;
 				}
 
@@ -4082,10 +3949,11 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 						Rect2 rect = _get_item_focus_rect(get_selected());
 						Point2 mpos = mb->get_position();
 						int icon_size_x = 0;
-						Ref<Texture2D> icon = get_selected()->get_icon(selected_col);
-						if (icon.is_valid()) {
-							icon_size_x = _get_cell_icon_size(get_selected()->cells[selected_col]).x;
-						}
+						// // TODO
+						// Ref<Texture2D> icon = get_selected()->get_icon(selected_col);
+						// if (icon.is_valid()) {
+						// 	icon_size_x = _get_cell_icon_size(get_selected()->cells[selected_col]).x;
+						// }
 						// Icon is treated as if it is outside of the rect so that double clicking on it will emit the `item_icon_double_clicked` signal.
 						if (rtl) {
 							mpos.x = get_size().width - (mpos.x + icon_size_x);
@@ -4253,7 +4121,6 @@ void FileSystemTree::_determine_hovered_item() {
 	int old_header_column = cache.hover_header_column;
 	FileSystemTreeItem *old_item = cache.hover_item;
 	int old_column = cache.hover_column;
-	int old_button_index_in_column = cache.hover_button_index_in_column;
 
 	// Determine hover on column headers.
 	cache.hover_header_row = false;
@@ -4268,7 +4135,6 @@ void FileSystemTree::_determine_hovered_item() {
 				if (pos.x < len) {
 					cache.hover_header_row = true;
 					cache.hover_header_column = i;
-					cache.hover_button_index_in_column = -1;
 					break;
 				}
 			}
@@ -4297,7 +4163,6 @@ void FileSystemTree::_determine_hovered_item() {
 
 		cache.hover_item = it;
 		cache.hover_column = col;
-		cache.hover_button_index_in_column = col_button_index;
 
 		if (it != old_item || col != old_column) {
 			if (old_item && old_column >= old_item->cells.size()) {
@@ -4307,12 +4172,8 @@ void FileSystemTree::_determine_hovered_item() {
 		}
 	}
 
-	// Reduce useless redraw calls.
-	bool hovered_cell_button_changed = (cache.hover_button_index_in_column != old_button_index_in_column);
-	bool hovered_column_changed = (cache.hover_column != old_column);
-
-	// Mouse has moved from row to row, or from cell to cell within same row unless selection mode is full row which saves a useless redraw.
-	bool item_hover_needs_redraw = !cache.hover_header_row && (cache.hover_item != old_item || hovered_cell_button_changed || (select_mode != SELECT_ROW && hovered_column_changed));
+	// Mouse has moved from row to row.
+	bool item_hover_needs_redraw = !cache.hover_header_row && cache.hover_item != old_item;
 	// Mouse has moved between two different column header sections.
 	bool header_hover_needs_redraw = cache.hover_header_row && cache.hover_header_column != old_header_column;
 	// Mouse has moved between header and "main" areas.
@@ -4348,7 +4209,7 @@ bool FileSystemTree::edit_selected(bool p_force_edit) {
 	FileSystemTreeItem *s = get_selected();
 	ERR_FAIL_NULL_V_MSG(s, false, "No item selected.");
 	ensure_cursor_is_visible();
-	int col = get_selected_column();
+	int col = 0; // TODO
 	ERR_FAIL_INDEX_V_MSG(col, columns.size(), false, "No item column selected.");
 
 	if (!s->cells[col].editable && !p_force_edit) {
@@ -4438,16 +4299,8 @@ bool FileSystemTree::edit_selected(bool p_force_edit) {
 }
 
 Rect2 FileSystemTree::_get_item_focus_rect(const FileSystemTreeItem *p_item) const {
-	// ERR_FAIL_NULL_V(p_item, Rect2());
-	// ERR_FAIL_INDEX_V(selected_col, p_item->cells.size(), Rect2());
-
-	Rect2 rect;
-	if (select_mode == SELECT_ROW && selected_col >= 0 && selected_col < p_item->cells.size()) {
-		rect = p_item->cells[selected_col].focus_rect;
-	} else {
-		rect = p_item->focus_rect;
-	}
-	return rect;
+	ERR_FAIL_NULL_V(p_item, Rect2());
+	return p_item->focus_rect;
 }
 
 bool FileSystemTree::is_editing() {
@@ -4565,7 +4418,6 @@ void FileSystemTree::_notification(int p_what) {
 				cache.hover_header_column = -1;
 				cache.hover_item = nullptr;
 				cache.hover_column = -1;
-				cache.hover_button_index_in_column = -1;
 				queue_redraw();
 			}
 		} break;
@@ -4828,7 +4680,6 @@ FileSystemTreeItem *FileSystemTree::get_last_item() const {
 
 void FileSystemTree::item_edited(int p_column, FileSystemTreeItem *p_item, MouseButton p_custom_mouse_index) {
 	edited_item = p_item;
-	edited_col = p_column;
 	if (p_item != nullptr && p_column >= 0 && p_column < p_item->cells.size()) {
 		edited_item->cells.write[p_column].dirty = true;
 		edited_item->cells.write[p_column].cached_minimum_size_dirty = true;
@@ -4855,46 +4706,22 @@ void FileSystemTree::item_changed(int p_column, FileSystemTreeItem *p_item) {
 	queue_redraw();
 }
 
-void FileSystemTree::item_selected(int p_column, FileSystemTreeItem *p_item) {
-	if (select_mode == SELECT_MULTI) {
-		if (!p_item->cells[p_column].selectable) {
-			return;
-		}
-
-		p_item->cells.write[p_column].selected = true;
-		//emit_signal(SNAME("multi_selected"),p_item,p_column,true); - NO this is for `FileSystemTreeItem::select`
-
-		selected_col = p_column;
-		selected_item = p_item;
-	} else {
-		select_single_item(p_item, root, p_column);
+void FileSystemTree::item_selected(FileSystemTreeItem *p_item) {
+	if (!p_item->selectable) {
+		return;
 	}
+
+	p_item->selected = true;
+	//emit_signal(SNAME("item_selected"),p_item,true); - NO this is for `FileSystemTreeItem::select`
+
+	selected_item = p_item;
+
 	queue_redraw();
 }
 
-void FileSystemTree::item_deselected(int p_column, FileSystemTreeItem *p_item) {
-	if (select_mode == SELECT_SINGLE && selected_item == p_item && selected_col == p_column) {
-		selected_item = nullptr;
-		selected_col = -1;
-	} else {
-		if (select_mode == SELECT_ROW && selected_item == p_item) {
-			selected_item = nullptr;
-			selected_col = -1;
-		} else {
-			if (select_mode == SELECT_MULTI) {
-				selected_item = p_item;
-				selected_col = p_column;
-			}
-		}
-	}
-
-	if (select_mode == SELECT_MULTI || select_mode == SELECT_SINGLE) {
-		p_item->cells.write[p_column].selected = false;
-	} else if (select_mode == SELECT_ROW) {
-		for (int i = 0; i < p_item->cells.size(); i++) {
-			p_item->cells.write[i].selected = false;
-		}
-	}
+void FileSystemTree::item_deselected(FileSystemTreeItem *p_item) {
+	selected_item = p_item;
+	p_item->selected = false;
 	queue_redraw();
 }
 
@@ -4906,25 +4733,11 @@ void FileSystemTree::update_min_size_for_item_change() {
 	}
 }
 
-void FileSystemTree::set_select_mode(SelectMode p_mode) {
-	select_mode = p_mode;
-}
-
-FileSystemTree::SelectMode FileSystemTree::get_select_mode() const {
-	return select_mode;
-}
-
 void FileSystemTree::deselect_all() {
 	if (root) {
 		FileSystemTreeItem *item = root;
 		while (item) {
-			if (select_mode == SELECT_ROW) {
-				item->deselect(0);
-			} else {
-				for (int i = 0; i < columns.size(); i++) {
-					item->deselect(i);
-				}
-			}
+			item->deselect();
 			FileSystemTreeItem *prev_item = item;
 			item = get_next_selected(root);
 			ERR_FAIL_COND(item == prev_item);
@@ -4932,7 +4745,6 @@ void FileSystemTree::deselect_all() {
 	}
 
 	selected_item = nullptr;
-	selected_col = -1;
 	queue_redraw();
 }
 
@@ -5054,24 +4866,17 @@ FileSystemTreeItem *FileSystemTree::get_selected() const {
 	return selected_item;
 }
 
-void FileSystemTree::set_selected(FileSystemTreeItem *p_item, int p_column) {
-	ERR_FAIL_INDEX(p_column, columns.size());
+void FileSystemTree::set_selected(FileSystemTreeItem *p_item) {
 	ERR_FAIL_NULL(p_item);
 	ERR_FAIL_COND_MSG(p_item->get_tree() != this, "The provided FileSystemTreeItem does not belong to this FileSystemTree. Ensure that the FileSystemTreeItem is a part of the FileSystemTree before setting it as selected.");
 
-	select_single_item(p_item, get_root(), p_column);
-}
+	select_item(p_item, get_root());
 
-int FileSystemTree::get_selected_column() const {
-	return selected_col;
+	queue_redraw();
 }
 
 FileSystemTreeItem *FileSystemTree::get_edited() const {
 	return edited_item;
-}
-
-int FileSystemTree::get_edited_column() const {
-	return edited_col;
 }
 
 FileSystemTreeItem *FileSystemTree::get_next_selected(FileSystemTreeItem *p_item) {
@@ -5100,10 +4905,8 @@ FileSystemTreeItem *FileSystemTree::get_next_selected(FileSystemTreeItem *p_item
 			}
 		}
 
-		for (int i = 0; i < columns.size(); i++) {
-			if (p_item->cells[i].selected) {
-				return p_item;
-			}
+		if (p_item->selected) {
+			return p_item;
 		}
 	}
 
@@ -5206,9 +5009,6 @@ void FileSystemTree::set_columns(int p_columns) {
 	if (root) {
 		propagate_set_columns(root);
 	}
-	if (selected_col >= p_columns) {
-		selected_col = p_columns - 1;
-	}
 	update_min_size_for_item_change();
 	queue_redraw();
 }
@@ -5267,7 +5067,7 @@ void FileSystemTree::ensure_cursor_is_visible() {
 	if (!is_inside_tree()) {
 		return;
 	}
-	if (!selected_item || (selected_col == -1)) {
+	if (!selected_item) {
 		return; // Nothing under cursor.
 	}
 
@@ -5291,23 +5091,20 @@ void FileSystemTree::ensure_cursor_is_visible() {
 		}
 	}
 
-	if (select_mode != SELECT_ROW) { // Cursor always at column 0 in this mode.
-		int x_offset = 0;
-		for (int i = 0; i < selected_col; i++) {
-			x_offset += get_column_width(i);
-		}
+	// Scroll horizontally.
+	// if (display_mode == DISPLAY_MODE_TREE) { // Cursor always at column 0 in list mode.
+	// 	int x_offset = 0;
+	// 	const int cell_w = get_column_width(0);
+	// 	const int screen_w = area_size.width;
 
-		const int cell_w = get_column_width(selected_col);
-		const int screen_w = area_size.width;
-
-		if (cell_w > screen_w) {
-			h_scroll->set_value(x_offset);
-		} else if (x_offset + cell_w > h_scroll->get_value() + screen_w) {
-			callable_mp((Range *)h_scroll, &Range::set_value).call_deferred(x_offset - screen_w + cell_w);
-		} else if (x_offset < h_scroll->get_value()) {
-			h_scroll->set_value(x_offset);
-		}
-	}
+	// 	if (cell_w > screen_w) {
+	// 		h_scroll->set_value(x_offset);
+	// 	} else if (x_offset + cell_w > h_scroll->get_value() + screen_w) {
+	// 		callable_mp((Range *)h_scroll, &Range::set_value).call_deferred(x_offset - screen_w + cell_w);
+	// 	} else if (x_offset < h_scroll->get_value()) {
+	// 		h_scroll->set_value(x_offset);
+	// 	}
+	// }
 }
 
 int FileSystemTree::get_pressed_button() const {
@@ -5538,7 +5335,7 @@ FileSystemTreeItem *FileSystemTree::_search_item_text(FileSystemTreeItem *p_at, 
 
 	while (p_at) {
 		for (int i = 0; i < columns.size(); i++) {
-			if (p_at->get_text(i).findn(p_find) == 0 && (!p_selectable || p_at->is_selectable(i))) {
+			if (p_at->get_text(i).findn(p_find) == 0 && (!p_selectable || p_at->is_selectable())) {
 				if (r_col) {
 					*r_col = i;
 				}
@@ -5626,11 +5423,9 @@ void FileSystemTree::_do_incr_search(const String &p_add) {
 		return;
 	}
 
-	if (select_mode == SELECT_MULTI) {
-		item->set_as_cursor(col);
-	} else {
-		item->select(col);
-	}
+	// item->set_as_cursor();
+	set_selected(item);
+
 	ensure_cursor_is_visible();
 }
 
@@ -6178,6 +5973,8 @@ FileSystemTreeItem *FileSystemTree::add_item(const FileInfo &p_fi, FileSystemTre
 	FileSystemTreeItem *item = nullptr;
 	if (display_mode == DISPLAY_MODE_TREE) {
 		item = _add_tree_item(p_fi, p_parent, p_index);
+
+		// TODO: After all items are added.
 		if (item && !to_select.is_empty() && to_select == p_fi.path) {
 			FileSystemTreeItem *root_item = get_root();
 			FileSystemTreeItem *parent = item->get_parent();
@@ -6190,16 +5987,15 @@ FileSystemTreeItem *FileSystemTree::add_item(const FileInfo &p_fi, FileSystemTre
 				}
 				parent = parent->get_parent();
 			}
-			item->select(0);
-			// item->set_as_cursor(0);
+			set_selected(item);
 			to_select = "";
 		}
 	} else if (display_mode == DISPLAY_MODE_LIST) {
 		item = _add_list_item(p_fi, p_parent, p_index);
+
+		// TODO: After all items are added.
 		if (item && !to_select.is_empty() && to_select == p_fi.path) {
-			// item->select_row();	// TODO
-			item->select(0);
-			// item->set_as_cursor(0);
+			set_selected(item);
 			to_select = "";
 		}
 	}
@@ -6226,18 +6022,14 @@ void FileSystemTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_root_hidden"), &FileSystemTree::is_root_hidden);
 	ClassDB::bind_method(D_METHOD("get_next_selected", "from"), &FileSystemTree::get_next_selected);
 	ClassDB::bind_method(D_METHOD("get_selected"), &FileSystemTree::get_selected);
-	ClassDB::bind_method(D_METHOD("set_selected", "item", "column"), &FileSystemTree::set_selected);
-	ClassDB::bind_method(D_METHOD("get_selected_column"), &FileSystemTree::get_selected_column);
+	ClassDB::bind_method(D_METHOD("set_selected", "item"), &FileSystemTree::set_selected);
 	ClassDB::bind_method(D_METHOD("get_pressed_button"), &FileSystemTree::get_pressed_button);
-	ClassDB::bind_method(D_METHOD("set_select_mode", "mode"), &FileSystemTree::set_select_mode);
-	ClassDB::bind_method(D_METHOD("get_select_mode"), &FileSystemTree::get_select_mode);
 	ClassDB::bind_method(D_METHOD("deselect_all"), &FileSystemTree::deselect_all);
 
 	ClassDB::bind_method(D_METHOD("set_columns", "amount"), &FileSystemTree::set_columns);
 	ClassDB::bind_method(D_METHOD("get_columns"), &FileSystemTree::get_columns);
 
 	ClassDB::bind_method(D_METHOD("get_edited"), &FileSystemTree::get_edited);
-	ClassDB::bind_method(D_METHOD("get_edited_column"), &FileSystemTree::get_edited_column);
 	ClassDB::bind_method(D_METHOD("edit_selected", "force_edit"), &FileSystemTree::edit_selected, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_custom_popup_rect"), &FileSystemTree::get_custom_popup_rect);
 	ClassDB::bind_method(D_METHOD("get_item_area_rect", "item", "column", "button_index"), &FileSystemTree::get_item_rect, DEFVAL(-1), DEFVAL(-1));
@@ -6315,7 +6107,6 @@ void FileSystemTree::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enable_drag_unfolding"), "set_enable_drag_unfolding", "is_drag_unfolding_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "hide_root"), "set_hide_root", "is_root_hidden");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "drop_mode_flags", PROPERTY_HINT_FLAGS, "On Item,In Between"), "set_drop_mode_flags", "get_drop_mode_flags");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "select_mode", PROPERTY_HINT_ENUM, "Single,Row,Multi"), "set_select_mode", "get_select_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "auto_tooltip"), "set_auto_tooltip", "is_auto_tooltip_enabled");
 	ADD_GROUP("Scroll", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "scroll_horizontal_enabled"), "set_h_scroll_enabled", "is_h_scroll_enabled");
@@ -6323,9 +6114,7 @@ void FileSystemTree::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "scroll_hint_mode", PROPERTY_HINT_ENUM, "Disabled,Both,Top,Bottom"), "set_scroll_hint_mode", "get_scroll_hint_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "tile_scroll_hint"), "set_tile_scroll_hint", "is_scroll_hint_tiled");
 
-	ADD_SIGNAL(MethodInfo("item_selected"));
-	ADD_SIGNAL(MethodInfo("cell_selected"));
-	ADD_SIGNAL(MethodInfo("multi_selected", PropertyInfo(Variant::OBJECT, "item", PROPERTY_HINT_RESOURCE_TYPE, "FileSystemTreeItem"), PropertyInfo(Variant::INT, "column"), PropertyInfo(Variant::BOOL, "selected")));
+	ADD_SIGNAL(MethodInfo("item_selected", PropertyInfo(Variant::OBJECT, "item", PROPERTY_HINT_RESOURCE_TYPE, "FileSystemTreeItem"), PropertyInfo(Variant::BOOL, "selected")));
 	ADD_SIGNAL(MethodInfo("item_mouse_selected", PropertyInfo(Variant::VECTOR2, "mouse_position"), PropertyInfo(Variant::INT, "mouse_button_index")));
 	ADD_SIGNAL(MethodInfo("empty_clicked", PropertyInfo(Variant::VECTOR2, "click_position"), PropertyInfo(Variant::INT, "mouse_button_index")));
 	ADD_SIGNAL(MethodInfo("item_edited"));
@@ -6337,10 +6126,6 @@ void FileSystemTree::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("item_activated"));
 	ADD_SIGNAL(MethodInfo("column_title_clicked", PropertyInfo(Variant::INT, "column"), PropertyInfo(Variant::INT, "mouse_button_index")));
 	ADD_SIGNAL(MethodInfo("nothing_selected"));
-
-	BIND_ENUM_CONSTANT(SELECT_SINGLE);
-	BIND_ENUM_CONSTANT(SELECT_ROW);
-	BIND_ENUM_CONSTANT(SELECT_MULTI);
 
 	BIND_ENUM_CONSTANT(DROP_MODE_DISABLED);
 	BIND_ENUM_CONSTANT(DROP_MODE_ON_ITEM);

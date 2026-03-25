@@ -255,7 +255,7 @@ void FilePane::_on_item_activated() {
 	}
 }
 
-void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
+void FilePane::_on_item_selected(Object *p_item, bool p_selected) {
 	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
 
 	if (!p_selected) {
@@ -506,7 +506,7 @@ FilePane::FilePane() :
 
 	// TODO: Preview on selection?
 	tree->connect("item_activated", callable_mp(this, &FilePane::_on_item_activated));
-	tree->connect("multi_selected", callable_mp(this, &FilePane::_on_multi_selected));
+	tree->connect("item_selected", callable_mp(this, &FilePane::_on_item_selected));
 
 	tree->connect("item_mouse_selected", callable_mp(this, &FilePane::_on_item_mouse_selected));
 	tree->connect("empty_clicked", callable_mp(this, &FilePane::_on_empty_clicked));
