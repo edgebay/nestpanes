@@ -697,8 +697,8 @@ private:
 	bool _is_sibling_branch_selected(FileSystemTreeItem *p_from) const;
 	void _go_left();
 	void _go_right();
-	void _go_down();
-	void _go_up();
+	void _go_down(bool p_is_command = false);
+	void _go_up(bool p_is_command = false);
 	void _shift_select_range(FileSystemTreeItem *new_item);
 
 	bool _scroll(bool p_horizontal, float p_pages);

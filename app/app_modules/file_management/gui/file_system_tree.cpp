@@ -2345,13 +2345,10 @@ void FileSystemTree::select_item(FileSystemTreeItem *p_selected, FileSystemTreeI
 	}
 
 	if (p_current->selectable) {
-		if (p_selected == p_current) {
-			selected_item = p_selected;
-		}
-
 		if (!r_in_range) { // Select single item.
 			if (p_selected == p_current && (!p_current->selected || allow_reselect)) {
 				p_current->selected = true;
+				selected_item = p_selected;
 				emit_signal(SNAME("item_selected"), p_current, true);
 			} else if (p_current->selected) {
 				// Deselect other selected items.
@@ -2700,7 +2697,7 @@ void FileSystemTree::_go_right() {
 	accept_event();
 }
 
-void FileSystemTree::_go_up() {
+void FileSystemTree::_go_up(bool p_is_command) {
 	FileSystemTreeItem *prev = nullptr;
 	if (!selected_item) {
 		prev = get_last_item();
@@ -2724,8 +2721,14 @@ void FileSystemTree::_go_up() {
 		if (!prev) {
 			return; // Do nothing.
 		}
-		// prev->select();
-		set_selected(prev);
+
+		if (p_is_command) {
+			selected_item = prev;
+			queue_redraw();
+		} else {
+			// prev->select();
+			set_selected(prev);
+		}
 	}
 
 	ensure_cursor_is_visible();
@@ -2773,7 +2776,7 @@ void FileSystemTree::_shift_select_range(FileSystemTreeItem *new_item) {
 	accept_event();
 }
 
-void FileSystemTree::_go_down() {
+void FileSystemTree::_go_down(bool p_is_command) {
 	FileSystemTreeItem *next = nullptr;
 	if (!selected_item) {
 		if (root) {
@@ -2799,8 +2802,14 @@ void FileSystemTree::_go_down() {
 		if (!next) {
 			return; // Do nothing.
 		}
-		// next->select();
-		set_selected(next);
+
+		if (p_is_command) {
+			selected_item = next;
+			queue_redraw();
+		} else {
+			// next->select();
+			set_selected(next);
+		}
 	}
 
 	ensure_cursor_is_visible();
@@ -3736,7 +3745,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 		} else {
 			_go_up();
 		}
-	} else if (p_event->is_action("ui_up") && p_event->is_pressed() && !is_command) {
+	} else if (p_event->is_action("ui_up") && p_event->is_pressed()) {
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -3745,9 +3754,9 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			FileSystemTreeItem *new_item = selected_item->get_prev_visible(false);
 			_shift_select_range(new_item);
 		} else {
-			_go_up();
+			_go_up(is_command);
 		}
-	} else if (p_event->is_action("ui_down") && p_event->is_pressed() && !is_command) {
+	} else if (p_event->is_action("ui_down") && p_event->is_pressed()) {
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -3756,7 +3765,7 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 			FileSystemTreeItem *new_item = selected_item->get_next_visible(false);
 			_shift_select_range(new_item);
 		} else {
-			_go_down();
+			_go_down(is_command);
 		}
 	} else if (p_event->is_action("ui_menu") && p_event->is_pressed()) {
 		if (allow_rmb_select && selected_item) {
@@ -3856,7 +3865,12 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 		// 	emit_signal(SNAME("item_selected"), selected_item, true);
 		// }
 		if (!selected_item->is_selected()) {
-			set_selected(selected_item);
+			if (display_mode == DISPLAY_MODE_TREE) {
+				set_selected(selected_item);
+			} else {
+				selected_item->select();
+				emit_signal(SNAME("item_selected"), selected_item, true);
+			}
 		}
 
 		accept_event();
@@ -3872,7 +3886,6 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 	}
 
 	if (allow_search && k.is_valid()) { // Incremental search.
-
 		if (!k->is_pressed()) {
 			return;
 		}
@@ -3949,11 +3962,10 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 						Rect2 rect = _get_item_focus_rect(get_selected());
 						Point2 mpos = mb->get_position();
 						int icon_size_x = 0;
-						// // TODO
-						// Ref<Texture2D> icon = get_selected()->get_icon(selected_col);
-						// if (icon.is_valid()) {
-						// 	icon_size_x = _get_cell_icon_size(get_selected()->cells[selected_col]).x;
-						// }
+						Ref<Texture2D> icon = get_selected()->get_icon(0); // TODO
+						if (icon.is_valid()) {
+							icon_size_x = _get_cell_icon_size(get_selected()->cells[0]).x;
+						}
 						// Icon is treated as if it is outside of the rect so that double clicking on it will emit the `item_icon_double_clicked` signal.
 						if (rtl) {
 							mpos.x = get_size().width - (mpos.x + icon_size_x);
