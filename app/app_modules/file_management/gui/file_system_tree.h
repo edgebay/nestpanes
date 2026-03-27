@@ -380,43 +380,43 @@ private:
 	String to_select = "";
 	bool rename_item = false;
 
-	// // Selection.
-	// enum DragType {
-	// 	DRAG_NONE,
-	// 	DRAG_BOX_SELECTION,
-	// 	// DRAG_LEFT,
-	// 	// DRAG_TOP_LEFT,
-	// 	// DRAG_TOP,
-	// 	// DRAG_TOP_RIGHT,
-	// 	// DRAG_RIGHT,
-	// 	// DRAG_BOTTOM_RIGHT,
-	// 	// DRAG_BOTTOM,
-	// 	// DRAG_BOTTOM_LEFT,
-	// 	// DRAG_ANCHOR_TOP_LEFT,
-	// 	// DRAG_ANCHOR_TOP_RIGHT,
-	// 	// DRAG_ANCHOR_BOTTOM_RIGHT,
-	// 	// DRAG_ANCHOR_BOTTOM_LEFT,
-	// 	// DRAG_ANCHOR_ALL,
-	// 	// DRAG_QUEUED,
-	// 	// DRAG_MOVE,
-	// 	// DRAG_MOVE_X,
-	// 	// DRAG_MOVE_Y,
-	// 	// DRAG_SCALE_X,
-	// 	// DRAG_SCALE_Y,
-	// 	// DRAG_SCALE_BOTH,
-	// 	// DRAG_ROTATE,
-	// 	// DRAG_PIVOT,
-	// 	// DRAG_TEMP_PIVOT,
-	// 	// DRAG_V_GUIDE,
-	// 	// DRAG_H_GUIDE,
-	// 	// DRAG_DOUBLE_GUIDE,
-	// 	// DRAG_KEY_MOVE
-	// };
-	// bool detecting_box_selection = false;
-	// DragType drag_type = DRAG_NONE;
-	// Point2 drag_from;
-	// Point2 box_selecting_to;
-	// Point2 prev_selecting_to;
+	// Selection.
+	enum DragType {
+		DRAG_NONE,
+		DRAG_BOX_SELECTION,
+		// DRAG_LEFT,
+		// DRAG_TOP_LEFT,
+		// DRAG_TOP,
+		// DRAG_TOP_RIGHT,
+		// DRAG_RIGHT,
+		// DRAG_BOTTOM_RIGHT,
+		// DRAG_BOTTOM,
+		// DRAG_BOTTOM_LEFT,
+		// DRAG_ANCHOR_TOP_LEFT,
+		// DRAG_ANCHOR_TOP_RIGHT,
+		// DRAG_ANCHOR_BOTTOM_RIGHT,
+		// DRAG_ANCHOR_BOTTOM_LEFT,
+		// DRAG_ANCHOR_ALL,
+		// DRAG_QUEUED,
+		// DRAG_MOVE,
+		// DRAG_MOVE_X,
+		// DRAG_MOVE_Y,
+		// DRAG_SCALE_X,
+		// DRAG_SCALE_Y,
+		// DRAG_SCALE_BOTH,
+		// DRAG_ROTATE,
+		// DRAG_PIVOT,
+		// DRAG_TEMP_PIVOT,
+		// DRAG_V_GUIDE,
+		// DRAG_H_GUIDE,
+		// DRAG_DOUBLE_GUIDE,
+		// DRAG_KEY_MOVE
+	};
+	bool detecting_box_selection = false;
+	DragType drag_type = DRAG_NONE;
+	Point2 drag_from;
+	Point2 box_selecting_to;
+	Point2 prev_selecting_to;
 	// TreeItem *prev_hovered_item;
 	// TreeItem *starting_item;
 
@@ -731,11 +731,17 @@ private:
 	bool _process_id_pressed(int p_option, const Vector<String> &p_selected);
 	void _context_menu_id_pressed(int p_option);
 
-	// // Selection.
-	// void _draw_selection();
+	// Selection.
+	void _draw_selection();
 
 	Vector<FileSystemTreeItem *> _get_selected_items();
 	// bool _gui_input_select(const Ref<InputEvent> &p_event);
+
+	// Input handling.
+	void _key_input_input(const Ref<InputEventKey> &p_event);
+	void _mouse_motion_input(const Ref<InputEventMouseMotion> &p_event);
+	void _mouse_button_input(const Ref<InputEventMouseButton> &p_event);
+	void _pan_gesture_input(const Ref<InputEventPanGesture> &p_event);
 
 protected:
 	virtual void _update_theme_item_cache() override;
@@ -755,7 +761,6 @@ public:
 	FileSystemTreeItem *get_item_at_position(const Point2 &p_pos) const;
 	int get_column_at_position(const Point2 &p_pos) const;
 	int get_drop_section_at_position(const Point2 &p_pos) const;
-	int get_button_id_at_position(const Point2 &p_pos) const;
 
 	void clear();
 
