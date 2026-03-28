@@ -383,7 +383,9 @@ private:
 	// Selection.
 	enum DragType {
 		DRAG_NONE,
+		DRAG_DETECTING,
 		DRAG_BOX_SELECTION,
+		DRAG_DROPPING,
 		// DRAG_LEFT,
 		// DRAG_TOP_LEFT,
 		// DRAG_TOP,
@@ -412,7 +414,7 @@ private:
 		// DRAG_DOUBLE_GUIDE,
 		// DRAG_KEY_MOVE
 	};
-	bool detecting_box_selection = false;
+	// bool detecting_box_selection = false;
 	DragType drag_type = DRAG_NONE;
 	Point2 drag_from;
 	Point2 box_selecting_to;
@@ -423,6 +425,7 @@ private:
 	FileSystemTreeItem *root = nullptr;
 	FileSystemTreeItem *popup_edited_item = nullptr;
 	FileSystemTreeItem *selected_item = nullptr;
+	FileSystemTreeItem *prev_selected_item = nullptr; // Only for the drag process.
 	FileSystemTreeItem *edited_item = nullptr;
 	FileSystemTreeItem *shift_anchor = nullptr;
 
@@ -652,6 +655,7 @@ private:
 	FileSystemTreeItem *_search_item_text(FileSystemTreeItem *p_at, const String &p_find, int *r_col, bool p_selectable, bool p_backwards = false);
 
 	FileSystemTreeItem *_find_item_at_pos(FileSystemTreeItem *p_item, const Point2 &p_pos, int &r_column, int &r_height, int &r_section) const;
+	FileSystemTreeItem *_get_item_at_pos(const Point2 &p_pos, int &r_column, int &r_height, int &r_section) const;
 
 	void _find_button_at_pos(const Point2 &p_pos, FileSystemTreeItem *&r_item, int &r_column, int &r_index, int &r_section) const;
 
@@ -743,6 +747,8 @@ private:
 	void _mouse_button_input(const Ref<InputEventMouseButton> &p_event);
 	void _pan_gesture_input(const Ref<InputEventPanGesture> &p_event);
 
+	void _get_drag_target_folder(String &target, const Point2 &p_point) const;
+
 protected:
 	virtual void _update_theme_item_cache() override;
 
@@ -756,8 +762,9 @@ public:
 
 	virtual String get_tooltip(const Point2 &p_pos) const override;
 
-	virtual bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
 	virtual Variant get_drag_data(const Point2 &p_point) override;
+	virtual bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
+	virtual void drop_data(const Point2 &p_point, const Variant &p_data) override;
 	FileSystemTreeItem *get_item_at_position(const Point2 &p_pos) const;
 	int get_column_at_position(const Point2 &p_pos) const;
 	int get_drop_section_at_position(const Point2 &p_pos) const;

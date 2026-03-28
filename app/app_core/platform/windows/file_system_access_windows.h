@@ -35,6 +35,7 @@ protected:
 	virtual bool _paste(const String &p_dir, Vector<String> &r_dest_paths) override;
 	virtual bool _can_paste() override;
 	virtual bool _get_clipboard_paths(Vector<String> &r_paths, bool &r_is_cut) override;
+	virtual Error _move(bool p_is_copy, const String &p_to_dir, const Vector<String> &p_from_paths, Vector<String> &r_dest_paths) override;
 
 	virtual Error _create_file(const String &p_dir, const String &p_filename) override;
 

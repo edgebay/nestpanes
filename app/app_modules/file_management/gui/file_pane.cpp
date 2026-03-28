@@ -201,7 +201,14 @@ void FilePane::_update_files(FileSystemDirectory *p_dir) {
 
 	tree->clear();
 	FileSystemTreeItem *root = tree->create_item();
-	root->set_metadata(0, current_path);
+
+	Dictionary d;
+	d["name"] = p_dir->get_name();
+	d["path"] = p_dir->get_path();
+	d["type"] = p_dir->get_type();
+	d["is_dir"] = FileSystemAccess::is_dir_type(d["type"]); // TODO: Remove, use type
+	root->set_metadata(0, d);
+	// root->set_metadata(0, current_path);
 
 	// list dirs
 	int dir_count = p_dir->get_subdir_count();

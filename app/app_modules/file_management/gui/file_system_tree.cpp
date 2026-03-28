@@ -6,10 +6,12 @@
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "scene/gui/box_container.h"
+#include "scene/gui/label.h"
 #include "scene/gui/line_edit.h"
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/text_edit.h"
+#include "scene/gui/texture_rect.h"
 #include "scene/main/timer.h"
 #include "scene/main/window.h"
 #include "scene/theme/theme_db.h"
@@ -3221,6 +3223,9 @@ void FileSystemTree::_on_item_mouse_selected(const Vector2 &p_pos, MouseButton p
 	}
 
 	if (context_menu->get_item_count() > 0) {
+		drag_type = DRAG_NONE;
+		prev_selected_item = nullptr;
+
 		context_menu->set_position(get_screen_position() + p_pos);
 		context_menu->reset_size();
 		context_menu->popup();
@@ -3244,8 +3249,13 @@ void FileSystemTree::_on_empty_clicked(const Vector2 &p_pos, MouseButton p_butto
 	FileSystemTreeItem *root_item = get_root();
 	ERR_FAIL_NULL(root_item);
 
-	String path = root_item->get_metadata(0);
-	if (path.is_empty() || path == COMPUTER_PATH) { // TODO: use FileSystemAccess::is_root_type(type)
+	Dictionary d = root_item->get_metadata(0);
+	if (d.is_empty()) {
+		return;
+	}
+	String type = d.get("type", "");
+	String path = d.get("path", "");
+	if (path.is_empty() || FileSystemAccess::is_root_type(type)) {
 		return;
 	}
 
@@ -3256,6 +3266,9 @@ void FileSystemTree::_on_empty_clicked(const Vector2 &p_pos, MouseButton p_butto
 	_build_empty_menu();
 
 	if (context_menu->get_item_count() > 0) {
+		drag_type = DRAG_NONE;
+		prev_selected_item = nullptr;
+
 		context_menu->set_position(get_screen_position() + p_pos);
 		context_menu->reset_size();
 		context_menu->popup();
@@ -3929,90 +3942,88 @@ void FileSystemTree::_mouse_motion_input(const Ref<InputEventMouseMotion> &p_eve
 
 	hovered_pos = mm->get_position();
 
-	if (detecting_box_selection) {
-		Point2 click = hovered_pos;
-		// print_line("pos: ", click, drag_type, drag_from, click.distance_to(drag_from), DRAG_THRESHOLD);
-		if (drag_type == DRAG_NONE) {
-			if (click.distance_to(drag_from) > DRAG_THRESHOLD) {
-				// Start a box selection.
-				if (!(mm->is_shift_pressed() || mm->is_command_or_control_pressed())) {
-					// Clear the selection if not additive.
-					deselect_all();
-					queue_redraw();
-				};
-
-				// drag_from = click;
-				drag_type = DRAG_BOX_SELECTION;
-				box_selecting_to = drag_from;
-				// // prev_selecting_to = box_selecting_to;
-				// prev_hovered_item = nullptr;
-				// starting_item = get_item_at_position(drag_from);
-			}
-		} else if (drag_type == DRAG_BOX_SELECTION) {
-			// Update box selection.
-			Point2 selecting_to = click;
-
-			// bool move_up = selecting_to.y < drag_from.y;
-			// FileSystemTreeItem *hovered_item = get_item_at_position(selecting_to);
-
-			// // if (!starting_item && hovered_item) {
-			// // 	starting_item = hovered_item;
-			// // }
-
-			// // FileSystemTreeItem *item = starting_item;
-			// FileSystemTreeItem *item = get_root();
-			// while (item) {
-			// 	Rect2 rect = get_item_rect(item);
-
-			// 	// if (!item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
-			// 	// 	item->select(0);
-			// 	// 	// } else {
-			// 	// 	// 	item->deselect(0);
-			// 	// }
-
-			// 	if (move_up) {
-			// 		item = item->get_prev();
-			// 	} else {
-			// 		item = item->get_next();
-			// 	}
-			// }
-
-			// // print_line("item: ", selecting_to, hovered_item, prev_hovered_item);
-			// // if (hovered_item && hovered_item != prev_hovered_item) {
-			// // 	// FileSystemTreeItem *target_item = nullptr;
-			// // 	// if (prev_hovered_item) {
-			// // 	// 	if (move_up) {
-			// // 	// 		target_item = prev_hovered_item->get_prev();
-			// // 	// 	} else {
-			// // 	// 		target_item = prev_hovered_item->get_next();
-			// // 	// 	}
-			// // 	// }
-
-			// // 	if (!hovered_item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
-			// // 		hovered_item->select(0);
-			// // 	} else {
-			// // 		hovered_item->deselect(0);
-			// // 	}
-			// // 	prev_hovered_item = hovered_item;
-			// // }
-
-			// prev_selecting_to = box_selecting_to;
-			box_selecting_to = selecting_to;
-
-			// Rect2 box = Rect2(drag_from, box_selecting_to - drag_from);
-			FileSystemTreeItem *starting_item = get_item_at_position(drag_from);
-			FileSystemTreeItem *current_item = get_item_at_position(box_selecting_to);
-			if (!starting_item && !current_item) {
+	Point2 click = hovered_pos;
+	// print_line("pos: ", click, drag_type, drag_from, click.distance_to(drag_from), DRAG_THRESHOLD);
+	if (drag_type == DRAG_DETECTING) {
+		if (click.distance_to(drag_from) > DRAG_THRESHOLD) {
+			// Start a box selection.
+			if (!(mm->is_shift_pressed() || mm->is_command_or_control_pressed())) {
+				// Clear the selection if not additive.
 				deselect_all();
-			} else {
-				// } else if (starting_item && current_item) { // TODO
-				bool inrange = false;
+				queue_redraw();
+			};
 
-				select_item(current_item, root, starting_item, &inrange);
-				// emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
-			}
-			queue_redraw();
+			// drag_from = click;
+			drag_type = DRAG_BOX_SELECTION;
+			box_selecting_to = drag_from;
+			// // prev_selecting_to = box_selecting_to;
+			// prev_hovered_item = nullptr;
+			// starting_item = get_item_at_position(drag_from);
 		}
+	} else if (drag_type == DRAG_BOX_SELECTION) {
+		// Update box selection.
+		Point2 selecting_to = click;
+
+		// bool move_up = selecting_to.y < drag_from.y;
+		// FileSystemTreeItem *hovered_item = get_item_at_position(selecting_to);
+
+		// // if (!starting_item && hovered_item) {
+		// // 	starting_item = hovered_item;
+		// // }
+
+		// // FileSystemTreeItem *item = starting_item;
+		// FileSystemTreeItem *item = get_root();
+		// while (item) {
+		// 	Rect2 rect = get_item_rect(item);
+
+		// 	// if (!item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
+		// 	// 	item->select(0);
+		// 	// 	// } else {
+		// 	// 	// 	item->deselect(0);
+		// 	// }
+
+		// 	if (move_up) {
+		// 		item = item->get_prev();
+		// 	} else {
+		// 		item = item->get_next();
+		// 	}
+		// }
+
+		// // print_line("item: ", selecting_to, hovered_item, prev_hovered_item);
+		// // if (hovered_item && hovered_item != prev_hovered_item) {
+		// // 	// FileSystemTreeItem *target_item = nullptr;
+		// // 	// if (prev_hovered_item) {
+		// // 	// 	if (move_up) {
+		// // 	// 		target_item = prev_hovered_item->get_prev();
+		// // 	// 	} else {
+		// // 	// 		target_item = prev_hovered_item->get_next();
+		// // 	// 	}
+		// // 	// }
+
+		// // 	if (!hovered_item->is_selected(0) || (m->is_shift_pressed() || m->is_command_or_control_pressed())) {
+		// // 		hovered_item->select(0);
+		// // 	} else {
+		// // 		hovered_item->deselect(0);
+		// // 	}
+		// // 	prev_hovered_item = hovered_item;
+		// // }
+
+		// prev_selecting_to = box_selecting_to;
+		box_selecting_to = selecting_to;
+
+		// Rect2 box = Rect2(drag_from, box_selecting_to - drag_from);
+		FileSystemTreeItem *starting_item = get_item_at_position(drag_from);
+		FileSystemTreeItem *current_item = get_item_at_position(box_selecting_to);
+		if (!starting_item && !current_item) {
+			deselect_all();
+		} else {
+			// } else if (starting_item && current_item) { // TODO
+			bool inrange = false;
+
+			select_item(current_item, root, starting_item, &inrange);
+			// emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
+		}
+		queue_redraw();
 	}
 
 	_determine_hovered_item();
@@ -4028,7 +4039,7 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 					mb->get_button_index() == MouseButton::RIGHT) {
 				// End box selection.
 				drag_type = DRAG_NONE;
-				detecting_box_selection = false;
+				prev_selected_item = nullptr;
 
 				if (mb->get_button_index() == MouseButton::RIGHT) {
 					// TODO: context menu
@@ -4037,7 +4048,10 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 		} else {
 			if (mb->get_button_index() == MouseButton::LEFT ||
 					mb->get_button_index() == MouseButton::RIGHT) {
-				detecting_box_selection = false;
+				// if (drag_type == DRAG_DETECTING) {
+				drag_type = DRAG_NONE;
+				prev_selected_item = nullptr;
+				// }
 
 				Point2 pos = mb->get_position();
 				if (rtl) {
@@ -4159,7 +4173,8 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 			if (drag_type == DRAG_NONE) {
 				if (!double_click) {
 					drag_from = mb->get_position();
-					detecting_box_selection = true;
+					drag_type = DRAG_DETECTING;
+					prev_selected_item = selected_item;
 				}
 			}
 			propagate_mouse_event(pos + theme_cache.offset, 0, 0, x_limit + theme_cache.offset.width, double_click, root, mb->get_button_index(), mb);
@@ -4600,13 +4615,26 @@ void FileSystemTree::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_DRAG_END: {
-			drop_mode_flags = 0;
+			drag_type = DRAG_NONE;
+
+			set_drop_mode_flags(DROP_MODE_DISABLED);
+
 			scrolling = false;
 			set_process_internal(false);
 			queue_redraw();
 		} break;
 
 		case NOTIFICATION_DRAG_BEGIN: {
+			drag_type = DRAG_DROPPING;
+
+			Dictionary dd = get_viewport()->gui_get_drag_data();
+			if (is_visible_in_tree() && dd.has("type")) {
+				if ((String(dd["type"]) == "files") || (String(dd["type"]) == "files_and_dirs")) {
+					// set_drop_mode_flags(DROP_MODE_ON_ITEM | DROP_MODE_INBETWEEN);
+					set_drop_mode_flags(DROP_MODE_ON_ITEM);
+				}
+			}
+
 			single_select_defer = nullptr;
 			if (theme_cache.scroll_speed > 0) {
 				scrolling = true;
@@ -4833,6 +4861,8 @@ FileSystemTreeItem *FileSystemTree::create_item(FileSystemTreeItem *p_parent, in
 			ti->cells.resize(columns.size());
 			ti->is_root = true;
 			root = ti;
+
+			root->set_metadata(0, Dictionary());
 		} else {
 			// Root exists, append or insert to root.
 			ti = create_item(root, p_index);
@@ -5779,78 +5809,190 @@ FileSystemTree::FindColumnButtonResult FileSystemTree::_find_column_and_button_a
 }
 
 int FileSystemTree::get_column_at_position(const Point2 &p_pos) const {
-	if (!root || !Rect2(Vector2(), get_size()).has_point(p_pos)) {
-		return -1;
-	}
-
-	Point2 pos = p_pos;
-	if (is_layout_rtl()) {
-		pos.x = get_size().width - pos.x - 1;
-	}
-	Point2 margin_offset = theme_cache.panel_style->get_offset();
-	pos -= margin_offset;
-	pos.y -= _get_title_button_height();
-	if (pos.y + margin_offset.y < 0) {
-		return -1;
-	}
-
-	if (h_scroll->is_visible_in_tree()) {
-		pos.x += h_scroll->get_value();
-	}
-	if (v_scroll->is_visible_in_tree()) {
-		pos.y += v_scroll->get_value();
-	}
-
 	int col, h, section;
-	FileSystemTreeItem *it = _find_item_at_pos(root, pos, col, h, section);
-
-	if (it) {
+	if (_get_item_at_pos(p_pos, col, h, section)) {
 		return col;
 	}
 	return -1;
 }
 
 int FileSystemTree::get_drop_section_at_position(const Point2 &p_pos) const {
-	if (!root || !Rect2(Vector2(), get_size()).has_point(p_pos)) {
-		return -100;
-	}
-
-	Point2 pos = p_pos;
-	if (is_layout_rtl()) {
-		pos.x = get_size().width - pos.x - 1;
-	}
-	Point2 margin_offset = theme_cache.panel_style->get_offset();
-	pos -= margin_offset;
-	pos.y -= _get_title_button_height();
-	if (pos.y + margin_offset.y < 0) {
-		return -100;
-	}
-
-	if (h_scroll->is_visible_in_tree()) {
-		pos.x += h_scroll->get_value();
-	}
-	if (v_scroll->is_visible_in_tree()) {
-		pos.y += v_scroll->get_value();
-	}
-
 	int col, h, section;
-	FileSystemTreeItem *it = _find_item_at_pos(root, pos, col, h, section);
-
-	if (it) {
+	if (_get_item_at_pos(p_pos, col, h, section)) {
 		return section;
 	}
 	return -100;
 }
 
-bool FileSystemTree::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
-	return Control::can_drop_data(p_point, p_data);
-}
-
 Variant FileSystemTree::get_drag_data(const Point2 &p_point) {
-	return Control::get_drag_data(p_point);
+	if (drag_type == DRAG_BOX_SELECTION) {
+		return false;
+	}
+
+	int col, h, section;
+	FileSystemTreeItem *item = _get_item_at_pos(p_point, col, h, section);
+	// if (!item || col != 0) {
+	if (!item) {
+		return Variant(); // Control::get_drag_data(p_point);
+	}
+
+	int icount = _count_selected_items(root);
+	if (icount <= 0 || (icount == 1 && prev_selected_item != item) || (icount > 1 && !item->selected)) {
+		return Variant();
+	}
+
+	bool has_folder = false;
+	bool has_file = false;
+	// Vector<String> paths = get_selected_paths();
+	Vector<String> paths;
+	for (const FileSystemTreeItem *ti : _get_selected_items()) {
+		Dictionary d = ti->get_metadata(0);
+		paths.push_back(d["path"]);
+
+		bool is_folder = FileSystemAccess::is_dir_type(d["type"]);
+		has_folder |= is_folder;
+		has_file |= !is_folder;
+	}
+
+	int max_rows = 6;
+	int num_rows = paths.size() > max_rows ? max_rows - 1 : paths.size(); // Don't waste a row to say "1 more file" - list it instead.
+	VBoxContainer *vbox = memnew(VBoxContainer);
+	for (int i = 0; i < num_rows; i++) {
+		HBoxContainer *hbox = memnew(HBoxContainer);
+		TextureRect *icon = memnew(TextureRect);
+		Label *label = memnew(Label);
+		label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+		label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+
+		if (paths[i].ends_with("/")) {
+			label->set_text(paths[i].substr(0, paths[i].length() - 1).get_file());
+			icon->set_texture(get_app_theme_icon(SNAME("Folder")));
+		} else {
+			label->set_text(paths[i].get_file());
+			icon->set_texture(get_app_theme_icon(SNAME("File")));
+		}
+		icon->set_stretch_mode(TextureRect::STRETCH_KEEP_CENTERED);
+		icon->set_size(Size2(16, 16));
+		hbox->add_child(icon);
+		hbox->add_child(label);
+		vbox->add_child(hbox);
+	}
+
+	if (paths.size() > num_rows) {
+		Label *label = memnew(Label);
+		label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+		if (has_file && has_folder) {
+			label->set_text(vformat(RTR("%d more files or folders"), paths.size() - num_rows));
+		} else if (has_folder) {
+			label->set_text(vformat(RTR("%d more folders"), paths.size() - num_rows));
+		} else {
+			label->set_text(vformat(RTR("%d more files"), paths.size() - num_rows));
+		}
+		vbox->add_child(label);
+	}
+	set_drag_preview(vbox);
+
+	Dictionary drag_data;
+	drag_data["type"] = has_folder ? "files_and_dirs" : "files";
+	drag_data["files"] = paths;
+	// drag_data["from"] = this;
+	return drag_data;
 }
 
-FileSystemTreeItem *FileSystemTree::get_item_at_position(const Point2 &p_pos) const {
+bool FileSystemTree::can_drop_data(const Point2 &p_point, const Variant &p_data) const {
+	Dictionary drag_data = p_data;
+
+	if (drag_data.has("type") && (String(drag_data["type"]) == "files" || String(drag_data["type"]) == "files_and_dirs")) {
+		// Move files or dir.
+		String to_dir;
+		_get_drag_target_folder(to_dir, p_point);
+
+		if (to_dir.is_empty()) {
+			return false;
+		}
+
+		// TODO
+		// // Attempting to move a folder into itself will fail later,
+		// // rather than bring up a message don't try to do it in the first place.
+		// to_dir = to_dir.ends_with("/") ? to_dir : (to_dir + "/");
+		// Vector<String> fnames = drag_data["files"];
+		// for (int i = 0; i < fnames.size(); ++i) {
+		// 	if (fnames[i].ends_with("/") && to_dir.begins_with(fnames[i])) {
+		// 		return false;
+		// 	}
+		// }
+
+		return true;
+	}
+
+	return false; // Control::can_drop_data(p_point, p_data);
+}
+
+void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
+	Dictionary drag_data = p_data;
+
+	if (drag_data.has("type") && (String(drag_data["type"]) == "files" || String(drag_data["type"]) == "files_and_dirs")) {
+		// Move files or add to favorites.
+		String to_dir;
+		_get_drag_target_folder(to_dir, p_point);
+
+		if (to_dir.is_empty()) {
+			return;
+		}
+
+		// TODO: preprocess
+		Vector<String> fnames = drag_data["files"];
+
+		bool is_copy = Input::get_singleton()->is_key_pressed(Key::CMD_OR_CTRL);
+		Vector<String> dest_paths;
+		Error err = FileSystemAccess::move(is_copy, to_dir, fnames, dest_paths);
+		// print_line("drop: ", is_copy, to_dir, fnames, dest_paths);
+		if (err == OK && context_menu->get_file_system()) { // TODO: file_system
+			context_menu->get_file_system()->scan(to_dir, true);
+
+			if (!is_copy) {
+				// Update the source directory for cut operations.
+				Vector<String> dirs;
+				for (const String &path : fnames) {
+					String base_dir = path.get_base_dir();
+					if (!dirs.has(base_dir)) {
+						dirs.push_back(base_dir);
+					}
+				}
+				// print_line("dirs: ", dirs.size(), dirs);
+				context_menu->get_file_system()->scan(dirs, true);
+			}
+
+			if (!dest_paths.is_empty()) {
+				// deselect_all(); // TODO
+				// TODO: selected list
+				to_select = dest_paths[0];
+			}
+		}
+	}
+}
+
+void FileSystemTree::_get_drag_target_folder(String &target, const Point2 &p_point) const {
+	target = String();
+
+	FileSystemTreeItem *ti = (p_point == Vector2(Math::INF, Math::INF)) ? get_root() : get_item_at_position(p_point);
+	if (ti) {
+		// int section = (p_point == Vector2(Math::INF, Math::INF)) ? get_drop_section_at_position(get_item_rect(ti).position) : get_drop_section_at_position(p_point);
+		Dictionary d = ti->get_metadata(0);
+		if (!d.is_empty()) {
+			String type = d.get("type", "");
+			String path = d.get("path", "");
+			// bool is_folder = FileSystemAccess::is_dir_type(type);
+			// if (is_folder && path != COMPUTER_PATH) {
+			if (FileSystemAccess::is_dir_type(type) && !FileSystemAccess::is_root_type(type)) {
+				target = path;
+			}
+		}
+	}
+	// print_line("drag target: ", p_point, ti, target);
+}
+
+FileSystemTreeItem *FileSystemTree::_get_item_at_pos(const Point2 &p_pos, int &r_column, int &r_height, int &r_section) const {
 	if (!root || !Rect2(Vector2(), get_size()).has_point(p_pos)) {
 		return nullptr;
 	}
@@ -5873,13 +6015,17 @@ FileSystemTreeItem *FileSystemTree::get_item_at_position(const Point2 &p_pos) co
 		pos.y += v_scroll->get_value();
 	}
 
-	int col, h, section;
-	FileSystemTreeItem *it = _find_item_at_pos(root, pos, col, h, section);
+	FileSystemTreeItem *it = _find_item_at_pos(root, pos, r_column, r_height, r_section);
 
 	if (it) {
 		return it;
 	}
 	return nullptr;
+}
+
+FileSystemTreeItem *FileSystemTree::get_item_at_position(const Point2 &p_pos) const {
+	int col, h, section;
+	return _get_item_at_pos(p_pos, col, h, section);
 }
 
 String FileSystemTree::get_tooltip(const Point2 &p_pos) const {

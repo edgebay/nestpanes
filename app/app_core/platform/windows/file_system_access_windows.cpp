@@ -630,130 +630,9 @@ bool FileSystemAccessWindows::_paste(const String &p_dir, Vector<String> &r_dest
 	}
 
 	// Paste.
-	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-	if (FAILED(hr)) {
-		return false;
-	}
+	Error err = _move(!is_cut, p_dir, files, r_dest_paths);
 
-	bool success = false;
-	IFileOperation *pfo = nullptr;
-	IShellItem *pTargetFolder = nullptr;
-	Vector<IShellItem *> sourceItems;
-
-	// 1. 创建 IFileOperation
-	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
-
-	if (SUCCEEDED(hr)) {
-		// 2. 设置不显示 UI（设为 TRUE 可显示进度、冲突对话框）
-		// hr = pfo->SetOperationFlags(FOF_NO_UI); // 默认是 FOF_NO_UI = 0，即显示 UI
-		// 若希望静默操作，取消注释下一行：
-		// hr = pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
-	}
-
-	String dir = p_dir.replace("/", "\\");
-	if (SUCCEEDED(hr)) {
-		// 3. 获取目标文件夹 IShellItem
-		hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
-	}
-
-	if (SUCCEEDED(hr)) {
-		// 遍历所有文件并执行操作
-#if 1 // TODO
-		hr = E_UNEXPECTED;
-		for (const String &file : files) {
-			String src_path = file.replace_char('/', '\\');
-			String filename = src_path.get_file();
-			String dest_path = dir + "\\" + filename; // Note: use '\\'
-
-			Char16String src_file_utf16 = src_path.utf16();
-			IShellItem *pItem = nullptr;
-			hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
-			if (SUCCEEDED(hr) && pItem) {
-				sourceItems.push_back(pItem);
-
-				if (is_cut) {
-					hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
-				} else {
-					// print_line("paste: ", dest_path, src_path);
-					if (dest_path == src_path) {
-						bool is_dir = FileSystemAccess::dir_exists(src_path);
-						String name = filename;
-						String path = dest_path;
-
-						int i = 1;
-						while (FileSystemAccess::path_exists(path)) {
-							if (is_dir || filename.get_extension().is_empty()) {
-								name = vformat("%s (%d)", filename, i);
-							} else {
-								name = vformat("%s (%d).%s", filename.get_basename(), i, filename.get_extension());
-							}
-
-							path = dir + "\\" + name; // Note: use '\\'
-							i++;
-						}
-						filename = name;
-						dest_path = path;
-					}
-					hr = pfo->CopyItem(pItem, pTargetFolder, (LPCWSTR)(filename.utf16().get_data()), nullptr);
-				}
-				r_dest_paths.push_back(dest_path.simplify_path());
-			}
-
-			if (FAILED(hr)) {
-				r_dest_paths.clear();
-				break;
-			}
-		}
-
-		if (SUCCEEDED(hr)) {
-			// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
-			hr = pfo->PerformOperations();
-			if (SUCCEEDED(hr)) {
-				// 8. 检查是否成功完成
-				BOOL anyOperationsAborted = FALSE;
-				hr = pfo->GetAnyOperationsAborted(&anyOperationsAborted);
-				if (SUCCEEDED(hr) && !anyOperationsAborted) {
-					success = true;
-				}
-			}
-		}
-#else
-		for (const String &file : files) {
-			String src_path = file.replace_char('/', '\\');
-			String filename = src_path.get_file();
-			String dest_path = dir + "\\" + filename;
-			Char16String src_file_utf16 = src_path.utf16();
-
-			BOOL result = FALSE;
-			if (is_cut) {
-				result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
-			} else {
-				result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
-			}
-
-			if (!result) {
-				DWORD err = GetLastError();
-				// 可选择继续或中止
-			} else {
-				success = true;
-			}
-		}
-#endif
-	}
-
-	// 清理资源
-	for (IShellItem *item : sourceItems) {
-		item->Release();
-	}
-	if (pTargetFolder) {
-		pTargetFolder->Release();
-	}
-	if (pfo) {
-		pfo->Release();
-	}
-	CoUninitialize();
-
-	return success;
+	return err == OK;
 }
 
 bool FileSystemAccessWindows::_can_paste() {
@@ -822,6 +701,138 @@ bool FileSystemAccessWindows::_get_clipboard_paths(Vector<String> &r_paths, bool
 	}
 
 	return result;
+}
+
+Error FileSystemAccessWindows::_move(bool p_is_copy, const String &p_to_dir, const Vector<String> &p_from_paths, Vector<String> &r_dest_paths) {
+	if (!dir_exists(p_to_dir)) {
+		return FAILED;
+	}
+
+	HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+	if (FAILED(hr)) {
+		return FAILED;
+	}
+
+	Error err = FAILED;
+	IFileOperation *pfo = nullptr;
+	IShellItem *pTargetFolder = nullptr;
+	Vector<IShellItem *> sourceItems;
+
+	// 1. 创建 IFileOperation
+	hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
+
+	if (SUCCEEDED(hr)) {
+		// 2. 设置不显示 UI（设为 TRUE 可显示进度、冲突对话框）
+		// hr = pfo->SetOperationFlags(FOF_NO_UI); // 默认是 FOF_NO_UI = 0，即显示 UI
+		// 若希望静默操作，取消注释下一行：
+		// hr = pfo->SetOperationFlags(FOF_NO_UI | FOF_NOCONFIRMATION | FOF_SILENT);
+	}
+
+	String dir = p_to_dir.replace("/", "\\");
+	if (SUCCEEDED(hr)) {
+		// 3. 获取目标文件夹 IShellItem
+		hr = SHCreateItemFromParsingName((PCWSTR)(dir.utf16().get_data()), nullptr, IID_PPV_ARGS(&pTargetFolder));
+	}
+
+	if (SUCCEEDED(hr)) {
+		// 遍历所有文件并执行操作
+#if 1 // TODO
+		hr = E_UNEXPECTED;
+		for (const String &file : p_from_paths) {
+			String src_path = file.replace_char('/', '\\');
+			String filename = src_path.get_file();
+			String dest_path = dir + "\\" + filename; // Note: use '\\'
+
+			Char16String src_file_utf16 = src_path.utf16();
+			IShellItem *pItem = nullptr;
+			hr = SHCreateItemFromParsingName((PCWSTR)src_file_utf16.ptr(), nullptr, IID_PPV_ARGS(&pItem));
+			if (SUCCEEDED(hr) && pItem) {
+				sourceItems.push_back(pItem);
+
+				if (!p_is_copy) {
+					hr = pfo->MoveItem(pItem, pTargetFolder, nullptr, nullptr);
+				} else {
+					// print_line("paste: ", dest_path, src_path);
+					if (dest_path == src_path) {
+						bool is_dir = FileSystemAccess::dir_exists(src_path);
+						String name = filename;
+						String path = dest_path;
+
+						int i = 1;
+						while (FileSystemAccess::path_exists(path)) {
+							if (is_dir || filename.get_extension().is_empty()) {
+								name = vformat("%s (%d)", filename, i);
+							} else {
+								name = vformat("%s (%d).%s", filename.get_basename(), i, filename.get_extension());
+							}
+
+							path = dir + "\\" + name; // Note: use '\\'
+							i++;
+						}
+						filename = name;
+						dest_path = path;
+					}
+					hr = pfo->CopyItem(pItem, pTargetFolder, (LPCWSTR)(filename.utf16().get_data()), nullptr);
+				}
+
+				r_dest_paths.push_back(dest_path.simplify_path());
+			}
+
+			if (FAILED(hr)) {
+				r_dest_paths.clear();
+				break;
+			}
+		}
+
+		if (SUCCEEDED(hr)) {
+			// 7. 执行操作（会弹出标准 Windows 进度/冲突对话框）
+			hr = pfo->PerformOperations();
+			if (SUCCEEDED(hr)) {
+				// 8. 检查是否成功完成
+				BOOL anyOperationsAborted = FALSE;
+				hr = pfo->GetAnyOperationsAborted(&anyOperationsAborted);
+				if (SUCCEEDED(hr) && !anyOperationsAborted) {
+					err = OK;
+				}
+			}
+		}
+#else
+		for (const String &file : p_from_paths) {
+			String src_path = file.replace_char('/', '\\');
+			String filename = src_path.get_file();
+			String dest_path = dir + "\\" + filename;
+			Char16String src_file_utf16 = src_path.utf16();
+
+			BOOL result = FALSE;
+			if (!p_is_copy) {
+				result = MoveFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()));
+			} else {
+				result = CopyFileW((LPCWSTR)src_file_utf16.get_data(), (LPCWSTR)(dest_path.utf16().get_data()), FALSE); // FALSE = 覆盖
+			}
+
+			if (!result) {
+				DWORD last_err = GetLastError();
+				// 可选择继续或中止
+			} else {
+				err = OK;
+			}
+		}
+#endif
+	}
+
+	// 清理资源
+	for (IShellItem *item : sourceItems) {
+		item->Release();
+	}
+	if (pTargetFolder) {
+		pTargetFolder->Release();
+	}
+	if (pfo) {
+		pfo->Release();
+	}
+	CoUninitialize();
+
+	return err;
 }
 
 Error FileSystemAccessWindows::_create_file(const String &p_dir, const String &p_filename) {
