@@ -2713,7 +2713,10 @@ void FileSystemTree::_go_up(bool p_is_command) {
 			return;
 		}
 
-		selected_item = prev;
+		// selected_item = prev;
+		deselect_all();
+		prev->select();
+
 		// TODO
 		// emit_signal(SNAME("item_selected"), selected_item, true);
 		queue_redraw();
@@ -2794,7 +2797,10 @@ void FileSystemTree::_go_down(bool p_is_command) {
 			return;
 		}
 
-		selected_item = next;
+		// selected_item = next;
+		deselect_all();
+		next->select();
+
 		// TODO
 		// emit_signal(SNAME("item_selected"), selected_item, true);
 		queue_redraw();
@@ -3819,7 +3825,10 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 		}
 
 		if (display_mode == DISPLAY_MODE_TREE) {
-			selected_item = next;
+			// selected_item = next;
+			deselect_all();
+			next->select();
+
 			// TODO
 			// emit_signal(SNAME("item_selected"), selected_item, true);
 			queue_redraw();
@@ -3859,7 +3868,10 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 		}
 
 		if (display_mode == DISPLAY_MODE_TREE) {
-			selected_item = prev;
+			// selected_item = prev;
+			deselect_all();
+			prev->select();
+
 			// TODO
 			// emit_signal(SNAME("item_selected"), selected_item, true);
 			queue_redraw();
@@ -3876,8 +3888,82 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 
 		ensure_cursor_is_visible();
 	}
-	// TODO: Home, End
-	else if (p_event->is_action("ui_select") && p_event->is_pressed()) {
+	// else if (p_event->get_keycode() == Key::HOME && p_event->is_pressed()) {
+	else if (p_event->is_action("ui_home") && p_event->is_pressed()) {
+		if (!cursor_can_exit_tree) {
+			accept_event();
+		}
+
+		if (!root) {
+			return;
+		}
+
+		FileSystemTreeItem *home = root;
+		if (is_root_hidden() || !home->selectable) {
+			home = root->get_first_child();
+			while (home && !home->selectable) {
+				home = home->get_next_visible();
+			}
+		}
+		if (!home) {
+			return;
+		}
+
+		if (display_mode == DISPLAY_MODE_TREE) {
+			// selected_item = home;
+			deselect_all();
+			home->select();
+
+			// TODO
+			// emit_signal(SNAME("item_selected"), selected_item, true);
+			queue_redraw();
+		} else {
+			set_selected(home);
+		}
+
+		ensure_cursor_is_visible();
+	} else if (p_event->is_action("ui_end") && p_event->is_pressed()) {
+		if (!cursor_can_exit_tree) {
+			accept_event();
+		}
+
+		if (!root) {
+			return;
+		}
+
+		FileSystemTreeItem *end = root;
+		int child_count = end->get_visible_child_count();
+		while (end && !end->is_collapsed() && child_count > 0) {
+			// Get last child.
+			end = end->get_child(child_count - 1);
+			child_count = end->get_visible_child_count();
+		}
+		while (end && !end->selectable) {
+			FileSystemTreeItem *prev = end->get_prev_visible();
+			if (prev) {
+				end = prev;
+			} else {
+				end = end->get_parent();
+			}
+		}
+		if (!end) {
+			return;
+		}
+
+		if (display_mode == DISPLAY_MODE_TREE) {
+			// selected_item = end;
+			deselect_all();
+			end->select();
+
+			// TODO
+			// emit_signal(SNAME("item_selected"), selected_item, true);
+			queue_redraw();
+		} else {
+			set_selected(end);
+		}
+
+		ensure_cursor_is_visible();
+	} else if (p_event->is_action("ui_select") && p_event->is_pressed()) {
 		if (!selected_item) {
 			return;
 		}
