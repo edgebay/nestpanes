@@ -4102,12 +4102,16 @@ void FileSystemTree::_mouse_motion_input(const Ref<InputEventMouseMotion> &p_eve
 		FileSystemTreeItem *current_item = get_item_at_position(box_selecting_to);
 		if (!starting_item && !current_item) {
 			deselect_all();
-		} else {
-			// } else if (starting_item && current_item) { // TODO
+		} else if (current_item) {
+			// if (current_item->selectable) {
 			bool inrange = false;
 
 			select_item(current_item, root, starting_item, &inrange);
+			selected_item = starting_item ? starting_item : current_item;
+
 			// emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
+
+			// }
 		}
 		queue_redraw();
 	}
@@ -4128,7 +4132,7 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 				prev_selected_item = nullptr;
 
 				if (mb->get_button_index() == MouseButton::RIGHT) {
-					// TODO: context menu
+					_on_item_mouse_selected(mb->get_position(), mb->get_button_index());
 				}
 			}
 		} else {
@@ -5929,39 +5933,43 @@ Variant FileSystemTree::get_drag_data(const Point2 &p_point) {
 
 	bool has_folder = false;
 	bool has_file = false;
+	Vector<FileSystemTreeItem *> selected_items = _get_selected_items();
 	// Vector<String> paths = get_selected_paths();
 	Vector<String> paths;
-	for (const FileSystemTreeItem *ti : _get_selected_items()) {
+
+	int max_rows = 6;
+	int num_rows = selected_items.size() > max_rows ? max_rows - 1 : selected_items.size(); // Don't waste a row to say "1 more file" - list it instead.
+	VBoxContainer *vbox = memnew(VBoxContainer);
+
+	for (int i = 0; i < selected_items.size(); i++) {
+		const FileSystemTreeItem *ti = selected_items[i];
 		Dictionary d = ti->get_metadata(0);
 		paths.push_back(d["path"]);
 
 		bool is_folder = FileSystemAccess::is_dir_type(d["type"]);
 		has_folder |= is_folder;
 		has_file |= !is_folder;
-	}
 
-	int max_rows = 6;
-	int num_rows = paths.size() > max_rows ? max_rows - 1 : paths.size(); // Don't waste a row to say "1 more file" - list it instead.
-	VBoxContainer *vbox = memnew(VBoxContainer);
-	for (int i = 0; i < num_rows; i++) {
-		HBoxContainer *hbox = memnew(HBoxContainer);
-		TextureRect *icon = memnew(TextureRect);
-		Label *label = memnew(Label);
-		label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
-		label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+		if (i < num_rows) {
+			HBoxContainer *hbox = memnew(HBoxContainer);
+			TextureRect *icon = memnew(TextureRect);
+			Label *label = memnew(Label);
+			label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
+			label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 
-		if (paths[i].ends_with("/")) {
-			label->set_text(paths[i].substr(0, paths[i].length() - 1).get_file());
-			icon->set_texture(get_app_theme_icon(SNAME("Folder")));
-		} else {
-			label->set_text(paths[i].get_file());
-			icon->set_texture(get_app_theme_icon(SNAME("File")));
+			if (is_folder) {
+				label->set_text(paths[i].substr(0, paths[i].length() - 1).get_file());
+				icon->set_texture(get_app_theme_icon(SNAME("Folder")));
+			} else {
+				label->set_text(paths[i].get_file());
+				icon->set_texture(get_app_theme_icon(SNAME("File")));
+			}
+			icon->set_stretch_mode(TextureRect::STRETCH_KEEP_CENTERED);
+			icon->set_size(Size2(16, 16));
+			hbox->add_child(icon);
+			hbox->add_child(label);
+			vbox->add_child(hbox);
 		}
-		icon->set_stretch_mode(TextureRect::STRETCH_KEEP_CENTERED);
-		icon->set_size(Size2(16, 16));
-		hbox->add_child(icon);
-		hbox->add_child(label);
-		vbox->add_child(hbox);
 	}
 
 	if (paths.size() > num_rows) {
@@ -5997,16 +6005,15 @@ bool FileSystemTree::can_drop_data(const Point2 &p_point, const Variant &p_data)
 			return false;
 		}
 
-		// TODO
-		// // Attempting to move a folder into itself will fail later,
-		// // rather than bring up a message don't try to do it in the first place.
-		// to_dir = to_dir.ends_with("/") ? to_dir : (to_dir + "/");
-		// Vector<String> fnames = drag_data["files"];
-		// for (int i = 0; i < fnames.size(); ++i) {
-		// 	if (fnames[i].ends_with("/") && to_dir.begins_with(fnames[i])) {
-		// 		return false;
-		// 	}
-		// }
+		// Attempting to move a folder into itself will fail later,
+		// rather than bring up a message don't try to do it in the first place.
+		// Disallow moving an item into its own folder.
+		Vector<String> fnames = drag_data["files"];
+		for (int i = 0; i < fnames.size(); ++i) {
+			if (to_dir.begins_with(fnames[i]) || fnames[i].get_base_dir() == to_dir) {
+				return false;
+			}
+		}
 
 		return true;
 	}
@@ -6026,7 +6033,6 @@ void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
 			return;
 		}
 
-		// TODO: preprocess
 		Vector<String> fnames = drag_data["files"];
 
 		bool is_copy = Input::get_singleton()->is_key_pressed(Key::CMD_OR_CTRL);
@@ -6070,12 +6076,28 @@ void FileSystemTree::_get_drag_target_folder(String &target, const Point2 &p_poi
 			String path = d.get("path", "");
 			// bool is_folder = FileSystemAccess::is_dir_type(type);
 			// if (is_folder && path != COMPUTER_PATH) {
-			if (FileSystemAccess::is_dir_type(type) && !FileSystemAccess::is_root_type(type)) {
-				target = path;
+			if (FileSystemAccess::is_dir_type(type)) {
+				if (!FileSystemAccess::is_root_type(type)) {
+					target = path;
+				}
+			} else {
+				FileSystemTreeItem *parent = ti->get_parent();
+				if (parent) {
+					d = parent->get_metadata(0);
+					if (!d.is_empty()) {
+						type = d.get("type", "");
+						path = d.get("path", "");
+						if (FileSystemAccess::is_dir_type(type)) {
+							if (!FileSystemAccess::is_root_type(type)) {
+								target = path;
+							}
+						}
+					}
+				}
 			}
 		}
 	}
-	// print_line("drag target: ", p_point, ti, target);
+	// print_line("drag target: ", p_point, target);
 }
 
 FileSystemTreeItem *FileSystemTree::_get_item_at_pos(const Point2 &p_pos, int &r_column, int &r_height, int &r_section) const {
