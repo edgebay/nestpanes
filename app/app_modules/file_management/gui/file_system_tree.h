@@ -380,7 +380,7 @@ private:
 	// TODO
 	// bool show_hidden_files = false;
 
-	String to_select = "";
+	Vector<String> to_select;
 	bool rename_item = false;
 
 	// Selection.

@@ -1007,6 +1007,31 @@ TypedArray<FileSystemTreeItem> FileSystemTreeItem::get_children() {
 }
 
 void FileSystemTreeItem::clear_children() {
+	if (tree) { // TODO: Improve
+		if (tree->display_mode == FileSystemTree::DISPLAY_MODE_TREE && tree->to_select.is_empty()) {
+			// Keep the selected children.
+			FileSystemTreeItem *item = tree->get_root();
+			item = tree->get_next_selected(item);
+			while (item) {
+				if (item->is_visible_in_tree()) {
+					FileSystemTreeItem *parent_item = item;
+					while (parent_item && parent_item != this) {
+						parent_item = parent_item->get_parent();
+					}
+					if (parent_item) {
+						Dictionary d = item->get_metadata(0);
+						String path = d["path"];
+						if (FileSystemAccess::path_exists(path)) {
+							tree->to_select.push_back(path);
+							// print_line("keep select: ", path);
+						}
+					}
+				}
+				item = tree->get_next_selected(item);
+			}
+		}
+	}
+
 	FileSystemTreeItem *c = first_child;
 	while (c) {
 		FileSystemTreeItem *aux = c;
@@ -2977,6 +3002,11 @@ FileSystemTreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, FileSys
 	// item->set_editable(0, true); // Affects double-click behavior, use force_edit.
 	item->set_selectable(true);
 
+	if (!FileSystemAccess::is_dir_type(p_fi.type)) {
+		item->collapsed = true; // default value is false.
+		item->_changed_notify();
+	}
+
 	Dictionary d;
 	d["name"] = p_fi.name;
 	d["path"] = path;
@@ -3289,11 +3319,11 @@ void FileSystemTree::_on_item_edited() {
 	String from = d["path"];
 	String new_name = ti->get_text(col_index).strip_edges();
 	if (_rename_operation_confirm(from, new_name)) {
-		// deselect_all(); // TODO
-		String path = from.get_base_dir();
-		to_select = path.path_join(new_name);
-
 		if (file_system) {
+			to_select.clear();
+			String path = from.get_base_dir();
+			to_select.push_back(path.path_join(new_name));
+
 			file_system->scan(path, true);
 		}
 	} else {
@@ -3400,9 +3430,8 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 				}
 
 				if (!dest_paths.is_empty()) {
-					// deselect_all(); // TODO
-					// TODO: selected list
-					to_select = dest_paths[0];
+					to_select.clear();
+					to_select = dest_paths;
 				}
 			}
 		} break;
@@ -3450,11 +3479,11 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			}
 			Error err = FileSystemAccess::make_dir(path);
 			if (err == OK) {
-				// deselect_all(); // TODO
-				to_select = path;
-				rename_item = true;
-
 				if (file_system) {
+					to_select.clear();
+					to_select.push_back(path);
+					rename_item = true;
+
 					file_system->scan(dir, true);
 				}
 			}
@@ -3481,8 +3510,8 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			Error err = FileSystemAccess::create_file(dir, name);
 			// print_line("create file: ", err);
 			if (err == OK) {
-				// deselect_all(); // TODO
-				to_select = path;
+				to_select.clear();
+				to_select.push_back(path);
 				rename_item = true;
 
 				if (file_system) {
@@ -5783,6 +5812,7 @@ bool FileSystemTree::can_drop_data(const Point2 &p_point, const Variant &p_data)
 		Vector<String> fnames = drag_data["files"];
 		for (int i = 0; i < fnames.size(); ++i) {
 			if (to_dir.begins_with(fnames[i]) || fnames[i].get_base_dir() == to_dir) {
+				// print_line("disallow:", fnames[i], fnames[i].get_base_dir(), to_dir);
 				return false;
 			}
 		}
@@ -5812,6 +5842,7 @@ void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
 		Error err = FileSystemAccess::move(is_copy, to_dir, fnames, dest_paths);
 		// print_line("drop: ", is_copy, to_dir, fnames, dest_paths);
 		if (err == OK && file_system) {
+			// print_line("drop scan: ", to_dir);
 			file_system->scan(to_dir, true);
 
 			if (!is_copy) {
@@ -5823,14 +5854,13 @@ void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
 						dirs.push_back(base_dir);
 					}
 				}
-				// print_line("dirs: ", dirs.size(), dirs);
+				// print_line("drop scan dirs: ", dirs.size(), dirs);
 				file_system->scan(dirs, true);
 			}
 
 			if (!dest_paths.is_empty()) {
-				// deselect_all(); // TODO
-				// TODO: selected list
-				to_select = dest_paths[0];
+				to_select.clear();
+				to_select = dest_paths;
 			}
 		}
 	}
@@ -5840,6 +5870,11 @@ void FileSystemTree::_get_drag_target_folder(String &target, const Point2 &p_poi
 	target = String();
 
 	FileSystemTreeItem *ti = (p_point == Vector2(Math::INF, Math::INF)) ? get_root() : get_item_at_position(p_point);
+
+	if (!ti && display_mode == DISPLAY_MODE_LIST) {
+		ti = get_root();
+	}
+
 	if (ti) {
 		// int section = (p_point == Vector2(Math::INF, Math::INF)) ? get_drop_section_at_position(get_item_rect(ti).position) : get_drop_section_at_position(p_point);
 		Dictionary d = ti->get_metadata(0);
@@ -6207,30 +6242,34 @@ FileSystemTreeItem *FileSystemTree::add_item(const FileInfo &p_fi, FileSystemTre
 	FileSystemTreeItem *item = nullptr;
 	if (display_mode == DISPLAY_MODE_TREE) {
 		item = _add_tree_item(p_fi, p_parent, p_index);
+		// print_line("add tree item :", p_fi.path, item);
+		if (item && !to_select.is_empty()) {
+			int idx = to_select.find(p_fi.path);
+			// print_line("find:", idx, to_select);
+			if (idx >= 0) {
+				FileSystemTreeItem *root_item = get_root();
+				FileSystemTreeItem *parent = item->get_parent();
+				while (parent && parent != root_item) {
+					if (parent->is_collapsed()) {
+						parent->set_collapsed(false);
 
-		// TODO: After all items are added.
-		if (item && !to_select.is_empty() && to_select == p_fi.path) {
-			FileSystemTreeItem *root_item = get_root();
-			FileSystemTreeItem *parent = item->get_parent();
-			while (parent && parent != root_item) {
-				if (parent->is_collapsed()) {
-					parent->set_collapsed(false);
-
-					// Dictionary d = parent->get_metadata(0);
-					// print_line("set uncollapsed: ", d["path"]);
+						// Dictionary d = parent->get_metadata(0);
+						// print_line("set uncollapsed: ", d["path"]);
+					}
+					parent = parent->get_parent();
 				}
-				parent = parent->get_parent();
+				item->select();
+				to_select.remove_at(idx);
 			}
-			set_selected(item);
-			to_select = "";
 		}
 	} else if (display_mode == DISPLAY_MODE_LIST) {
 		item = _add_list_item(p_fi, p_parent, p_index);
-
-		// TODO: After all items are added.
-		if (item && !to_select.is_empty() && to_select == p_fi.path) {
-			set_selected(item);
-			to_select = "";
+		if (item && !to_select.is_empty()) {
+			int idx = to_select.find(p_fi.path);
+			if (idx >= 0) {
+				item->select();
+				to_select.remove_at(idx);
+			}
 		}
 	}
 
@@ -6531,6 +6570,8 @@ FileSystemTree::FileSystemTree() {
 }
 
 FileSystemTree::~FileSystemTree() {
+	to_select.clear();
+
 	if (root) {
 		memdelete(root);
 	}

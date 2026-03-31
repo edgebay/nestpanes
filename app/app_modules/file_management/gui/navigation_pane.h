@@ -24,7 +24,6 @@ private:
 
 	bool loading_uncollapsed_paths = false;
 	Vector<String> uncollapsed_paths;
-	String selected_path = "";
 
 	virtual String _get_pane_title() const override;
 	virtual Ref<Texture2D> _get_pane_icon() const override;

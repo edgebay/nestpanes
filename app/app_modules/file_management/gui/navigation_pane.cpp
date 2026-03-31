@@ -182,20 +182,8 @@ void NavigationPane::_create_tree(FileSystemTreeItem *p_parent, const FileSystem
 	FileSystemTreeItem *subdirectory_item = tree->add_item(p_dir->get_info(), p_parent);
 
 	String path = p_dir->get_path();
-	if (selected_path == path || (selected_path.get_base_dir() == path)) {
-		subdirectory_item->select();
-		// Keep select an item when re-created a tree
-		// To prevent crashing when nothing is selected.
-		subdirectory_item->set_as_cursor();
-	}
-
 	bool uncollapsed = p_uncollapsed_paths.has(path);
-	// TODO
-	// if (p_unfold_path && selected_path.begins_with(path) && selected_path != path) {
-	// 	subdirectory_item->set_collapsed(false);
-	// } else {
 	subdirectory_item->set_collapsed(!uncollapsed);
-	// }
 
 	// print_line("uncollapse: ", path, uncollapsed);
 
@@ -216,12 +204,6 @@ void NavigationPane::_create_file_item(FileSystemTreeItem *p_parent, const FileI
 	ERR_FAIL_NULL(p_file_info);
 
 	FileSystemTreeItem *file_item = tree->add_item(*p_file_info, p_parent);
-	file_item->set_collapsed(true); // default value is false.
-
-	if (selected_path == p_file_info->path) {
-		file_item->select();
-		file_item->set_as_cursor();
-	}
 }
 
 void NavigationPane::_on_item_activated() {
