@@ -343,6 +343,7 @@ void NavigationPane::set_file_system(FileSystem *p_file_system) {
 	file_system = p_file_system;
 	file_system->connect("file_system_changed", callable_mp(this, &NavigationPane::_on_file_system_changed));
 
+	tree->set_file_system(file_system);
 	context_menu->set_file_system(file_system);
 
 	const FileSystemDirectory *file_system_root = file_system->get_root();

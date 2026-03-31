@@ -415,6 +415,7 @@ void FilePane::set_file_system(FileSystem *p_file_system) {
 	file_system->connect("file_system_changed", callable_mp(this, &FilePane::_on_file_system_changed));
 	file_system->connect("reset_path", callable_mp(this, &FilePane::_on_reset_path));
 
+	tree->set_file_system(file_system);
 	context_menu->set_file_system(file_system);
 
 	_set_path(file_system->get_root()->get_path());

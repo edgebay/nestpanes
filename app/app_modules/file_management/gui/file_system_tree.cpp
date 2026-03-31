@@ -3086,7 +3086,6 @@ void FileSystemTree::_on_item_activated() {
 void FileSystemTree::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
 }
 
-// TODO: menu item
 void FileSystemTree::_build_empty_menu() {
 	context_menu->clear();
 
@@ -3294,7 +3293,9 @@ void FileSystemTree::_on_item_edited() {
 		String path = from.get_base_dir();
 		to_select = path.path_join(new_name);
 
-		context_menu->get_file_system()->scan(path, true);
+		if (file_system) {
+			file_system->scan(path, true);
+		}
 	} else {
 		ti->set_text(0, d["name"]);
 	}
@@ -3382,8 +3383,8 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 			Vector<String> dest_paths;
 			ret = FileSystemAccess::paste(path, dest_paths);
 			// print_line("paste ret: ", ret, is_cut, dest_paths);
-			if (ret && context_menu->get_file_system()) {
-				context_menu->get_file_system()->scan(path, true);
+			if (ret && file_system) {
+				file_system->scan(path, true);
 
 				if (is_cut) {
 					// Update the source directory for cut operations.
@@ -3395,7 +3396,7 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 						}
 					}
 					// print_line("dirs: ", dirs.size(), dirs);
-					context_menu->get_file_system()->scan(dirs, true);
+					file_system->scan(dirs, true);
 				}
 
 				if (!dest_paths.is_empty()) {
@@ -3453,7 +3454,9 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 				to_select = path;
 				rename_item = true;
 
-				context_menu->get_file_system()->scan(dir, true);
+				if (file_system) {
+					file_system->scan(dir, true);
+				}
 			}
 		} break;
 
@@ -3482,7 +3485,9 @@ bool FileSystemTree::_process_id_pressed(int p_option, const Vector<String> &p_s
 				to_select = path;
 				rename_item = true;
 
-				context_menu->get_file_system()->scan(dir, true);
+				if (file_system) {
+					file_system->scan(dir, true);
+				}
 			}
 		} break;
 
@@ -5806,8 +5811,8 @@ void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
 		Vector<String> dest_paths;
 		Error err = FileSystemAccess::move(is_copy, to_dir, fnames, dest_paths);
 		// print_line("drop: ", is_copy, to_dir, fnames, dest_paths);
-		if (err == OK && context_menu->get_file_system()) { // TODO: file_system
-			context_menu->get_file_system()->scan(to_dir, true);
+		if (err == OK && file_system) {
+			file_system->scan(to_dir, true);
 
 			if (!is_copy) {
 				// Update the source directory for cut operations.
@@ -5819,7 +5824,7 @@ void FileSystemTree::drop_data(const Point2 &p_point, const Variant &p_data) {
 					}
 				}
 				// print_line("dirs: ", dirs.size(), dirs);
-				context_menu->get_file_system()->scan(dirs, true);
+				file_system->scan(dirs, true);
 			}
 
 			if (!dest_paths.is_empty()) {
@@ -6121,6 +6126,14 @@ void FileSystemTree::process_menu_id(int p_option, const Vector<String> &p_selec
 		context_menu->set_targets(p_selected);
 		context_menu->file_option(p_option);
 	}
+}
+
+void FileSystemTree::set_file_system(FileSystem *p_file_system) {
+	file_system = p_file_system;
+}
+
+FileSystem *FileSystemTree::get_file_system() const {
+	return file_system;
 }
 
 Vector<String> FileSystemTree::get_selected_paths() {

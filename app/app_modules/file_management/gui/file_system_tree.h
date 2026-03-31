@@ -13,6 +13,7 @@ class Popup;
 class TextEdit;
 class Timer;
 class FileContextMenu;
+class FileSystem;
 class FileSystemTree;
 class VScrollBar;
 
@@ -374,6 +375,8 @@ private:
 
 	FileContextMenu *context_menu = nullptr;
 
+	FileSystem *file_system = nullptr;
+
 	// TODO
 	// bool show_hidden_files = false;
 
@@ -421,7 +424,6 @@ private:
 	float content_scale_factor = 0.0;
 
 	Rect2 custom_popup_rect;
-	// int edited_col = -1; // TODO
 	int popup_edited_item_col = -1;
 	bool hide_root = false;
 
@@ -857,6 +859,9 @@ public:
 	void set_context_menu(FileContextMenu *p_menu);
 	FileContextMenu *get_context_menu() const;
 	void process_menu_id(int p_option, const Vector<String> &p_selected);
+
+	void set_file_system(FileSystem *p_file_system);
+	FileSystem *get_file_system() const;
 
 	Vector<String> get_selected_paths();
 	Vector<String> get_uncollapsed_paths() const;
