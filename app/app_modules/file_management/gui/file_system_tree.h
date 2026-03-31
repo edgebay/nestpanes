@@ -386,41 +386,10 @@ private:
 		DRAG_DETECTING,
 		DRAG_BOX_SELECTION,
 		DRAG_DROPPING,
-		// DRAG_LEFT,
-		// DRAG_TOP_LEFT,
-		// DRAG_TOP,
-		// DRAG_TOP_RIGHT,
-		// DRAG_RIGHT,
-		// DRAG_BOTTOM_RIGHT,
-		// DRAG_BOTTOM,
-		// DRAG_BOTTOM_LEFT,
-		// DRAG_ANCHOR_TOP_LEFT,
-		// DRAG_ANCHOR_TOP_RIGHT,
-		// DRAG_ANCHOR_BOTTOM_RIGHT,
-		// DRAG_ANCHOR_BOTTOM_LEFT,
-		// DRAG_ANCHOR_ALL,
-		// DRAG_QUEUED,
-		// DRAG_MOVE,
-		// DRAG_MOVE_X,
-		// DRAG_MOVE_Y,
-		// DRAG_SCALE_X,
-		// DRAG_SCALE_Y,
-		// DRAG_SCALE_BOTH,
-		// DRAG_ROTATE,
-		// DRAG_PIVOT,
-		// DRAG_TEMP_PIVOT,
-		// DRAG_V_GUIDE,
-		// DRAG_H_GUIDE,
-		// DRAG_DOUBLE_GUIDE,
-		// DRAG_KEY_MOVE
 	};
-	// bool detecting_box_selection = false;
 	DragType drag_type = DRAG_NONE;
 	Point2 drag_from;
 	Point2 box_selecting_to;
-	Point2 prev_selecting_to;
-	// TreeItem *prev_hovered_item;
-	// TreeItem *starting_item;
 
 	FileSystemTreeItem *root = nullptr;
 	FileSystemTreeItem *popup_edited_item = nullptr;
@@ -739,7 +708,6 @@ private:
 	void _draw_selection();
 
 	Vector<FileSystemTreeItem *> _get_selected_items();
-	// bool _gui_input_select(const Ref<InputEvent> &p_event);
 
 	// Input handling.
 	void _key_input_input(const Ref<InputEventKey> &p_event);
@@ -893,6 +861,8 @@ public:
 	Vector<String> get_selected_paths();
 	Vector<String> get_uncollapsed_paths() const;
 
+	FileSystemTreeItem *add_root();
+	FileSystemTreeItem *add_root(const FileInfo &p_fi);
 	FileSystemTreeItem *add_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
 
 	FileSystemTree();

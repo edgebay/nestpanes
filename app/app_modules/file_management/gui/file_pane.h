@@ -57,7 +57,6 @@ private:
 
 	void _update_ui();
 	void _update_ui_nocheck(FileSystemDirectory *p_dir);
-	void _add_item(const FileInfo &p_fi);
 	void _update_files(FileSystemDirectory *p_dir);
 	void _update_status_bar();
 

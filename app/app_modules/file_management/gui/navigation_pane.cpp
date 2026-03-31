@@ -7,6 +7,7 @@
 #include "app/settings/app_settings.h"
 #include "app/themes/app_scale.h"
 
+#include "app/app_core/io/file_system_access.h"
 #include "app/app_modules/file_management/file_system.h"
 
 String NavigationPane::_get_pane_title() const {
@@ -231,7 +232,7 @@ void NavigationPane::_on_item_activated() {
 
 	Dictionary d = selected->get_metadata(0);
 	String path = d["path"];
-	bool is_dir = d["is_dir"];
+	bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	// print_line("on item_activated", path, is_dir);
 	if (is_dir) {
@@ -253,7 +254,7 @@ void NavigationPane::_on_item_selected(Object *p_item, bool p_selected) {
 
 	Dictionary d = selected->get_metadata(0);
 	String path = d["path"];
-	bool is_dir = d["is_dir"];
+	bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	emit_signal(SceneStringName(item_selected), path, is_dir);
 }

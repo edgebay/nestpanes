@@ -188,40 +188,24 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 	_update_status_bar();
 }
 
-void FilePane::_add_item(const FileInfo &p_fi) {
-	FileSystemTreeItem *root = tree->get_root();
-	ERR_FAIL_NULL(root);
-
-	FileSystemTreeItem *item = tree->add_item(p_fi, root);
-	// print_line("add item: ", item, item->get_text(0));
-}
-
 void FilePane::_update_files(FileSystemDirectory *p_dir) {
 	ERR_FAIL_NULL(p_dir);
 
 	tree->clear();
-	FileSystemTreeItem *root = tree->create_item();
-
-	Dictionary d;
-	d["name"] = p_dir->get_name();
-	d["path"] = p_dir->get_path();
-	d["type"] = p_dir->get_type();
-	d["is_dir"] = FileSystemAccess::is_dir_type(d["type"]); // TODO: Remove, use type
-	root->set_metadata(0, d);
-	// root->set_metadata(0, current_path);
+	FileSystemTreeItem *root = tree->add_root(p_dir->get_info());
 
 	// list dirs
 	int dir_count = p_dir->get_subdir_count();
 	for (int i = 0; i < dir_count; i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
-		_add_item(subdir->get_info());
+		tree->add_item(subdir->get_info(), root);
 	}
 
 	// list files
 	int file_count = p_dir->get_file_count();
 	for (int i = 0; i < file_count; i++) {
 		const FileInfo &fi = *(p_dir->get_file(i));
-		_add_item(fi);
+		tree->add_item(fi, root);
 	}
 
 	// print_line("update files: ", dir_count, file_count);
@@ -248,7 +232,7 @@ void FilePane::_on_item_activated() {
 
 	Dictionary d = selected->get_metadata(0);
 	String path = d["path"];
-	bool is_dir = d["is_dir"];
+	bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	if (is_dir) {
 		set_path(path);
@@ -277,7 +261,7 @@ void FilePane::_on_item_selected(Object *p_item, bool p_selected) {
 	// TODO
 	// Dictionary d = selected->get_metadata(0);
 	// String path = d["path"];
-	// bool is_dir = d["is_dir"];
+	// bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	// emit_signal(SceneStringName(item_selected), path, is_dir);
 }
