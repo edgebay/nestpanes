@@ -355,6 +355,8 @@ public:
 		COLUMN_TYPE_CREATED,
 		COLUMN_TYPE_TYPE,
 		COLUMN_TYPE_SIZE,
+
+		COLUMN_TYPE_MAX
 	};
 
 	struct ColumnSetting {
@@ -364,6 +366,7 @@ public:
 		HorizontalAlignment alignment = HORIZONTAL_ALIGNMENT_LEFT;
 		bool clip = false;
 		int expand_ratio = -1;
+		bool reversed = false;
 	};
 
 private:
@@ -372,6 +375,7 @@ private:
 	DisplayMode display_mode = DISPLAY_MODE_TREE;
 
 	HashMap<int, ColumnSetting> column_settings;
+	int current_column = 0;
 
 	FileContextMenu *context_menu = nullptr;
 
@@ -718,6 +722,9 @@ private:
 	void _pan_gesture_input(const Ref<InputEventPanGesture> &p_event);
 
 	void _get_drag_target_folder(String &target, const Point2 &p_point) const;
+
+	int _get_visible_column(int p_column) const;
+	void _column_title_clicked(int p_column, MouseButton p_button);
 
 protected:
 	virtual void _update_theme_item_cache() override;

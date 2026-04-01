@@ -31,11 +31,11 @@
 
 static const int default_column_count = 5;
 static FileSystemTree::ColumnSetting default_column_settings[default_column_count] = {
-	{ FileSystemTree::COLUMN_TYPE_NAME, 0, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 3 },
-	{ FileSystemTree::COLUMN_TYPE_MODIFIED, 1, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ FileSystemTree::COLUMN_TYPE_CREATED, 2, false, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ FileSystemTree::COLUMN_TYPE_TYPE, 3, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
-	{ FileSystemTree::COLUMN_TYPE_SIZE, 4, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1 },
+	{ FileSystemTree::COLUMN_TYPE_NAME, 0, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 3, false },
+	{ FileSystemTree::COLUMN_TYPE_MODIFIED, 1, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1, false },
+	{ FileSystemTree::COLUMN_TYPE_CREATED, 2, false, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1, false },
+	{ FileSystemTree::COLUMN_TYPE_TYPE, 3, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1, false },
+	{ FileSystemTree::COLUMN_TYPE_SIZE, 4, true, HorizontalAlignment::HORIZONTAL_ALIGNMENT_LEFT, true, 1, false },
 };
 
 Size2 FileSystemTreeItem::Cell::get_icon_size() const {
@@ -2914,7 +2914,14 @@ void FileSystemTree::_update_display_mode() {
 		set_columns(column_count);
 		set_column_titles_visible(false);
 	} else if (display_mode == DISPLAY_MODE_LIST) {
-		column_count = 4;
+		column_count = 0;
+		for (uint32_t i = 0; i < column_settings.size(); i++) {
+			const ColumnSetting &setting = column_settings[i];
+			if (setting.visible) {
+				column_count++;
+			}
+		}
+		// print_line("column_count: ", column_count);
 
 		set_theme_type_variation("TreeTable");
 		set_hide_folding(true);
@@ -3007,12 +3014,6 @@ FileSystemTreeItem *FileSystemTree::_add_tree_item(const FileInfo &p_fi, FileSys
 		item->_changed_notify();
 	}
 
-	Dictionary d;
-	d["name"] = p_fi.name;
-	d["path"] = path;
-	d["type"] = p_fi.type;
-	item->set_metadata(0, d);
-
 	return item;
 }
 
@@ -3086,12 +3087,6 @@ FileSystemTreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, FileSys
 
 		column++;
 	}
-
-	Dictionary d;
-	d["name"] = p_fi.name;
-	d["path"] = p_fi.path;
-	d["type"] = p_fi.type;
-	item->set_metadata(0, d);
 
 	return item;
 }
@@ -3980,7 +3975,7 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 						for (int i = 0; i < columns.size(); i++) {
 							len += get_column_width(i);
 							if (pos.x < static_cast<real_t>(len)) {
-								emit_signal(SNAME("column_title_clicked"), i, mb->get_button_index());
+								_column_title_clicked(i, mb->get_button_index());
 								break;
 							}
 						}
@@ -4871,6 +4866,8 @@ void FileSystemTree::clear() {
 	edited_item = nullptr;
 	popup_edited_item = nullptr;
 	popup_pressing_edited_item = nullptr;
+
+	current_column = 0;
 
 	_determine_hovered_item();
 
@@ -5907,6 +5904,214 @@ void FileSystemTree::_get_drag_target_folder(String &target, const Point2 &p_poi
 	// print_line("drag target: ", p_point, target);
 }
 
+// static inline bool _folder_comparator(bool &r_ret, const Dictionary &a_meta, const Dictionary &b_meta) {
+// 	bool a_is_folder = FileSystemAccess::is_dir_type(a_meta.get("type", ""));
+// 	bool b_is_folder = FileSystemAccess::is_dir_type(b_meta.get("type", ""));
+// 	if (a_is_folder && !b_is_folder) {
+// 		r_ret = true;
+// 		return true;
+// 	} else if (!a_is_folder && b_is_folder) {
+// 		r_ret = false;
+// 		return true;
+// 	}
+// 	return false;
+// }
+
+struct ColumnNameComparator {
+	bool operator()(const FileSystemTreeItem *p_a, const FileSystemTreeItem *p_b) const {
+		Dictionary a_meta = p_a->get_metadata(0);
+		Dictionary b_meta = p_b->get_metadata(0);
+		// bool ret = false;
+		// if (_folder_comparator(ret, a_meta, b_meta)) {
+		// 	return ret;
+		// }
+		String a_name = a_meta.get("name", "");
+		String b_name = b_meta.get("name", "");
+		return FileNoCaseComparator()(a_name, b_name);
+	}
+};
+
+struct ColumnTypeComparator {
+	bool operator()(const FileSystemTreeItem *p_a, const FileSystemTreeItem *p_b) const {
+		Dictionary a_meta = p_a->get_metadata(0);
+		Dictionary b_meta = p_b->get_metadata(0);
+		// bool ret = false;
+		// if (_folder_comparator(ret, a_meta, b_meta)) {
+		// 	return ret;
+		// }
+		String a_name = a_meta.get("name", "");
+		String b_name = b_meta.get("name", "");
+		String a_type = a_meta.get("type", "");
+		String b_type = b_meta.get("type", "");
+		return FileNoCaseComparator()(a_name.get_extension() + a_type + a_name.get_basename(), b_name.get_extension() + b_type + b_name.get_basename());
+	}
+};
+
+struct ColumnModifiedTimeComparator {
+	bool operator()(const FileSystemTreeItem *p_a, const FileSystemTreeItem *p_b) const {
+		Dictionary a_meta = p_a->get_metadata(0);
+		Dictionary b_meta = p_b->get_metadata(0);
+		// bool ret = false;
+		// if (_folder_comparator(ret, a_meta, b_meta)) {
+		// 	return ret;
+		// }
+		uint64_t a_modified_time = uint64_t(a_meta.get("modified_time", 0));
+		uint64_t b_modified_time = uint64_t(b_meta.get("modified_time", 0));
+		if (a_modified_time == b_modified_time) {
+			String a_name = a_meta.get("name", "");
+			String b_name = b_meta.get("name", "");
+			return FileNoCaseComparator()(a_name, b_name);
+		}
+		return a_modified_time < b_modified_time;
+	}
+};
+
+struct ColumnCreationTimeComparator {
+	bool operator()(const FileSystemTreeItem *p_a, const FileSystemTreeItem *p_b) const {
+		Dictionary a_meta = p_a->get_metadata(0);
+		Dictionary b_meta = p_b->get_metadata(0);
+		// bool ret = false;
+		// if (_folder_comparator(ret, a_meta, b_meta)) {
+		// 	return ret;
+		// }
+		uint64_t a_creation_time = uint64_t(a_meta.get("creation_time", 0));
+		uint64_t b_creation_time = uint64_t(b_meta.get("creation_time", 0));
+		if (a_creation_time == b_creation_time) {
+			String a_name = a_meta.get("name", "");
+			String b_name = b_meta.get("name", "");
+			return FileNoCaseComparator()(a_name, b_name);
+		}
+		return a_creation_time < b_creation_time;
+	}
+};
+
+struct ColumnSizeComparator {
+	bool operator()(const FileSystemTreeItem *p_a, const FileSystemTreeItem *p_b) const {
+		Dictionary a_meta = p_a->get_metadata(0);
+		Dictionary b_meta = p_b->get_metadata(0);
+		// bool ret = false;
+		// if (_folder_comparator(ret, a_meta, b_meta)) {
+		// 	return ret;
+		// }
+		uint64_t a_size = uint64_t(a_meta.get("size", 0));
+		uint64_t b_size = uint64_t(b_meta.get("size", 0));
+		if (a_size == b_size) {
+			String a_name = a_meta.get("name", "");
+			String b_name = b_meta.get("name", "");
+			return FileNoCaseComparator()(a_name, b_name);
+		}
+		return a_size < b_size;
+	}
+};
+
+int FileSystemTree::_get_visible_column(int p_column) const {
+	ERR_FAIL_INDEX_V(p_column, columns.size(), -1);
+
+	int visible_index = 0;
+	for (uint32_t i = 0; i < column_settings.size(); i++) {
+		const ColumnSetting &setting = column_settings[i];
+		if (!setting.visible) {
+			continue;
+		}
+		if (visible_index >= p_column) {
+			return i;
+		}
+		visible_index++;
+	}
+	return -1;
+}
+
+void FileSystemTree::_column_title_clicked(int p_column, MouseButton p_button) {
+	ERR_FAIL_NULL(root);
+	ERR_FAIL_INDEX(p_column, columns.size());
+
+	if (display_mode != DISPLAY_MODE_LIST) {
+		return;
+	}
+
+	if (root->get_child_count() <= 0) {
+		return;
+	}
+
+	int visible_column = _get_visible_column(p_column);
+	ERR_FAIL_INDEX(visible_column, (int)column_settings.size());
+	ERR_FAIL_COND(visible_column >= int(COLUMN_TYPE_MAX));
+
+	List<FileSystemTreeItem *> dirs;
+	List<FileSystemTreeItem *> files;
+	// List<FileInfo> file_list;
+	FileSystemTreeItem *item = root->get_first_child();
+	while (item) {
+		Dictionary d = item->get_metadata(0);
+		if (FileSystemAccess::is_dir_type(d.get("type", ""))) {
+			dirs.push_back(item);
+		} else {
+			files.push_back(item);
+		}
+
+		// FileInfo file_info;
+		// file_info.name = d.get("name", "");
+		// file_info.type = d.get("type", "");
+		// file_info.modified_time = d.get("modified_time", 0);
+
+		// file_list.push_back(file_info);
+
+		FileSystemTreeItem *next = item->get_next();
+		root->remove_child(item);
+
+		item = next;
+	}
+
+	const ColumnSetting &setting = column_settings[visible_column];
+	switch (setting.type) {
+		case COLUMN_TYPE_NAME: {
+			dirs.sort_custom<ColumnNameComparator>();
+			files.sort_custom<ColumnNameComparator>();
+		} break;
+		case COLUMN_TYPE_MODIFIED: {
+			dirs.sort_custom<ColumnModifiedTimeComparator>();
+			files.sort_custom<ColumnModifiedTimeComparator>();
+		} break;
+		case COLUMN_TYPE_CREATED: {
+			dirs.sort_custom<ColumnCreationTimeComparator>();
+			files.sort_custom<ColumnCreationTimeComparator>();
+		} break;
+		case COLUMN_TYPE_TYPE: {
+			dirs.sort_custom<ColumnTypeComparator>();
+			files.sort_custom<ColumnTypeComparator>();
+		} break;
+		case COLUMN_TYPE_SIZE: {
+			dirs.sort_custom<ColumnSizeComparator>();
+			files.sort_custom<ColumnSizeComparator>();
+		} break;
+	}
+
+	bool reversed = visible_column == current_column ? (!setting.reversed) : false;
+	if (reversed) {
+		dirs.reverse();
+		files.reverse();
+		for (FileSystemTreeItem *item : files) {
+			root->add_child(item);
+		}
+		for (FileSystemTreeItem *item : dirs) {
+			root->add_child(item);
+		}
+	} else {
+		for (FileSystemTreeItem *item : dirs) {
+			root->add_child(item);
+		}
+		for (FileSystemTreeItem *item : files) {
+			root->add_child(item);
+		}
+	}
+	column_settings[visible_column].reversed = reversed;
+	// print_line("sorted by column: ", p_column, "visible: ", visible_column, " reversed: ", reversed, " prev column: ", current_column);
+
+	current_column = visible_column;
+
+	emit_signal(SNAME("column_title_clicked"), p_column, p_button);
+}
+
 FileSystemTreeItem *FileSystemTree::_get_item_at_pos(const Point2 &p_pos, int &r_column, int &r_height, int &r_section) const {
 	if (!root || !Rect2(Vector2(), get_size()).has_point(p_pos)) {
 		return nullptr;
@@ -6271,6 +6476,18 @@ FileSystemTreeItem *FileSystemTree::add_item(const FileInfo &p_fi, FileSystemTre
 				to_select.remove_at(idx);
 			}
 		}
+	}
+
+	if (item) {
+		Dictionary d;
+		d["name"] = p_fi.name;
+		d["path"] = p_fi.path;
+		d["type"] = p_fi.type;
+
+		d["size"] = p_fi.size;
+		d["creation_time"] = p_fi.creation_time;
+		d["modified_time"] = p_fi.modified_time;
+		item->set_metadata(0, d);
 	}
 
 	return item;
