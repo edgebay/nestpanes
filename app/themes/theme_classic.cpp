@@ -669,8 +669,8 @@ void ThemeClassic::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThe
 			p_theme->set_stylebox("cursor", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("cursor_unfocused", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("title_button_normal", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_title);
+			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_hover);
+			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_selected);
 		}
 
 		// ProjectList.
