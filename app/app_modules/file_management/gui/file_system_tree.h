@@ -375,7 +375,7 @@ private:
 	DisplayMode display_mode = DISPLAY_MODE_TREE;
 
 	HashMap<int, ColumnSetting> column_settings;
-	int current_column = 0;
+	int current_column = -1;
 
 	FileContextMenu *context_menu = nullptr;
 
@@ -536,6 +536,9 @@ private:
 		Ref<Texture2D> updown;
 		Ref<Texture2D> scroll_hint;
 
+		Ref<Texture2D> arrow_down;
+		Ref<Texture2D> arrow_up;
+
 		Color font_color;
 		Color font_hovered_color;
 		Color font_hovered_dimmed_color;
@@ -690,10 +693,6 @@ private:
 
 	FileSystemTreeItem *_add_tree_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
 	FileSystemTreeItem *_add_list_item(const FileInfo &p_fi, FileSystemTreeItem *p_parent = nullptr, int p_index = -1);
-
-	// TODO: Refactor
-	void _on_item_activated();
-	void _on_multi_selected(Object *p_item, int p_column, bool p_selected);
 
 	// Context menu.
 	void _build_empty_menu();

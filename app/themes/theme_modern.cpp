@@ -590,6 +590,9 @@ void ThemeModern::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThem
 			p_theme->set_icon("updown", "Tree", p_theme->get_icon(SNAME("GuiTreeUpdown"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("select_arrow", "Tree", p_theme->get_icon(SNAME("GuiDropdown"), EditorStringName(EditorIcons)));
 
+			p_theme->set_icon("arrow_down", "Tree", p_theme->get_icon(SNAME("GuiTreeArrowDown"), EditorStringName(EditorIcons)));
+			p_theme->set_icon("arrow_up", "Tree", p_theme->get_icon(SNAME("GuiArrowUp"), EditorStringName(EditorIcons)));
+
 			p_theme->set_stylebox(SceneStringName(panel), "Tree", style_tree_panel);
 			p_theme->set_stylebox("focus", "Tree", p_config.focus_style);
 			p_theme->set_stylebox("button_pressed", "Tree", style_button_pressed);

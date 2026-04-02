@@ -3091,26 +3091,6 @@ FileSystemTreeItem *FileSystemTree::_add_list_item(const FileInfo &p_fi, FileSys
 	return item;
 }
 
-void FileSystemTree::_on_item_activated() {
-	// FileSystemTreeItem *selected = get_selected();
-	// if (!selected) {
-	// 	return;
-	// }
-
-	// Dictionary d = selected->get_metadata(0);
-	// String path = d["path"];
-	// bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
-
-	// if (is_dir) {
-	// 	callable_mp(selected, &FileSystemTreeItem::set_collapsed).call_deferred(!selected->is_collapsed());
-	// } else {
-	// 	emit_signal(SNAME("item_activated"), path, is_dir);
-	// }
-}
-
-void FileSystemTree::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
-}
-
 void FileSystemTree::_build_empty_menu() {
 	context_menu->clear();
 
@@ -4617,6 +4597,32 @@ void FileSystemTree::_notification(int p_what) {
 					}
 					sb->draw(header_ci, tbrect);
 					ofs2 += tbrect.size.width;
+
+					// Arrow.
+					if (current_column >= 0) {
+						int visible_column = _get_visible_column(i);
+						if (visible_column >= 0 && visible_column == current_column) {
+							Ref<Texture2D> arrow;
+
+							bool reverse = column_settings[current_column].reversed;
+							if (reverse) {
+								arrow = theme_cache.arrow_down;
+							} else {
+								arrow = theme_cache.arrow_up;
+							}
+
+							Size2 arrow_full_size = arrow->get_size();
+							Size2 arrow_draw_size = Size2(arrow_full_size.x, arrow_full_size.y / 2);
+
+							Point2 apos = tbrect.position + Point2i((tbrect.size.x - arrow_draw_size.x) / 2, 0);
+							Rect2 arrow_rect = Rect2(apos, arrow_draw_size);
+
+							Point2 src_pos = Point2(0, arrow_full_size.y / 4);
+							Rect2 arrow_src_rect = Rect2(src_pos, arrow_draw_size);
+							arrow->draw_rect_region(header_ci, arrow_rect, arrow_src_rect);
+						}
+					}
+
 					// Text.
 					int clip_w = tbrect.size.width - sb->get_minimum_size().width;
 					columns.write[i].text_buf->set_width(clip_w);
@@ -4867,7 +4873,7 @@ void FileSystemTree::clear() {
 	popup_edited_item = nullptr;
 	popup_pressing_edited_item = nullptr;
 
-	current_column = 0;
+	current_column = -1;
 
 	_determine_hovered_item();
 
@@ -6035,7 +6041,6 @@ void FileSystemTree::_column_title_clicked(int p_column, MouseButton p_button) {
 
 	int visible_column = _get_visible_column(p_column);
 	ERR_FAIL_INDEX(visible_column, (int)column_settings.size());
-	ERR_FAIL_COND(visible_column >= int(COLUMN_TYPE_MAX));
 
 	List<FileSystemTreeItem *> dirs;
 	List<FileSystemTreeItem *> files;
@@ -6657,6 +6662,9 @@ void FileSystemTree::_bind_methods() {
 	BIND_THEME_ITEM(Theme::DATA_TYPE_ICON, FileSystemTree, updown);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_ICON, FileSystemTree, scroll_hint);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_COLOR, FileSystemTree, scroll_hint_color);
+
+	BIND_THEME_ITEM(Theme::DATA_TYPE_ICON, FileSystemTree, arrow_down);
+	BIND_THEME_ITEM(Theme::DATA_TYPE_ICON, FileSystemTree, arrow_up);
 
 	BIND_THEME_ITEM(Theme::DATA_TYPE_STYLEBOX, FileSystemTree, custom_button);
 	BIND_THEME_ITEM(Theme::DATA_TYPE_STYLEBOX, FileSystemTree, custom_button_hover);
