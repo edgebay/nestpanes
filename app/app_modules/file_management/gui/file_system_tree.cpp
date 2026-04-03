@@ -1980,10 +1980,8 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 							}
 						}
 
-						if (!p_item->focus_rect.has_area()) {
-							Rect2i r = cell_rect;
-							p_item->focus_rect = Rect2(r.position, r.size);
-						}
+						Rect2i r = cell_rect;
+						p_item->focus_rect = Rect2(r.position, r.size);
 					} else if (!drop_mode_flags) {
 						theme_cache.hovered->draw(ci, row_rect);
 					}
@@ -2858,6 +2856,16 @@ bool FileSystemTree::_scroll(bool p_horizontal, float p_pages) {
 
 	bool scroll_happened = scroll->get_value() != prev_value;
 	if (scroll_happened) {
+		popup_editor->hide();
+
+		// Update theme_cache.offset first before determining the new hovered item.
+		update_scrollbars();
+
+		if (!p_horizontal && drag_type == DRAG_BOX_SELECTION) {
+			drag_from.y += prev_value - scroll->get_value();
+			_update_selection();
+		}
+
 		_determine_hovered_item();
 	}
 	return scroll_happened;
@@ -3556,6 +3564,79 @@ void FileSystemTree::_draw_selection() {
 	}
 }
 
+void FileSystemTree::_update_selection() {
+	ERR_FAIL_COND(drag_type != DRAG_BOX_SELECTION);
+
+	// Rect2 box = Rect2(drag_from, box_selecting_to - drag_from);
+	FileSystemTreeItem *last_item = _get_last_selectable();
+	Rect2 last_rect = get_item_rect(last_item);
+	real_t min_pos_y = _get_title_button_height();
+	real_t max_pos_y = MIN(get_size().y - theme_cache.v_separation, last_rect.position.y + last_rect.size.y - theme_cache.v_separation);
+	// print_line("range: ", min_pos_y, max_pos_y, get_size().y, last_rect.position.y + last_rect.size.y);
+
+	Point2 selecting_to = Point2(0, CLAMP((real_t)box_selecting_to.y, min_pos_y, max_pos_y));
+	FileSystemTreeItem *current_item = nullptr;
+	if (box_selecting_to.y < min_pos_y && drag_from.y < min_pos_y ||
+			box_selecting_to.y > max_pos_y && drag_from.y > max_pos_y) {
+		// print_line("out of range: ", box_selecting_to.y, drag_from.y);
+	} else {
+		current_item = get_item_at_position(selecting_to);
+	}
+
+	// print_line("box selection: ", drag_from, selecting_to, drag_from_item, current_item);
+	if (!drag_from_item && !current_item) {
+		// bool has_selection = false;
+		// if (selected_item) {
+		// 	Rect2 rect = get_item_rect(selected_item);
+		// 	real_t pos_y = rect.position.y + rect.size.y;
+		// 	if (drag_from.y <= pos_y && box_selecting_to.y >= pos_y ||
+		// 			drag_from.y >= pos_y && box_selecting_to.y <= pos_y) {
+		// 		has_selection = true;
+		// 		print_line("has selection: ", has_selection, pos_y);
+		// 	}
+		// }
+		// if (!has_selection) {
+		if (selected_item) {
+			emit_signal(SNAME("item_selected"), selected_item, false);
+		}
+		deselect_all();
+		// }
+	} else if (current_item) {
+		// if (current_item->selectable) {
+		bool inrange = false;
+
+		select_item(current_item, root, drag_from_item, &inrange);
+		selected_item = drag_from_item ? drag_from_item : current_item;
+
+		// emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
+
+		// }
+	}
+	queue_redraw();
+}
+
+FileSystemTreeItem *FileSystemTree::_get_last_selectable() {
+	FileSystemTreeItem *end = root;
+	int child_count = end->get_visible_child_count();
+	while (end && !end->is_collapsed() && child_count > 0) {
+		// Get last child.
+		end = end->get_child(child_count - 1);
+		child_count = end->get_visible_child_count();
+	}
+	if (end == root && is_root_hidden()) {
+		return nullptr;
+	}
+	while (end && !end->selectable) {
+		FileSystemTreeItem *prev = end->get_prev_visible();
+		if (prev) {
+			end = prev;
+		} else {
+			end = end->get_parent();
+		}
+	}
+	return end;
+}
+
 Vector<FileSystemTreeItem *> FileSystemTree::_get_selected_items() {
 	Vector<FileSystemTreeItem *> items;
 
@@ -3747,7 +3828,7 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 
 		FileSystemTreeItem *home = root;
 		if (is_root_hidden() || !home->selectable) {
-			home = root->get_first_child();
+			home = root->get_next_visible();
 			while (home && !home->selectable) {
 				home = home->get_next_visible();
 			}
@@ -3778,21 +3859,7 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 			return;
 		}
 
-		FileSystemTreeItem *end = root;
-		int child_count = end->get_visible_child_count();
-		while (end && !end->is_collapsed() && child_count > 0) {
-			// Get last child.
-			end = end->get_child(child_count - 1);
-			child_count = end->get_visible_child_count();
-		}
-		while (end && !end->selectable) {
-			FileSystemTreeItem *prev = end->get_prev_visible();
-			if (prev) {
-				end = prev;
-			} else {
-				end = end->get_parent();
-			}
-		}
+		FileSystemTreeItem *end = _get_last_selectable();
 		if (!end) {
 			return;
 		}
@@ -3891,27 +3958,9 @@ void FileSystemTree::_mouse_motion_input(const Ref<InputEventMouseMotion> &p_eve
 		}
 	} else if (drag_type == DRAG_BOX_SELECTION) {
 		// Update box selection.
-		Point2 selecting_to = click;
+		box_selecting_to = click;
 
-		box_selecting_to = selecting_to;
-
-		// Rect2 box = Rect2(drag_from, box_selecting_to - drag_from);
-		FileSystemTreeItem *starting_item = get_item_at_position(drag_from);
-		FileSystemTreeItem *current_item = get_item_at_position(box_selecting_to);
-		if (!starting_item && !current_item) {
-			deselect_all();
-		} else if (current_item) {
-			// if (current_item->selectable) {
-			bool inrange = false;
-
-			select_item(current_item, root, starting_item, &inrange);
-			selected_item = starting_item ? starting_item : current_item;
-
-			// emit_signal(SNAME("item_mouse_selected"), get_local_mouse_position(), p_button);
-
-			// }
-		}
-		queue_redraw();
+		_update_selection();
 	}
 
 	_determine_hovered_item();
@@ -4060,8 +4109,9 @@ void FileSystemTree::_mouse_button_input(const Ref<InputEventMouseButton> &p_eve
 			blocked++;
 			if (drag_type == DRAG_NONE) {
 				if (!double_click) {
-					drag_from = mb->get_position();
 					drag_type = DRAG_DETECTING;
+					drag_from = mb->get_position();
+					drag_from_item = get_item_at_position(drag_from);
 					prev_selected_item = selected_item;
 				}
 			}
@@ -4499,7 +4549,7 @@ void FileSystemTree::_notification(int p_what) {
 			if (is_visible_in_tree() && dd.has("type")) {
 				if ((String(dd["type"]) == "files") || (String(dd["type"]) == "files_and_dirs")) {
 					// set_drop_mode_flags(DROP_MODE_ON_ITEM | DROP_MODE_INBETWEEN);
-					set_drop_mode_flags(DROP_MODE_ON_ITEM);
+					set_drop_mode_flags(DROP_MODE_ON_ITEM); // TODO: Remove?
 				}
 			}
 
@@ -4874,6 +4924,8 @@ void FileSystemTree::clear() {
 	popup_pressing_edited_item = nullptr;
 
 	current_column = -1;
+	drag_type = DRAG_NONE;
+	drag_from_item = nullptr;
 
 	_determine_hovered_item();
 

@@ -397,6 +397,7 @@ private:
 	DragType drag_type = DRAG_NONE;
 	Point2 drag_from;
 	Point2 box_selecting_to;
+	FileSystemTreeItem *drag_from_item = nullptr;
 
 	FileSystemTreeItem *root = nullptr;
 	FileSystemTreeItem *popup_edited_item = nullptr;
@@ -711,6 +712,8 @@ private:
 
 	// Selection.
 	void _draw_selection();
+	void _update_selection();
+	FileSystemTreeItem *_get_last_selectable();
 
 	Vector<FileSystemTreeItem *> _get_selected_items();
 
