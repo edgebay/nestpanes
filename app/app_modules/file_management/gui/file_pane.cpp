@@ -188,6 +188,7 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 	_update_status_bar();
 }
 
+// TODO: Move file listing logic to FileSystemTree?
 void FilePane::_update_files(FileSystemDirectory *p_dir) {
 	ERR_FAIL_NULL(p_dir);
 
@@ -434,7 +435,7 @@ Dictionary FilePane::get_config_data() {
 void FilePane::apply_config_data(const Dictionary &p_dict) {
 	String path = p_dict.get("path", get_path());
 	if (path != get_path() && FileSystemAccess::dir_exists(path)) {
-		callable_mp(this, &FilePane::_set_path).call_deferred(path, false);
+		callable_mp(this, &FilePane::_set_path).call_deferred(path, true);
 	}
 }
 
