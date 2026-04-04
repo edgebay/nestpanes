@@ -531,7 +531,7 @@ FilePane::FilePane() :
 	// APP_SHORTCUT("file_management/prev", dir_prev->get_tooltip_text(), KeyModifierMask::ALT | Key::LEFT);
 	APP_SHORTCUT_ARRAY("file_management/prev",
 			dir_prev->get_tooltip_text(),
-			{ int32_t(KeyModifierMask::ALT | Key::LEFT), int32_t(Key::BACK) });
+			{ int32_t(KeyModifierMask::ALT | Key::LEFT), int32_t(Key::BACKSPACE) });
 	APP_SHORTCUT("file_management/next", dir_next->get_tooltip_text(), KeyModifierMask::ALT | Key::RIGHT);
 	APP_SHORTCUT("file_management/up", dir_up->get_tooltip_text(), KeyModifierMask::ALT | Key::UP);
 	APP_SHORTCUT("file_management/refresh", refresh->get_tooltip_text(), Key::F5);

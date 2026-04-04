@@ -1960,11 +1960,11 @@ int FileSystemTree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, co
 			}
 
 			if (i == 0) {
-				if (p_item->selected || is_row_hovered) {
-					const Rect2 content_rect = _get_content_rect();
-					row_rect = Rect2i(Point2i(content_rect.position.x, item_rect.position.y), Size2i(content_rect.size.x, item_rect.size.y));
-					row_rect = convert_rtl_rect(row_rect);
+				const Rect2 content_rect = _get_content_rect();
+				row_rect = Rect2i(Point2i(content_rect.position.x, item_rect.position.y), Size2i(content_rect.size.x, item_rect.size.y));
+				row_rect = convert_rtl_rect(row_rect);
 
+				if (p_item->selected || is_row_hovered) {
 					if (p_item->selected) {
 						if (is_row_hovered) {
 							if (has_focus(true)) {
@@ -3666,6 +3666,11 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 
 	bool is_command = k.is_valid() && k->is_command_or_control_pressed();
 	if (p_event->is_action(cache.rtl ? "ui_left" : "ui_right") && p_event->is_pressed()) {
+		// For shortcuts with Alt (e.g. Alt+Left/Right for back/forward in Explorer).
+		if (k->is_alt_pressed()) {
+			return;
+		}
+
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -3684,6 +3689,11 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 			_go_down();
 		}
 	} else if (p_event->is_action(cache.rtl ? "ui_right" : "ui_left") && p_event->is_pressed()) {
+		// For shortcuts with Alt (e.g. Alt+Left/Right for back/forward in Explorer).
+		if (k->is_alt_pressed()) {
+			return;
+		}
+
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -3702,6 +3712,11 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 			_go_up();
 		}
 	} else if (p_event->is_action("ui_up") && p_event->is_pressed()) {
+		// For shortcuts with Alt (e.g. Alt+Left/Right for back/forward in Explorer).
+		if (k->is_alt_pressed()) {
+			return;
+		}
+
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -3713,6 +3728,11 @@ void FileSystemTree::_key_input_input(const Ref<InputEventKey> &p_event) {
 			_go_up(is_command);
 		}
 	} else if (p_event->is_action("ui_down") && p_event->is_pressed()) {
+		// For shortcuts with Alt (e.g. Alt+Left/Right for back/forward in Explorer).
+		if (k->is_alt_pressed()) {
+			return;
+		}
+
 		if (!cursor_can_exit_tree) {
 			accept_event();
 		}
@@ -4197,21 +4217,25 @@ void FileSystemTree::gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventKey> k = p_event;
 	if (k.is_valid()) {
 		_key_input_input(k);
+		return;
 	}
 
 	Ref<InputEventMouseMotion> mm = p_event;
 	if (mm.is_valid()) {
 		_mouse_motion_input(mm);
+		return;
 	}
 
 	Ref<InputEventMouseButton> mb = p_event;
 	if (mb.is_valid()) {
 		_mouse_button_input(mb);
+		return;
 	}
 
 	Ref<InputEventPanGesture> pan_gesture = p_event;
 	if (pan_gesture.is_valid()) {
 		_pan_gesture_input(pan_gesture);
+		return;
 	}
 }
 
