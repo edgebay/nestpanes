@@ -2066,7 +2066,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	OS::get_singleton()->_in_editor = editor;
 #ifdef APP_ENABLED
-	globals->setup(project_path, main_pack, false, editor);
+	globals->setup(project_path, main_pack, false, editor); // TODO: editor
 
 	globals->set("application/config/name", app_name);
 	globals->set("application/config/use_custom_user_dir", true);
@@ -2351,6 +2351,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	}
 #endif // APP_ENABLED
 
+#ifdef APP_ENABLED
+	// use_custom_res = false; // TODO
+
+	// Only add keyboard actions.
+	input_map->load_default(); //keys for app
+#else
 	if (editor || project_manager) {
 		Engine::get_singleton()->set_editor_hint(true);
 		use_custom_res = false;
@@ -2358,6 +2364,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	} else {
 		input_map->load_from_project_settings(); //keys for game
 	}
+#endif // APP_ENABLED
 
 	if (bool(GLOBAL_GET("application/run/disable_stdout"))) {
 		quiet_stdout = true;
