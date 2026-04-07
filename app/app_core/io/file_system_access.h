@@ -131,6 +131,8 @@ public:
 	static Error make_dir(const String &p_dir);
 	static Error make_dir_recursive(const String &p_dir);
 
+	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, canonicalize_path, (const String &), path, (String &), canonicalize);
+
 	static bool path_exists(const String &p_path);
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);

@@ -159,7 +159,7 @@ Error FileSystemAccessWindows::_list_dir_begin(const String &p_path) {
 
 	GLOBAL_LOCK_FUNCTION
 
-	list_dir_end();
+	_list_dir_end();
 	p->h = FindFirstFileExW((LPCWSTR)(String(p_path + "\\*").utf16().get_data()), FindExInfoStandard, &p->fu, FindExSearchNameMatch, nullptr, 0);
 
 	if (p->h == INVALID_HANDLE_VALUE) {
@@ -423,6 +423,69 @@ Error FileSystemAccessWindows::_list_drives(List<FileInfo> &r_drives) const {
 	}
 
 	return OK;
+}
+
+bool FileSystemAccessWindows::_canonicalize_path(const String &p_path, String &r_canonicalized) {
+	if (!dir_exists(p_path)) {
+		return false;
+	}
+
+	GLOBAL_LOCK_FUNCTION
+
+	bool result = false;
+
+	// Won't change case of path
+	// // DWORD buffsize = p_path.size();
+	// DWORD buffsize = GetFullPathNameW((LPCWSTR)(p_path.utf16().get_data()), 0, nullptr, nullptr);
+	// Char16String buf;
+	// buf.resize_uninitialized(buffsize + 1);
+	// DWORD len = GetFullPathNameW((LPCWSTR)(p_path.utf16().get_data()), buffsize + 1, (LPWSTR)buf.ptrw(), nullptr);
+	// if (len > 0 && len <= buffsize) {
+	// 	result = true;
+	// 	String path = String::utf16((const char16_t *)buf.ptr());
+	// 	r_canonicalized = path.simplify_path();
+	// }
+
+	String name = p_path;
+	// "d:" -> "d:\\"
+	if (name.length() == 2 && name[1] == ':') {
+		name += "\\";
+	}
+
+	HANDLE hFile = CreateFileW(
+			(LPCWSTR)(name.utf16().get_data()),
+			FILE_READ_ATTRIBUTES, // 只需读取属性
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+			NULL,
+			OPEN_EXISTING,
+			FILE_FLAG_BACKUP_SEMANTICS, // 必需：支持目录
+			NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return false;
+	}
+
+	DWORD buffsize = GetFinalPathNameByHandleW(hFile, nullptr, 0, FILE_NAME_NORMALIZED);
+	Char16String buf;
+	buf.resize_uninitialized(buffsize + 1);
+	DWORD len = GetFinalPathNameByHandleW(hFile, (LPWSTR)buf.ptrw(), buffsize + 1, FILE_NAME_NORMALIZED);
+	if (len > 0 && len <= buffsize) {
+		result = true;
+		String path = String::utf16((const char16_t *)buf.ptr());
+		if (path.begins_with("\\\\?\\UNC\\")) {
+			path = path.substr(8); // Remove "\\?\UNC\" prefix
+			path = "\\\\" + path; // Add leading backslash for UNC path
+		} else if (path.begins_with("\\\\?\\")) {
+			path = path.substr(4); // Remove "\\?\" prefix
+		}
+		r_canonicalized = path.simplify_path();
+	}
+
+	CloseHandle(hFile);
+
+	// print_line("canonicalize: ", result, uint64_t(buffsize), uint64_t(len), p_path, name, r_canonicalized);
+
+	return result;
 }
 
 bool FileSystemAccessWindows::_path_exists(const String &p_path) const {

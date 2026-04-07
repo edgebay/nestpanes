@@ -28,6 +28,8 @@ protected:
 #endif
 	virtual Error _list_drives(List<FileInfo> &r_drives) const override;
 
+	virtual bool _canonicalize_path(const String &p_path, String &r_canonicalized) override;
+
 	virtual bool _path_exists(const String &p_path) const override;
 
 	virtual bool _cut(const Vector<String> &p_files) override;

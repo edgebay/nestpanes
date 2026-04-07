@@ -280,7 +280,6 @@ void FilePane::_on_address_submitted(const String &p_path) {
 		return;
 	}
 
-	// TODO: Sync the name case to the actual filesystem name.
 	set_path(p_path);
 }
 
@@ -357,12 +356,16 @@ void FilePane::_on_reset_path(const String &p_from_path, const String &p_to_path
 
 void FilePane::_set_path(const String &p_path, bool p_update_history) {
 	String path = p_path.simplify_path();
-	// print_line("set path: ", p_path, path, current_path, file_system->is_valid_dir_path(path), p_update_history);
+	String canonical_path = "";
+	if (path != COMPUTER_PATH && FileSystemAccess::canonicalize_path(path, canonical_path) && !canonical_path.is_empty()) {
+		path = canonical_path;
+	}
+
+	// print_line("set path: ", p_path, path, canonical_path, current_path, file_system->is_valid_dir_path(path), p_update_history);
 	if (current_path == path || (!file_system->is_valid_dir_path(path))) {
 		return;
 	}
 
-	// TODO: Sync the name case to the actual filesystem name.
 	current_path = path;
 	emit_signal(SNAME("path_changed"), this);
 
@@ -493,9 +496,6 @@ FilePane::FilePane() :
 	tree->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	tree->set_display_mode(FileSystemTree::DISPLAY_MODE_LIST);
-
-	// TODO
-	// SET_DRAG_FORWARDING_GCD(tree, FilePane);
 
 	// TODO: Preview on selection?
 	tree->connect("item_activated", callable_mp(this, &FilePane::_on_item_activated));
