@@ -1764,5 +1764,8 @@ void ThemeClassic::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMan
 
 		// FileSystemTree.
 		p_theme->set_type_variation("FileSystemTree", "Tree");
+
+		// AddressBar.
+		p_theme->set_icon("arrow", "AddressBar", p_theme->get_icon(SNAME("GuiOptionArrow"), EditorStringName(EditorIcons)));
 	}
 }

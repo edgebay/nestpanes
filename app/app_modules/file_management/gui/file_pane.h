@@ -42,6 +42,8 @@ private:
 
 	// stat
 	String current_path = "";
+	bool local_history_changed = false;
+	bool local_history_pos_changed = false;
 	Vector<String> local_history;
 	int local_history_pos = -1;
 
@@ -67,7 +69,7 @@ private:
 	void _on_empty_clicked(const Vector2 &p_pos, MouseButton p_button);
 
 	void _on_address_submitted(const String &p_path);
-	void _select_history(int p_idx);
+	void _select_history(int p_id);
 
 	void _go_history();
 

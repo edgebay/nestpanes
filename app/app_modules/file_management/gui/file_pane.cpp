@@ -180,9 +180,19 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 	}
 
 	address_bar->set_text(p_dir->get_path());
-	// TODO
-	// for (local_history) histories->add_item(history);
-	// histories->select(local_history_pos);
+	if (local_history_changed || local_history_pos_changed) {
+		if (local_history_changed) {
+			address_bar->clear_items();
+			for (int i = local_history.size() - 1; i >= 0; i--) {
+				address_bar->add_item(local_history[i], i);
+			}
+			local_history_changed = false;
+		}
+
+		int id = local_history.size() - 1 - local_history_pos;
+		address_bar->set_focused_item(id);
+		local_history_pos_changed = false;
+	}
 
 	_update_files(p_dir);
 	_update_status_bar();
@@ -283,8 +293,10 @@ void FilePane::_on_address_submitted(const String &p_path) {
 	set_path(p_path);
 }
 
-void FilePane::_select_history(int p_idx) {
-	local_history_pos = p_idx;
+void FilePane::_select_history(int p_id) {
+	ERR_FAIL_COND(p_id < 0 || p_id >= local_history.size());
+	local_history_pos = p_id;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -301,6 +313,7 @@ void FilePane::_go_back() {
 	}
 
 	local_history_pos--;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -312,6 +325,7 @@ void FilePane::_go_forward() {
 	}
 
 	local_history_pos++;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -375,6 +389,7 @@ void FilePane::_set_path(const String &p_path, bool p_update_history) {
 			// Set history_pos to the end of local_history
 			if (local_history_pos < current_history_size - 1) {
 				local_history_pos = current_history_size - 1;
+				local_history_pos_changed = true;
 			}
 		} else {
 #define LOCAL_HISTORY_MAX 5 // TODO: config
@@ -388,6 +403,7 @@ void FilePane::_set_path(const String &p_path, bool p_update_history) {
 				local_history_pos = current_history_size; // (current_history_size - 1) + 1
 			}
 			local_history.push_back(current_path);
+			local_history_changed = true;
 		}
 	}
 
@@ -482,7 +498,6 @@ FilePane::FilePane() :
 	toolbar->add_child(refresh);
 
 	address_bar = memnew(AddressBar);
-	address_bar->set_structured_text_bidi_override(TextServer::STRUCTURED_TEXT_FILE);
 	address_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	toolbar->add_child(address_bar);
 
