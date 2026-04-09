@@ -4,7 +4,7 @@
 app_short_name = "nestpanes"
 app_name = "NestPanes"
 app_major = 0
-app_minor = 1
+app_minor = 2
 app_patch = 0
 app_status = "dev"
 app_module_config = ""
