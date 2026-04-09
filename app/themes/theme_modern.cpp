@@ -590,6 +590,9 @@ void ThemeModern::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThem
 			p_theme->set_icon("updown", "Tree", p_theme->get_icon(SNAME("GuiTreeUpdown"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("select_arrow", "Tree", p_theme->get_icon(SNAME("GuiDropdown"), EditorStringName(EditorIcons)));
 
+			p_theme->set_icon("arrow_down", "Tree", p_theme->get_icon(SNAME("GuiTreeArrowDown"), EditorStringName(EditorIcons)));
+			p_theme->set_icon("arrow_up", "Tree", p_theme->get_icon(SNAME("GuiArrowUp"), EditorStringName(EditorIcons)));
+
 			p_theme->set_stylebox(SceneStringName(panel), "Tree", style_tree_panel);
 			p_theme->set_stylebox("focus", "Tree", p_config.focus_style);
 			p_theme->set_stylebox("button_pressed", "Tree", style_button_pressed);
@@ -687,11 +690,27 @@ void ThemeModern::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThem
 			style_tree_title->set_border_width(SIDE_LEFT, Math::ceil(EDSCALE));
 			style_tree_title->set_border_width(SIDE_RIGHT, Math::ceil(EDSCALE));
 
+			// Ref<StyleBoxFlat> style_tree_title_hover = p_config.base_style->duplicate();
+			// style_tree_title_hover->set_bg_color(p_config.surface_low_color);
+			// // Use a transparent border to separate rounded column titles.
+			// style_tree_title_hover->set_border_color(Color(p_config.surface_lower_color, 0));
+			// style_tree_title_hover->set_border_width(SIDE_LEFT, Math::ceil(EDSCALE));
+			// style_tree_title_hover->set_border_width(SIDE_RIGHT, Math::ceil(EDSCALE));
+
+			// Ref<StyleBoxFlat> style_tree_title_pressed = p_config.base_style->duplicate();
+			// style_tree_title_pressed->set_bg_color(p_config.surface_lowest_color);
+			// // Use a transparent border to separate rounded column titles.
+			// style_tree_title_pressed->set_border_color(Color(p_config.surface_lower_color, 0));
+			// style_tree_title_pressed->set_border_width(SIDE_LEFT, Math::ceil(EDSCALE));
+			// style_tree_title_pressed->set_border_width(SIDE_RIGHT, Math::ceil(EDSCALE));
+
 			p_theme->set_stylebox("cursor", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("cursor_unfocused", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("title_button_normal", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_title);
+			// p_theme->set_stylebox("title_button_hover", "Tree", style_tree_title_hover);
+			// p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_title_pressed);
+			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_hover);
+			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_selected);
 		}
 
 		// ProjectList.
@@ -1913,9 +1932,13 @@ void ThemeModern::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMana
 
 			const Ref<StyleBoxFlat> style_tree_title = p_theme->get_stylebox("title_button_normal", "Tree")->duplicate();
 			style_tree_title->set_content_margin_individual(p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE, p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE);
+			const Ref<StyleBoxFlat> style_tree_title_hover = p_theme->get_stylebox("title_button_hover", "Tree")->duplicate();
+			style_tree_title_hover->set_content_margin_individual(p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE, p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE);
+			const Ref<StyleBoxFlat> style_tree_title_pressed = p_theme->get_stylebox("title_button_pressed", "Tree")->duplicate();
+			style_tree_title_pressed->set_content_margin_individual(p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE, p_config.base_margin * 3 * EDSCALE, p_config.base_margin * 1.5 * EDSCALE);
 			p_theme->set_stylebox("title_button_normal", "TreeTable", style_tree_title);
-			p_theme->set_stylebox("title_button_hover", "TreeTable", style_tree_title);
-			p_theme->set_stylebox("title_button_pressed", "TreeTable", style_tree_title);
+			p_theme->set_stylebox("title_button_hover", "TreeTable", style_tree_title_hover);
+			p_theme->set_stylebox("title_button_pressed", "TreeTable", style_tree_title_pressed);
 
 			const Ref<StyleBoxFlat> style_tree_selected = p_theme->get_stylebox("selected", "Tree")->duplicate();
 			style_tree_selected->set_border_color(Color(style_tree_selected->get_bg_color(), 0));
@@ -1969,5 +1992,11 @@ void ThemeModern::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMana
 			style_cursor_unfocused->set_border_width(SIDE_RIGHT, Math::ceil(EDSCALE));
 			p_theme->set_stylebox("cursor_unfocused", "TreeTable", style_cursor_unfocused);
 		}
+
+		// FileSystemTree.
+		p_theme->set_type_variation("FileSystemTree", "Tree");
+
+		// AddressBar.
+		p_theme->set_icon("arrow", "AddressBar", p_theme->get_icon(SNAME("GuiOptionArrow"), EditorStringName(EditorIcons)));
 	}
 }

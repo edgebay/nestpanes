@@ -44,6 +44,7 @@
 #include "app/app_core/platform/windows/file_system_access_windows.h"
 #endif
 #include "app/app_core/tests/io/test_file_system_access.h"
+#include "app/app_modules/file_management/tests/test_file_system.h"
 #endif // APP_ENABLED
 
 #include "tests/core/config/test_project_settings.h"

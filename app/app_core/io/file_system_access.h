@@ -50,6 +50,26 @@ public:                                                                         
 		return get_singleton()->_##m_func_name(p_##m_arg1, p_##m_arg2);                                         \
 	}
 
+#define FILE_SYSTEM_ACCESS_FUNC3_V(m_ret_type, m_retval, m_func_name, m_arg1_type, m_arg1, m_arg2_type, m_arg2, m_arg3_type, m_arg3)    \
+protected:                                                                                                                              \
+	virtual m_ret_type _##m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2, UNPACK m_arg3_type p_##m_arg3) = 0; \
+                                                                                                                                        \
+public:                                                                                                                                 \
+	static m_ret_type m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2, UNPACK m_arg3_type p_##m_arg3) {        \
+		ERR_FAIL_NULL_V_MSG(get_singleton(), m_retval, "FileSystemAccess not instantiated yet.");                                       \
+		return get_singleton()->_##m_func_name(p_##m_arg1, p_##m_arg2, p_##m_arg3);                                                     \
+	}
+
+#define FILE_SYSTEM_ACCESS_FUNC4_V(m_ret_type, m_retval, m_func_name, m_arg1_type, m_arg1, m_arg2_type, m_arg2, m_arg3_type, m_arg3, m_arg4_type, m_arg4)              \
+protected:                                                                                                                                                             \
+	virtual m_ret_type _##m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2, UNPACK m_arg3_type p_##m_arg3, UNPACK m_arg4_type p_##m_arg4) = 0; \
+                                                                                                                                                                       \
+public:                                                                                                                                                                \
+	static m_ret_type m_func_name(UNPACK m_arg1_type p_##m_arg1, UNPACK m_arg2_type p_##m_arg2, UNPACK m_arg3_type p_##m_arg3, UNPACK m_arg4_type p_##m_arg4) {        \
+		ERR_FAIL_NULL_V_MSG(get_singleton(), m_retval, "FileSystemAccess not instantiated yet.");                                                                      \
+		return get_singleton()->_##m_func_name(p_##m_arg1, p_##m_arg2, p_##m_arg3, p_##m_arg4);                                                                        \
+	}
+
 class FileSystemAccess : public RefCounted {
 	GDCLASS(FileSystemAccess, RefCounted);
 
@@ -111,6 +131,8 @@ public:
 	static Error make_dir(const String &p_dir);
 	static Error make_dir_recursive(const String &p_dir);
 
+	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, canonicalize_path, (const String &), path, (String &), canonicalize);
+
 	static bool path_exists(const String &p_path);
 	static bool file_exists(const String &p_file);
 	static bool dir_exists(const String &p_dir);
@@ -128,6 +150,7 @@ public:
 	FILE_SYSTEM_ACCESS_FUNC0_V(bool, false, can_paste);
 	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, get_clipboard_paths, (Vector<String> &), paths, (bool &), is_cut);
 	FILE_SYSTEM_ACCESS_FUNC2_V(bool, false, paste, (const String &), dir, (Vector<String> &), dest_paths);
+	FILE_SYSTEM_ACCESS_FUNC4_V(Error, FAILED, move, (bool), is_copy, (const String &), to_dir, (const Vector<String> &), from_paths, (Vector<String> &), dest_paths);
 
 	static Error rename(const String &p_from, const String &p_to);
 	static Error remove(const String &p_path);

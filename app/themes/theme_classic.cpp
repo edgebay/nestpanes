@@ -565,6 +565,9 @@ void ThemeClassic::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThe
 			p_theme->set_icon("updown", "Tree", p_theme->get_icon(SNAME("GuiTreeUpdown"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("select_arrow", "Tree", p_theme->get_icon(SNAME("GuiDropdown"), EditorStringName(EditorIcons)));
 
+			p_theme->set_icon("arrow_down", "Tree", p_theme->get_icon(SNAME("GuiTreeArrowDown"), EditorStringName(EditorIcons)));
+			p_theme->set_icon("arrow_up", "Tree", p_theme->get_icon(SNAME("GuiArrowUp"), EditorStringName(EditorIcons)));
+
 			p_theme->set_stylebox(SceneStringName(panel), "Tree", p_config.tree_panel_style);
 			p_theme->set_stylebox("focus", "Tree", p_config.button_style_focus);
 			p_theme->set_stylebox("custom_button", "Tree", AppThemeManager::make_empty_stylebox());
@@ -669,8 +672,8 @@ void ThemeClassic::populate_standard_styles(const Ref<AppTheme> &p_theme, AppThe
 			p_theme->set_stylebox("cursor", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("cursor_unfocused", "Tree", style_tree_cursor);
 			p_theme->set_stylebox("title_button_normal", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_title);
-			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_title);
+			p_theme->set_stylebox("title_button_hover", "Tree", style_tree_hover);
+			p_theme->set_stylebox("title_button_pressed", "Tree", style_tree_selected);
 		}
 
 		// ProjectList.
@@ -1755,5 +1758,14 @@ void ThemeClassic::populate_app_styles(const Ref<AppTheme> &p_theme, AppThemeMan
 		// ForegroundPanel.
 		p_theme->set_type_variation("PanelForeground", "Panel");
 		p_theme->set_stylebox(SceneStringName(panel), "PanelForeground", p_config.base_empty_style);
+
+		// TreeTable.
+		p_theme->set_type_variation("TreeTable", "Tree");
+
+		// FileSystemTree.
+		p_theme->set_type_variation("FileSystemTree", "Tree");
+
+		// AddressBar.
+		p_theme->set_icon("arrow", "AddressBar", p_theme->get_icon(SNAME("GuiOptionArrow"), EditorStringName(EditorIcons)));
 	}
 }

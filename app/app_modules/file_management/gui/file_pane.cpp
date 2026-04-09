@@ -180,41 +180,43 @@ void FilePane::_update_ui_nocheck(FileSystemDirectory *p_dir) {
 	}
 
 	address_bar->set_text(p_dir->get_path());
-	// TODO
-	// for (local_history) histories->add_item(history);
-	// histories->select(local_history_pos);
+	if (local_history_changed || local_history_pos_changed) {
+		if (local_history_changed) {
+			address_bar->clear_items();
+			for (int i = local_history.size() - 1; i >= 0; i--) {
+				address_bar->add_item(local_history[i], i);
+			}
+			local_history_changed = false;
+		}
+
+		int id = local_history.size() - 1 - local_history_pos;
+		address_bar->set_focused_item(id);
+		local_history_pos_changed = false;
+	}
 
 	_update_files(p_dir);
 	_update_status_bar();
 }
 
-void FilePane::_add_item(const FileInfo &p_fi) {
-	TreeItem *root = tree->get_root();
-	ERR_FAIL_NULL(root);
-
-	TreeItem *item = tree->add_item(p_fi, root);
-	// print_line("add item: ", item, item->get_text(0));
-}
-
+// TODO: Move file listing logic to FileSystemTree?
 void FilePane::_update_files(FileSystemDirectory *p_dir) {
 	ERR_FAIL_NULL(p_dir);
 
 	tree->clear();
-	TreeItem *root = tree->create_item();
-	root->set_metadata(0, current_path);
+	FileSystemTreeItem *root = tree->add_root(p_dir->get_info());
 
 	// list dirs
 	int dir_count = p_dir->get_subdir_count();
 	for (int i = 0; i < dir_count; i++) {
 		FileSystemDirectory *subdir = p_dir->get_subdir(i);
-		_add_item(subdir->get_info());
+		tree->add_item(subdir->get_info(), root);
 	}
 
 	// list files
 	int file_count = p_dir->get_file_count();
 	for (int i = 0; i < file_count; i++) {
 		const FileInfo &fi = *(p_dir->get_file(i));
-		_add_item(fi);
+		tree->add_item(fi, root);
 	}
 
 	// print_line("update files: ", dir_count, file_count);
@@ -234,14 +236,14 @@ void FilePane::_update_status_bar() {
 void FilePane::_on_item_activated() {
 	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
 
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}
 
 	Dictionary d = selected->get_metadata(0);
 	String path = d["path"];
-	bool is_dir = d["is_dir"];
+	bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	if (is_dir) {
 		set_path(path);
@@ -255,14 +257,14 @@ void FilePane::_on_item_activated() {
 	}
 }
 
-void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected) {
+void FilePane::_on_item_selected(Object *p_item, bool p_selected) {
 	callable_mp(this, &FilePane::_update_status_bar).call_deferred();
 
 	if (!p_selected) {
 		return;
 	}
 
-	TreeItem *selected = tree->get_selected();
+	FileSystemTreeItem *selected = tree->get_selected();
 	if (!selected) {
 		return;
 	}
@@ -270,7 +272,7 @@ void FilePane::_on_multi_selected(Object *p_item, int p_column, bool p_selected)
 	// TODO
 	// Dictionary d = selected->get_metadata(0);
 	// String path = d["path"];
-	// bool is_dir = d["is_dir"];
+	// bool is_dir = FileSystemAccess::is_dir_type(d["type"]);
 
 	// emit_signal(SceneStringName(item_selected), path, is_dir);
 }
@@ -288,12 +290,13 @@ void FilePane::_on_address_submitted(const String &p_path) {
 		return;
 	}
 
-	// TODO: Sync the name case to the actual filesystem name.
 	set_path(p_path);
 }
 
-void FilePane::_select_history(int p_idx) {
-	local_history_pos = p_idx;
+void FilePane::_select_history(int p_id) {
+	ERR_FAIL_COND(p_id < 0 || p_id >= local_history.size());
+	local_history_pos = p_id;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -310,6 +313,7 @@ void FilePane::_go_back() {
 	}
 
 	local_history_pos--;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -321,6 +325,7 @@ void FilePane::_go_forward() {
 	}
 
 	local_history_pos++;
+	local_history_pos_changed = true;
 	_go_history();
 }
 
@@ -365,12 +370,16 @@ void FilePane::_on_reset_path(const String &p_from_path, const String &p_to_path
 
 void FilePane::_set_path(const String &p_path, bool p_update_history) {
 	String path = p_path.simplify_path();
-	// print_line("set path: ", p_path, path, current_path, file_system->is_valid_dir_path(path), p_update_history);
+	String canonical_path = "";
+	if (path != COMPUTER_PATH && FileSystemAccess::canonicalize_path(path, canonical_path) && !canonical_path.is_empty()) {
+		path = canonical_path;
+	}
+
+	// print_line("set path: ", p_path, path, canonical_path, current_path, file_system->is_valid_dir_path(path), p_update_history);
 	if (current_path == path || (!file_system->is_valid_dir_path(path))) {
 		return;
 	}
 
-	// TODO: Sync the name case to the actual filesystem name.
 	current_path = path;
 	emit_signal(SNAME("path_changed"), this);
 
@@ -380,6 +389,7 @@ void FilePane::_set_path(const String &p_path, bool p_update_history) {
 			// Set history_pos to the end of local_history
 			if (local_history_pos < current_history_size - 1) {
 				local_history_pos = current_history_size - 1;
+				local_history_pos_changed = true;
 			}
 		} else {
 #define LOCAL_HISTORY_MAX 5 // TODO: config
@@ -393,6 +403,7 @@ void FilePane::_set_path(const String &p_path, bool p_update_history) {
 				local_history_pos = current_history_size; // (current_history_size - 1) + 1
 			}
 			local_history.push_back(current_path);
+			local_history_changed = true;
 		}
 	}
 
@@ -424,6 +435,7 @@ void FilePane::set_file_system(FileSystem *p_file_system) {
 	file_system->connect("file_system_changed", callable_mp(this, &FilePane::_on_file_system_changed));
 	file_system->connect("reset_path", callable_mp(this, &FilePane::_on_reset_path));
 
+	tree->set_file_system(file_system);
 	context_menu->set_file_system(file_system);
 
 	_set_path(file_system->get_root()->get_path());
@@ -442,7 +454,7 @@ Dictionary FilePane::get_config_data() {
 void FilePane::apply_config_data(const Dictionary &p_dict) {
 	String path = p_dict.get("path", get_path());
 	if (path != get_path() && FileSystemAccess::dir_exists(path)) {
-		callable_mp(this, &FilePane::_set_path).call_deferred(path, false);
+		callable_mp(this, &FilePane::_set_path).call_deferred(path, true);
 	}
 }
 
@@ -486,7 +498,6 @@ FilePane::FilePane() :
 	toolbar->add_child(refresh);
 
 	address_bar = memnew(AddressBar);
-	address_bar->set_structured_text_bidi_override(TextServer::STRUCTURED_TEXT_FILE);
 	address_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	toolbar->add_child(address_bar);
 
@@ -501,12 +512,9 @@ FilePane::FilePane() :
 	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	tree->set_display_mode(FileSystemTree::DISPLAY_MODE_LIST);
 
-	// TODO
-	// SET_DRAG_FORWARDING_GCD(tree, FilePane);
-
 	// TODO: Preview on selection?
 	tree->connect("item_activated", callable_mp(this, &FilePane::_on_item_activated));
-	tree->connect("multi_selected", callable_mp(this, &FilePane::_on_multi_selected));
+	tree->connect("item_selected", callable_mp(this, &FilePane::_on_item_selected));
 
 	tree->connect("item_mouse_selected", callable_mp(this, &FilePane::_on_item_mouse_selected));
 	tree->connect("empty_clicked", callable_mp(this, &FilePane::_on_empty_clicked));
@@ -538,7 +546,7 @@ FilePane::FilePane() :
 	// APP_SHORTCUT("file_management/prev", dir_prev->get_tooltip_text(), KeyModifierMask::ALT | Key::LEFT);
 	APP_SHORTCUT_ARRAY("file_management/prev",
 			dir_prev->get_tooltip_text(),
-			{ int32_t(KeyModifierMask::ALT | Key::LEFT), int32_t(Key::BACK) });
+			{ int32_t(KeyModifierMask::ALT | Key::LEFT), int32_t(Key::BACKSPACE) });
 	APP_SHORTCUT("file_management/next", dir_next->get_tooltip_text(), KeyModifierMask::ALT | Key::RIGHT);
 	APP_SHORTCUT("file_management/up", dir_up->get_tooltip_text(), KeyModifierMask::ALT | Key::UP);
 	APP_SHORTCUT("file_management/refresh", refresh->get_tooltip_text(), Key::F5);

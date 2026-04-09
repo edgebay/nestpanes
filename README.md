@@ -12,8 +12,15 @@ A Windows desktop application based on the [Godot 4.6-stable source code](https:
 
 - File Management
 	- File Browsing
+		- List Sorting
+		- Path History
 	- File Navigation
 	- Basic File Operations
+		- Cut/Copy/Paste
+		- Rename
+		- Delete (Recycle Bin)
+		- Create New File/Folder
+		- Drag-and-Drop (Move/Copy)
 
 **UI Layout**
 
@@ -25,9 +32,6 @@ A Windows desktop application based on the [Godot 4.6-stable source code](https:
 ## Roadmap
 
 - File Management
-	- File Browsing Improvements
-		- File List: Add support for sorting, multi-selection, and drag-to-move operations
-		- Path Bar: Add history path display and navigation
 	- File Search
 	- Image Preview
 - Settings
@@ -37,15 +41,29 @@ A Windows desktop application based on the [Godot 4.6-stable source code](https:
 
 ## Keyboard Shortcuts
 
-| Action               | Windows          |
-| -------------------- | ---------------- |
-| New Tab              | `Ctrl+T`         |
-| Close Tab            | `Ctrl+W`         |
-| Next Tab             | `Ctrl+Tab`       |
-| Previous Tab         | `Ctrl+Shift+Tab` |
-| Toggle Left Sidebar  | `Ctrl+B`         |
-| Toggle Right Sidebar | `Ctrl+Shift+B`   |
-| Quit                 | `Ctrl+Q`         |
+| Action                   | Windows                 | Scope           |
+| ------------------------ | ----------------------- | --------------- |
+| New Tab                  | `Ctrl+T`                | Tabs            |
+| Close Tab                | `Ctrl+W`                | Tabs            |
+| Next Tab                 | `Ctrl+Tab`              | Tabs            |
+| Previous Tab             | `Ctrl+Shift+Tab`        | Tabs            |
+| Copy Path                | `Ctrl+Shift+C`          | File Management |
+| Show in System Explorer  | `Ctrl+Alt+R`            | File Management |
+| Open in External Program | `Ctrl+Alt+E`            | File Management |
+| Open in Terminal         | `Ctrl+Alt+T`            | File Management |
+| Cut                      | `Ctrl+X`                | File Management |
+| Copy                     | `Ctrl+C`                | File Management |
+| Paste                    | `Ctrl+V`                | File Management |
+| Rename                   | `F2`                    | File Management |
+| Delete                   | `Delete`                | File Management |
+| Focus Address Bar        | `Ctrl+L`                | FilePane        |
+| Previous Folder          | `Alt+Left`, `Backspace` | FilePane        |
+| Next Folder              | `Alt+Right`             | FilePane        |
+| Parent Folder            | `Alt+Up`                | FilePane        |
+| Refresh                  | `F5`                    | FilePane        |
+| Toggle Left Sidebar      | `Ctrl+B`                | Global          |
+| Toggle Right Sidebar     | `Ctrl+Shift+B`          | Global          |
+| Quit                     | `Ctrl+Q`                | Global          |
 
 ---
 
